@@ -7,7 +7,7 @@ Owner decisions:
 - Free-play start point: Katowice.
 - Quick wins: progress badges (nice to have), celebration (yes), cheat sheet (yes, printable to PDF in each language), worksheet (yes), hint button (yes). Homework code: no. QR code: no.
 
-Execution order after Part 7: D2 → 18 → 24 → 25 → 19 → 20 → final review.
+Execution order after Part 7: D2 → 18 → 24 → 25 → D3 → 19 → 20 → final review.
 
 ---
 
@@ -43,3 +43,22 @@ Tests: unit tests for hint keys existing for every question type; e2e: 10/10 key
 - `package.json`: name, description, author, license "MIT", repository placeholder URL, `"private": true` kept.
 - `docs/RELEASE.md`: the exact commands for the owner: `gh repo create geo-coordinates --public --source . --remote origin --push`, then enabling Pages (Settings → Pages → GitHub Actions) or `gh api` equivalent, and merging `feat/lesson-page` into `main` first.
 - No push, no repo creation.
+
+---
+
+### Task D3: Final design, UX and accessibility round (owner request)
+
+After every feature exists (including presenter mode, quick wins and release prep), a design/UX specialist reviews the whole product end to end and fixes what makes it less smooth or less accessible. Same constraints as D1/D2 (no behaviour/test-contract changes without recording them; 44px targets; WCAG 2.2 AA, AAA in presenter mode), but this round MAY make small behaviour/markup fixes for UX and accessibility problems it finds, each with a test.
+
+Scope and method:
+1. **Journeys**, each walked in EN, PL and UK at 375×667, 768×1024 (portrait and landscape), 1366×768 and 1920×1080 (presenter), light and dark, and once with keyboard only and once with large text + reduced motion:
+   - a pupil at home: home → topic 3 Learn → Practise (hint, wrong answer, 10/10 celebration) → progress badge;
+   - a teacher in class: presenter mode → topic 1 Learn → class quiz with timer → reveal;
+   - test rehearsal end to end with review;
+   - day and night lab and topic 8;
+   - topic 9 and the schools layer;
+   - printing the cheat sheet and a worksheet to PDF in each language.
+2. **Screen reader pass (scripted)**: Playwright accessibility snapshots of key screens; check names, roles, reading order, live announcements (feedback, timer, point moves), focus order and focus return after dialogs/route changes.
+3. **Checks**: axe WCAG 2.2 AA on every route (AAA contrast in presenter), 320px reflow, 200% text, forced-colors mode screenshots, colour-blindness simulations, touch-target audit, motion audit, performance smoke (lab spin and globe drag frame time; initial render time of the single file on a mid-range CPU throttle ×4).
+4. **Consistency**: spacing, typography, button hierarchy, empty/loading/error states, microcopy tone in all three languages (short, friendly, school-appropriate), iconography.
+5. **Deliverables**: prioritized findings list in the report (with screenshots), fixes committed in themed commits, before/after screenshots, a short "UX notes for the owner" section listing anything deliberately left as is.
