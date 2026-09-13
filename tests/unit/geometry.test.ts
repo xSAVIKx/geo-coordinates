@@ -72,6 +72,40 @@ describe('globe ctx', () => {
   test('invert outside the disc is null', () => { expect(ctx.invert([2, 2])).toBeNull(); });
 });
 
+describe('globe ctx zoom', () => {
+  test('centre still projects to the middle at zoom 2', () => {
+    const ctx = makeGlobeCtx(500, [-21, -52], 1, 2);
+    const [x, y] = ctx.project({ lat: 52, lon: 21 })!;
+    expect(x).toBeCloseTo(250, 6); expect(y).toBeCloseTo(250, 6);
+  });
+  test('a point 30 degrees from centre is twice as far from centre at zoom 2 as at zoom 1', () => {
+    const p = { lat: 22, lon: 21 }; // 30° south of the centre (52,21), same meridian
+    const ctx1 = makeGlobeCtx(500, [-21, -52], 1, 1);
+    const ctx2 = makeGlobeCtx(500, [-21, -52], 1, 2);
+    const [x1, y1] = ctx1.project(p)!;
+    const [x2, y2] = ctx2.project(p)!;
+    const d1 = Math.hypot(x1 - 250, y1 - 250);
+    const d2 = Math.hypot(x2 - 250, y2 - 250);
+    expect(d2 / d1).toBeCloseTo(2, 6);
+  });
+  test('invert of a viewBox corner is null at zoom 1 (outside disc) and non-null at zoom 3 (disc covers it)', () => {
+    const ctx1 = makeGlobeCtx(500, [-21, -52], 1, 1);
+    const ctx3 = makeGlobeCtx(500, [-21, -52], 1, 3);
+    expect(ctx1.invert([0, 0])).toBeNull();
+    expect(ctx3.invert([0, 0])).not.toBeNull();
+  });
+  test('invert outside the viewBox is null even when the disc would cover it', () => {
+    const ctx3 = makeGlobeCtx(500, [-21, -52], 1, 3);
+    expect(ctx3.invert([-5, -5])).toBeNull();
+    expect(ctx3.invert([505, 250])).toBeNull();
+  });
+  test('default zoom of 1 matches passing zoom explicitly', () => {
+    const a = makeGlobeCtx(500, [-21, -52], 1);
+    const b = makeGlobeCtx(500, [-21, -52], 1, 1);
+    expect(a.project({ lat: 52, lon: 21 })).toEqual(b.project({ lat: 52, lon: 21 }));
+  });
+});
+
 describe('lines', () => {
   test('parallel is dense and closed around the globe', () => {
     const l = parallelLine(50, 2);

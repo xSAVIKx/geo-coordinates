@@ -149,6 +149,7 @@ export interface SceneSpec {
   precision?: Precision;
   showReadout?: boolean;                 // default true; false hides readout + sliders
   rotate?: [number, number];             // globe rotation [lambda, phi] in degrees
+  globeZoom?: number;                    // globe zoom factor; default 1
   flatPreset?: FlatPreset;
   flatView?: { center: LatLon; zoom: number }; // overrides flatPreset
   overlays?: Overlay[];

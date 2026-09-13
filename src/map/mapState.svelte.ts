@@ -23,6 +23,8 @@ export const FLAT_PRESETS: Record<FlatPreset, { center: LatLon; zoom: number }> 
 
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 12;
+export const GLOBE_MIN_ZOOM = 1;
+export const GLOBE_MAX_ZOOM = 8;
 
 export class MapState {
   views = $state<ViewId[]>(['globe', 'flat']);
@@ -32,6 +34,7 @@ export class MapState {
   precision = $state<Precision>('degree');
   showReadout = $state(true);
   rotate = $state<[number, number]>([-21, -30]);
+  globeZoom = $state(1);
   flat = $state<{ center: LatLon; zoom: number }>({ center: { lat: 0, lon: 0 }, zoom: 1 });
   overlays = $state<Overlay[]>([]);
   sun = $state<{ utcMinutes: number; dayOfYear: number; year: number } | null>(null);
@@ -61,6 +64,7 @@ export class MapState {
     if (scene.point) this.setPoint(scene.point, 'program');
     const p = this.point as LatLon | null;
     this.rotate = scene.rotate ? [...scene.rotate] : p ? [-p.lon, -Math.max(-60, Math.min(60, p.lat))] : [0, -20];
+    this.globeZoom = Math.max(GLOBE_MIN_ZOOM, Math.min(GLOBE_MAX_ZOOM, scene.globeZoom ?? 1));
     const view = scene.flatView ?? FLAT_PRESETS[scene.flatPreset ?? 'world'];
     const zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, view.zoom));
     this.flat = { zoom, center: this.clampCenter(view.center, zoom) };
@@ -98,6 +102,10 @@ export class MapState {
 
   centerGlobeOn(p: LatLon): void {
     this.rotate = [-p.lon, -Math.max(-60, Math.min(60, p.lat))];
+  }
+
+  zoomGlobe(factor: number): void {
+    this.globeZoom = Math.max(GLOBE_MIN_ZOOM, Math.min(GLOBE_MAX_ZOOM, this.globeZoom * factor));
   }
 
   setFlatPreset(preset: FlatPreset): void {

@@ -11,11 +11,13 @@
   let svg: SVGSVGElement;
   let clientWidth = $state(SIZE);
   const uiScale = $derived(settings.largeText ? 1.25 : 1);
-  const ctx = $derived(makeGlobeCtx(SIZE, mapState.rotate, (SIZE / Math.max(1, clientWidth)) * uiScale));
+  const ctx = $derived(makeGlobeCtx(SIZE, mapState.rotate, (SIZE / Math.max(1, clientWidth)) * uiScale, mapState.globeZoom));
 
   type Drag = { mode: 'point' | 'rotate' | 'maybe-click'; startX: number; startY: number; lastX: number; lastY: number };
   let drag: Drag | null = null;
   let frame = 0;
+  let pinch = new Map<number, { x: number; y: number }>();
+  let pinchDist = 0;
 
   function toView(clientX: number, clientY: number): [number, number] {
     const m = svg.getScreenCTM();
@@ -31,12 +33,27 @@
 
   function onpointerdown(e: PointerEvent) {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
+    pinch.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pinch.size === 2) {
+      const [a, b] = [...pinch.values()];
+      pinchDist = Math.hypot(a!.x - b!.x, a!.y - b!.y);
+      drag = null;
+      return;
+    }
     const onPoint = (e.target as Element).closest('[data-point-handle]') !== null;
     drag = { mode: onPoint && mapState.pointEditable ? 'point' : 'maybe-click', startX: e.clientX, startY: e.clientY, lastX: e.clientX, lastY: e.clientY };
     svg.setPointerCapture(e.pointerId);
   }
 
   function onpointermove(e: PointerEvent) {
+    if (pinch.has(e.pointerId)) pinch.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pinch.size === 2) {
+      const [a, b] = [...pinch.values()];
+      const d = Math.hypot(a!.x - b!.x, a!.y - b!.y);
+      if (pinchDist > 0) mapState.zoomGlobe(d / pinchDist);
+      pinchDist = d;
+      return;
+    }
     if (!drag) return;
     const d = drag;
     if (d.mode === 'maybe-click' && Math.hypot(e.clientX - d.startX, e.clientY - d.startY) > 6) d.mode = 'rotate';
@@ -47,7 +64,7 @@
         const ll = ctx.invert(toView(cx, cy));
         if (ll) mapState.userSetPoint(ll, 'map');
       } else if (d.mode === 'rotate') {
-        const k = (180 / (SIZE - 12)) * (SIZE / Math.max(1, clientWidth));
+        const k = ((180 / (SIZE - 12)) * (SIZE / Math.max(1, clientWidth))) / mapState.globeZoom;
         rotateBy((cx - d.lastX) * k, -(cy - d.lastY) * k);
       }
       d.lastX = cx; d.lastY = cy;
@@ -55,6 +72,15 @@
   }
 
   function onpointerup(e: PointerEvent) {
+    pinch.delete(e.pointerId);
+    if (pinch.size < 2) pinchDist = 0;
+    if (pinch.size === 1) {
+      // One finger remains after a pinch: hand off to rotation from where it currently is,
+      // rather than leaving it dead or letting it fire a click-to-place on release.
+      const pos = [...pinch.values()][0]!;
+      drag = { mode: 'rotate', startX: pos.x, startY: pos.y, lastX: pos.x, lastY: pos.y };
+      return;
+    }
     if (drag?.mode === 'maybe-click' && mapState.pointEditable) {
       const ll = ctx.invert(toView(e.clientX, e.clientY));
       if (ll) mapState.userSetPoint(ll, 'map');
@@ -62,7 +88,8 @@
     drag = null;
   }
 
-  function onpointercancel() {
+  function onpointercancel(e: PointerEvent) {
+    pinch.delete(e.pointerId);
     cancelAnimationFrame(frame);
     drag = null;
   }
@@ -71,11 +98,26 @@
     const s = mapState.stepSize(e.shiftKey);
     const arrows: Record<string, [number, number]> = { ArrowUp: [s, 0], ArrowDown: [-s, 0], ArrowLeft: [0, -s], ArrowRight: [0, s] };
     const delta = arrows[e.key];
-    if (!delta) return;
-    e.preventDefault();
-    if (mapState.pointEditable) mapState.nudge(delta[0], delta[1], 'map');
-    else rotateBy(-delta[1] * (e.shiftKey ? 3 : 15), -delta[0] * (e.shiftKey ? 3 : 15));
+    if (delta) {
+      e.preventDefault();
+      if (mapState.pointEditable) mapState.nudge(delta[0], delta[1], 'map');
+      else rotateBy(-delta[1] * (e.shiftKey ? 3 : 15), -delta[0] * (e.shiftKey ? 3 : 15));
+      return;
+    }
+    if (e.key === '+' || e.key === '=') { mapState.zoomGlobe(1.5); e.preventDefault(); }
+    else if (e.key === '-' || e.key === '_') { mapState.zoomGlobe(1 / 1.5); e.preventDefault(); }
+    else if (e.key === '0') { mapState.globeZoom = 1; e.preventDefault(); }
   }
+
+  $effect(() => {
+    const handler = (e: WheelEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      e.preventDefault();
+      mapState.zoomGlobe(e.deltaY < 0 ? 1.15 : 1 / 1.15);
+    };
+    svg.addEventListener('wheel', handler, { passive: false });
+    return () => svg.removeEventListener('wheel', handler);
+  });
 
   // Keep the point in view when it moves off the visible side by keyboard, sliders or program.
   // Depends only on the point and its change source, never on mapState.rotate — otherwise this
@@ -92,8 +134,8 @@
 
 <figure class="globe">
   <div class="frame" bind:clientWidth>
-    <!-- svelte-ignore a11y_no_noninteractive_tabindex -- keyboard-operable globe (spec §7): the SVG is a compound control (rotate/point), not static content -->
-    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -- pointer/keyboard handlers drive globe rotation and point editing per spec §7 -->
+    <!-- svelte-ignore a11y_no_noninteractive_tabindex -- keyboard-operable globe (spec §7): the SVG is a compound control (rotate/point/zoom), not static content -->
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -- pointer/keyboard handlers drive globe rotation, point editing and zoom per spec §7 -->
     <svg
       bind:this={svg}
       viewBox="0 0 {SIZE} {SIZE}"
@@ -104,7 +146,8 @@
       tabindex="0"
       {onpointerdown} {onpointermove} {onpointerup} {onpointercancel} {onkeydown}
     >
-      <Layers {ctx} idPrefix={uid} />
+      <defs><clipPath id="{uid}-clip"><rect width={SIZE} height={SIZE} /></clipPath></defs>
+      <g clip-path="url(#{uid}-clip)"><Layers {ctx} idPrefix={uid} /></g>
     </svg>
   </div>
   <p id="{uid}-hint" class="visually-hidden">{t('map.globe.hint')}</p>
@@ -113,6 +156,8 @@
     <button type="button" onclick={() => rotateBy(-15, 0)} aria-label={t('map.turnEast')} title={t('map.turnEast')}>→</button>
     <button type="button" onclick={() => rotateBy(0, -15)} aria-label={t('map.turnNorth')} title={t('map.turnNorth')}>↑</button>
     <button type="button" onclick={() => rotateBy(0, 15)} aria-label={t('map.turnSouth')} title={t('map.turnSouth')}>↓</button>
+    <button type="button" onclick={() => mapState.zoomGlobe(1.5)} aria-label={t('map.globeZoomIn')} title={t('map.globeZoomIn')}>＋</button>
+    <button type="button" onclick={() => mapState.zoomGlobe(1 / 1.5)} aria-label={t('map.globeZoomOut')} title={t('map.globeZoomOut')}>−</button>
     {#if mapState.point}
       <button type="button" onclick={() => mapState.point && mapState.centerGlobeOn(mapState.point)}>{t('map.showPoint')}</button>
     {/if}
@@ -126,5 +171,5 @@
   svg:active { cursor: grabbing; }
   svg:focus-visible { outline: 3px solid var(--focus); border-radius: 50%; }
   .toolbar { display: flex; flex-wrap: wrap; gap: var(--space-2); justify-content: center; }
-  .toolbar button { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0 var(--space-3); font-weight: 600; }
+  .toolbar button { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0 var(--space-3); font-weight: 600; min-width: 44px; min-height: 44px; }
 </style>

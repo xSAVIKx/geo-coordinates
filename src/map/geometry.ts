@@ -71,9 +71,9 @@ export function makeFlatCtx(width: number, height: number, center: LatLon, zoom:
   };
 }
 
-export function makeGlobeCtx(size: number, rotate: [number, number], px: number): ViewCtx {
+export function makeGlobeCtx(size: number, rotate: [number, number], px: number, zoom = 1): ViewCtx {
   const projection = geoOrthographic()
-    .scale(size / 2 - 6)
+    .scale((size / 2 - 6) * zoom)
     .translate([size / 2, size / 2])
     .rotate(rotate)
     .clipAngle(90)
@@ -85,7 +85,8 @@ export function makeGlobeCtx(size: number, rotate: [number, number], px: number)
     kind: 'globe', width: size, height: size, projection, path, px, isVisible,
     project: (p) => (isVisible(p) ? (projection([p.lon, p.lat]) as [number, number]) : null),
     invert: (xy) => {
-      const r = size / 2 - 6;
+      if (xy[0] < 0 || xy[0] > size || xy[1] < 0 || xy[1] > size) return null;
+      const r = (size / 2 - 6) * zoom;
       if (Math.hypot(xy[0] - size / 2, xy[1] - size / 2) > r) return null;
       return inRange(projection.invert?.(xy));
     },

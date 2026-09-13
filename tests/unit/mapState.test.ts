@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'vitest';
-import { DEFAULT_LAYERS, MapState } from '../../src/map/mapState.svelte';
+import { DEFAULT_LAYERS, GLOBE_MAX_ZOOM, GLOBE_MIN_ZOOM, MapState } from '../../src/map/mapState.svelte';
 import type { Overlay } from '../../src/map/types';
 
 function makeLocalStorageStub(): Storage {
@@ -139,6 +139,25 @@ describe('MapState', () => {
     expect(s.rotate).toEqual([-30, -60]);
     s.centerGlobeOn({ lat: -85, lon: -40 });
     expect(s.rotate).toEqual([40, 60]);
+  });
+  test('zoomGlobe clamps to [1, 8]', () => {
+    const s = new MapState();
+    expect(s.globeZoom).toBe(1);
+    s.zoomGlobe(100);
+    expect(s.globeZoom).toBe(GLOBE_MAX_ZOOM);
+    s.zoomGlobe(0.001);
+    expect(s.globeZoom).toBe(GLOBE_MIN_ZOOM);
+    s.globeZoom = 2;
+    s.zoomGlobe(1.5);
+    expect(s.globeZoom).toBeCloseTo(3, 9);
+  });
+  test('applyScene resets globeZoom to 1 and honours scene.globeZoom', () => {
+    const s = new MapState();
+    s.globeZoom = 5;
+    s.applyScene({ views: ['globe'] });
+    expect(s.globeZoom).toBe(1);
+    s.applyScene({ views: ['globe'], globeZoom: 4 });
+    expect(s.globeZoom).toBe(4);
   });
   test('addOverlays appends to existing overlays', () => {
     const s = new MapState();
