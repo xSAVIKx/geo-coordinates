@@ -37,7 +37,7 @@ export interface SceneSpec {
   layers?: Partial<LayerFlags>;
   point?: LatLon | null;                 // null hides the movable point
   pointEditable?: boolean;
-  precision?: Precision;
+  precision?: Precision | 'auto';        // 'auto' (free play): minutes once zoomed in to 12 (see MapState.precision)
   showReadout?: boolean;                 // default true; false hides readout + sliders
   readout?: Readout;                     // default 'letters'; 'decimal'/'both' also keep the point to 4 decimals
   rotate?: [number, number];             // globe rotation [lambda, phi] in degrees

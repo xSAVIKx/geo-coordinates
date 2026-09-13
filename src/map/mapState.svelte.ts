@@ -31,13 +31,16 @@ export const FLAT_MAX_ZOOM = 80;
 const MAX_ZOOM = FLAT_MAX_ZOOM;
 export const GLOBE_MIN_ZOOM = 1;
 export const GLOBE_MAX_ZOOM = 60;
+/** With `precision: 'auto'`, the point snaps to minutes from this flat or globe zoom on, to degrees below. */
+export const MINUTE_ZOOM = 12;
 
 export class MapState {
   views = $state<ViewId[]>(['globe', 'flat']);
   layers = $state<LayerFlags>({ ...DEFAULT_LAYERS });
   point = $state<LatLon | null>({ lat: 52, lon: 21 });
   pointEditable = $state(true);
-  precision = $state<Precision>('degree');
+  /** The scene's precision setting; `precision` is what snapping and the readout actually use. */
+  precisionMode = $state<Precision | 'auto'>('degree');
   showReadout = $state(true);
   readout = $state<Readout>('letters');
   rotate = $state<[number, number]>([-21, -30]);
@@ -54,6 +57,20 @@ export class MapState {
   projectionSwitch = $state(false);
   /** Bumped by every `applyScene`, so layers can drop per-scene memory (e.g. label hysteresis). */
   sceneVersion = $state(0);
+
+  /**
+   * Degrees or minutes. A free-play scene's `'auto'` follows the zoom: zoomed in to 12 or more on the
+   * flat map or the globe, a pixel is far less than a degree, so the point snaps to minutes.
+   * A plain getter (no stored copy), so nothing has to be kept in sync by an effect.
+   */
+  get precision(): Precision {
+    if (this.precisionMode !== 'auto') return this.precisionMode;
+    return this.flat.zoom >= MINUTE_ZOOM || this.globeZoom >= MINUTE_ZOOM ? 'minute' : 'degree';
+  }
+
+  set precision(p: Precision | 'auto') {
+    this.precisionMode = p;
+  }
 
   get flatProjection(): FlatProjection {
     return this.projectionOverride ?? this.projectionPreference;
@@ -116,10 +133,6 @@ export class MapState {
     this.pointEditable = scene.pointEditable ?? false;
     this.showReadout = scene.showReadout ?? true;
     this.readout = scene.readout ?? 'letters';
-    this.point = null;
-    if (scene.point) this.setPoint(scene.point, 'program');
-    const p = this.point as LatLon | null;
-    this.rotate = scene.rotate ? [...scene.rotate] : p ? [-p.lon, -Math.max(-60, Math.min(60, p.lat))] : [0, -20];
     this.globeZoom = Math.max(GLOBE_MIN_ZOOM, Math.min(GLOBE_MAX_ZOOM, scene.globeZoom ?? 1));
     if (scene.flatView) {
       const zoom = this.clampZoom(scene.flatView.zoom);
@@ -127,6 +140,11 @@ export class MapState {
     } else {
       this.setFlatPreset(scene.flatPreset ?? 'world');
     }
+    // After the zooms: with `precision: 'auto'` the point snaps by this scene's zoom, not the last one's.
+    this.point = null;
+    if (scene.point) this.setPoint(scene.point, 'program');
+    const p = this.point as LatLon | null;
+    this.rotate = scene.rotate ? [...scene.rotate] : p ? [-p.lon, -Math.max(-60, Math.min(60, p.lat))] : [0, -20];
     this.overlays = [...(scene.overlays ?? [])];
     this.sun = scene.sun ? { ...scene.sun, year: new Date().getUTCFullYear() } : null;
     this.labControls = [...(scene.labControls ?? [])];

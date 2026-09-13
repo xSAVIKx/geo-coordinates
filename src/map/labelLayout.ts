@@ -25,16 +25,31 @@ export function selectVisibleLabels<T>(
   rank: (item: T) => number,
   obstacles: readonly LabelBox[] = [],
 ): boolean[] {
+  return selectLabelPlacements(items, (item) => [box(item)], rank, obstacles).map((choice) => choice >= 0);
+}
+
+/**
+ * Like `selectVisibleLabels`, but each item may offer several boxes in order of preference (e.g. a
+ * name right of its dot, else left of it): the first free one is taken. Returns, per item in the
+ * original order, the index of the chosen box, or -1 when none is free.
+ */
+export function selectLabelPlacements<T>(
+  items: readonly T[],
+  boxes: (item: T) => readonly LabelBox[],
+  rank: (item: T) => number,
+  obstacles: readonly LabelBox[] = [],
+): number[] {
   const order = items.map((_, i) => i).sort((a, b) => rank(items[a]!) - rank(items[b]!));
   const placed: LabelBox[] = [...obstacles];
-  const visible = new Array<boolean>(items.length).fill(false);
+  const chosen = new Array<number>(items.length).fill(-1);
   for (const i of order) {
-    const b = box(items[i]!);
-    if (placed.some((p) => overlaps(b, p))) continue;
-    placed.push(b);
-    visible[i] = true;
+    const options = boxes(items[i]!);
+    const k = options.findIndex((b) => !placed.some((p) => overlaps(b, p)));
+    if (k < 0) continue;
+    placed.push(options[k]!);
+    chosen[i] = k;
   }
-  return visible;
+  return chosen;
 }
 
 /**
@@ -75,11 +90,30 @@ export function selectStableLabels<T>(
   obstacles: readonly LabelBox[] = [],
   bucketSize = 8,
 ): boolean[] {
+  return selectStablePlacements(items, (item) => [box(item)], featured, distance, wasVisible, obstacles, bucketSize).map((choice) => choice >= 0);
+}
+
+/** `selectStableLabels` with a list of preferred boxes per item (see `selectLabelPlacements`). */
+export function selectStablePlacements<T>(
+  items: readonly T[],
+  boxes: (item: T) => readonly LabelBox[],
+  featured: (item: T) => boolean,
+  distance: (item: T) => number,
+  wasVisible: (item: T) => boolean,
+  obstacles: readonly LabelBox[] = [],
+  bucketSize = 8,
+): number[] {
   const rank = (item: T): number => {
     const tier = featured(item) ? 0 : wasVisible(item) ? 1 : 2;
     return tier * 1_000_000 + Math.floor(distance(item) / bucketSize);
   };
-  return selectVisibleLabels(items, box, rank, obstacles);
+  return selectLabelPlacements(items, boxes, rank, obstacles);
+}
+
+/** The area the movable point's ring (and its halo) covers, so no name is written under it. */
+export function pointBox(x: number, y: number, px: number): LabelBox {
+  const r = 13 * px;
+  return { left: x - r, right: x + r, top: y - r, bottom: y + r };
 }
 
 /**

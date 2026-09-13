@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { createLabelMemory, overlaps, rotateBoxAround, selectStableLabels, selectVisibleLabels, textBox } from '../../src/map/labelLayout';
+import { createLabelMemory, overlaps, pointBox, selectLabelPlacements, rotateBoxAround, selectStableLabels, selectVisibleLabels, textBox } from '../../src/map/labelLayout';
 
 test('overlaps', () => {
   expect(overlaps({ left: 0, right: 10, top: 0, bottom: 10 }, { left: 5, right: 15, top: 5, bottom: 15 })).toBe(true);
@@ -114,4 +114,18 @@ test('createLabelMemory: the hysteresis bonus survives view changes but not a ne
   expect(run(1, { a: 50, b: 1 })).toEqual(['a']);
   // A new scene (applyScene bumped sceneVersion): no bonus carried over, the closer 'b' wins.
   expect(run(2, { a: 50, b: 1 })).toEqual(['b']);
+});
+
+test('selectLabelPlacements: a name moves to its second box when the first is taken, or hides', () => {
+  const right = textBox(10, 0, 20, 10), left = textBox(-10, 0, 20, 10, 'end');
+  const items = [{ id: 'a' }];
+  expect(selectLabelPlacements(items, () => [right, left], () => 0)).toEqual([0]);
+  expect(selectLabelPlacements(items, () => [right, left], () => 0, [pointBox(15, -3, 1)])).toEqual([1]);
+  expect(selectLabelPlacements(items, () => [right, left], () => 0, [pointBox(15, -3, 1), pointBox(-15, -3, 1)])).toEqual([-1]);
+});
+
+test('pointBox covers the point ring (9 px radius plus halo) at any scale', () => {
+  const b = pointBox(100, 50, 2);
+  expect(b.left).toBeLessThanOrEqual(100 - 9 * 2); expect(b.right).toBeGreaterThanOrEqual(100 + 9 * 2);
+  expect(b.top).toBeLessThanOrEqual(50 - 9 * 2); expect(b.bottom).toBeGreaterThanOrEqual(50 + 9 * 2);
 });

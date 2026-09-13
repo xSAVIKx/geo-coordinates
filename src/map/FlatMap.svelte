@@ -1,7 +1,8 @@
 <script lang="ts">
   import { t } from '../i18n/i18n.svelte';
   import { settings } from '../app/settings.svelte';
-  import { makeFlatCtx } from './geometry';
+  import type { LatLon } from '../geo/types';
+  import { CLIP_PAD, makeFlatCtx } from './geometry';
   import Layers from './layers/Layers.svelte';
   import { mapState } from './mapState.svelte';
   import type { FlatPreset, FlatProjection } from './types';
@@ -11,9 +12,27 @@
   let svg: SVGSVGElement;
   let clientWidth = $state(W);
   const uiScale = $derived(settings.largeText ? 1.25 : 1);
-  const ctx = $derived(
-    makeFlatCtx(W, H, mapState.flat.center, mapState.flat.zoom, (W / Math.max(1, clientWidth)) * uiScale, mapState.flatProjection),
-  );
+  const px = $derived((W / Math.max(1, clientWidth)) * uiScale);
+  // The live view: pointer and keyboard maths, and the edge numbers.
+  const ctx = $derived(makeFlatCtx(W, H, mapState.flat.center, mapState.flat.zoom, px, mapState.flatProjection));
+
+  // Cheap pans. d3's `center()` only shifts a projection (no rotation), so on every flat map a pan
+  // just slides the picture: a drag draws the map once around where it began (with a wide pad) and
+  // moves it with a translate; paths and labels are rebuilt only when the slide nears the pad's edge
+  // and when the drag ends.
+  const PAN_PAD = 360;
+  let panBase = $state<{ center: LatLon; zoom: number; projection: typeof mapState.flatProjection } | null>(null);
+  const base = $derived(panBase && panBase.zoom === mapState.flat.zoom && panBase.projection === mapState.flatProjection ? panBase : null);
+  const drawCtx = $derived(base ? makeFlatCtx(W, H, base.center, base.zoom, px, base.projection, PAN_PAD) : ctx);
+  const offset = $derived.by<[number, number] | null>(() => {
+    if (!base) return null;
+    const xy = ctx.projection([base.center.lon, base.center.lat]);
+    return xy ? [xy[0] - W / 2, xy[1] - H / 2] : null;
+  });
+  const startPanBase = () => {
+    panBase = { center: { ...mapState.flat.center }, zoom: mapState.flat.zoom, projection: mapState.flatProjection };
+  };
+  const endPanBase = () => { panBase = null; };
 
   type Drag = { mode: 'point' | 'pan' | 'maybe-click' | 'idle'; startX: number; startY: number; lastX: number; lastY: number };
   let drag: Drag | null = null;
@@ -34,6 +53,7 @@
       const [a, b] = [...pinch.values()];
       pinchDist = Math.hypot(a!.x - b!.x, a!.y - b!.y);
       drag = null;
+      endPanBase();
       return;
     }
     const onPoint = (e.target as Element).closest('[data-point-handle]') !== null;
@@ -55,11 +75,16 @@
       const ll = ctx.invert(toView(e.clientX, e.clientY));
       if (ll) mapState.userSetPoint(ll, 'map');
     } else {
-      if (drag.mode === 'maybe-click' && Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) > 6 && mapState.canPanFlat) drag.mode = 'pan';
+      if (drag.mode === 'maybe-click' && Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) > 6 && mapState.canPanFlat) {
+        drag.mode = 'pan';
+        startPanBase();
+      }
       if (drag.mode === 'pan') {
         const [x0, y0] = toView(drag.lastX, drag.lastY);
         const [x1, y1] = toView(e.clientX, e.clientY);
         mapState.panFlatBy(x1 - x0, y1 - y0);
+        const o = offset;
+        if (o && Math.max(Math.abs(o[0]), Math.abs(o[1])) > PAN_PAD - CLIP_PAD - 8) startPanBase();
       }
     }
     drag.lastX = e.clientX; drag.lastY = e.clientY;
@@ -73,6 +98,7 @@
       // currently is, rather than leaving it dead or letting it fire a click-to-place on release.
       const pos = [...pinch.values()][0]!;
       drag = { mode: mapState.canPanFlat ? 'pan' : 'idle', startX: pos.x, startY: pos.y, lastX: pos.x, lastY: pos.y };
+      if (drag.mode === 'pan') startPanBase();
       return;
     }
     if (drag?.mode === 'maybe-click' && mapState.pointEditable) {
@@ -80,9 +106,10 @@
       if (ll) mapState.userSetPoint(ll, 'map');
     }
     drag = null;
+    endPanBase();
   }
 
-  function onpointercancel(e: PointerEvent) { pinch.delete(e.pointerId); drag = null; }
+  function onpointercancel(e: PointerEvent) { pinch.delete(e.pointerId); drag = null; endPanBase(); }
 
   function onkeydown(e: KeyboardEvent) {
     const big = e.shiftKey;
@@ -138,7 +165,7 @@
       {onpointerdown} {onpointermove} {onpointerup} {onpointercancel} {onkeydown}
     >
       <defs><clipPath id="{uid}-clip"><rect width={W} height={H} /></clipPath></defs>
-      <g clip-path="url(#{uid}-clip)"><Layers {ctx} idPrefix={uid} /></g>
+      <g clip-path="url(#{uid}-clip)"><Layers ctx={drawCtx} edgeCtx={ctx} {offset} idPrefix={uid} /></g>
     </svg>
   </div>
   <p id="{uid}-hint" class="visually-hidden">{t('map.flat.hint')}</p>

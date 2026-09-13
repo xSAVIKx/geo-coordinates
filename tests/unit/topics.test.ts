@@ -52,3 +52,13 @@ test('topic 9 texts: the numbers in the steps match the formatting helpers and t
   expect(markers.map((m) => m.kind === 'marker' && m.label)).toEqual([formatDecimal({ lat: 50.2649, lon: 19.0238 }), '19.0238, 50.2649']);
   expect(e['topic.9.step.signs.body']).toContain(formatDecimal(steps.signs!.scene.point!).replace('-', '−'));
 });
+
+test("free-play steps with an adaptive grid use precision 'auto'; other steps don't", () => {
+  for (const topic of Object.values(TOPICS)) {
+    for (const step of topic!.steps) {
+      const auto = step.id === 'play' && step.scene.pointEditable === true && step.scene.layers?.graticuleStep === 'auto' && step.scene.readout === undefined;
+      if (auto) expect(step.scene.precision, `topic ${topic!.id} ${step.id}`).toBe('auto');
+      else expect(step.scene.precision, `topic ${topic!.id} ${step.id}`).not.toBe('auto');
+    }
+  }
+});

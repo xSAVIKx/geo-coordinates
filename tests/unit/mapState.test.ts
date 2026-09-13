@@ -123,6 +123,36 @@ describe('MapState', () => {
     s.precision = 'minute';
     expect(s.stepSize(false)).toBeCloseTo(1 / 60, 12); expect(s.stepSize(true)).toBe(1);
   });
+  test("precision 'auto' snaps to minutes from flat or globe zoom 12, degrees below", () => {
+    const s = new MapState();
+    s.applyScene({ views: ['globe', 'flat'], point: { lat: 50.26, lon: 19.02 }, pointEditable: true, precision: 'auto', flatPreset: 'poland' });
+    expect(s.precisionMode).toBe('auto');
+    expect(s.precision).toBe('degree');
+    expect(s.point).toEqual({ lat: 50, lon: 19 });
+    expect(s.stepSize(false)).toBe(1);
+    s.zoomFlat(12 / 9);
+    expect(s.flat.zoom).toBeCloseTo(12, 9);
+    expect(s.precision).toBe('minute');
+    expect(s.stepSize(false)).toBeCloseTo(1 / 60, 12);
+    s.userSetPoint({ lat: 50.26, lon: 19.02 }, 'map');
+    expect(s.point!.lat).toBeCloseTo(50 + 16 / 60, 9);
+    s.zoomFlat(0.5);
+    expect(s.precision).toBe('degree');
+    s.globeZoom = 12;
+    expect(s.precision).toBe('minute');
+    s.globeZoom = 11.9;
+    expect(s.precision).toBe('degree');
+  });
+  test("a scene starting zoomed in with precision 'auto' snaps its point in minutes; fixed precisions ignore zoom", () => {
+    const s = new MapState();
+    s.applyScene({ views: ['flat'], point: { lat: 50.26, lon: 19.02 }, pointEditable: true, precision: 'auto', flatView: { center: { lat: 50, lon: 19 }, zoom: 20 } });
+    expect(s.point!.lat).toBeCloseTo(50 + 16 / 60, 9);
+    s.applyScene({ views: ['flat'], point: { lat: 50.26, lon: 19.02 }, flatView: { center: { lat: 50, lon: 19 }, zoom: 40 } });
+    expect(s.precision).toBe('degree');
+    expect(s.point).toEqual({ lat: 50, lon: 19 });
+    s.applyScene({ views: ['flat'], point: { lat: 50.26, lon: 19.02 }, precision: 'minute' });
+    expect(s.precision).toBe('minute');
+  });
   test('flat zoom clamps and pan keeps the view inside the world', () => {
     const s = new MapState();
     s.zoomFlat(1000);

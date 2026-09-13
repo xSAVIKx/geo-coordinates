@@ -10,6 +10,6 @@ export const topic2: TopicDef = {
     { id: 'east-west', scene: { views: ['flat'], point: null, flatPreset: 'europe', layers: { specialLines: true }, overlays: [{ kind: 'highlight-line', axis: 'lon', value: 20 }, { kind: 'marker', p: { lat: 50.45, lon: 30.52 }, tone: 'a', label: '31°E' }, { kind: 'marker', p: { lat: 51.51, lon: -0.13 }, tone: 'b', label: '0°' }] } },
     { id: 'western', scene: { views: ['flat'], point: null, layers: { specialLines: true, places: false }, overlays: [{ kind: 'highlight-line', axis: 'lon', value: -60 }, { kind: 'marker', p: { lat: 40, lon: -100 }, tone: 'a', label: '100°W' }, { kind: 'marker', p: { lat: 10, lon: -30 }, tone: 'b', label: '30°W' }] } },
     { id: 'across-zero', scene: { views: ['globe', 'flat'], point: null, rotate: [0, -10], layers: { specialLines: true, hemispheres: 'ew', places: false } } },
-    { id: 'play', scene: { views: ['globe', 'flat'], point: HOME, pointEditable: true, layers: { graticuleStep: 'auto', specialLines: true } } },
+    { id: 'play', scene: { views: ['globe', 'flat'], point: HOME, pointEditable: true, precision: 'auto', layers: { graticuleStep: 'auto', specialLines: true } } },
   ],
 };

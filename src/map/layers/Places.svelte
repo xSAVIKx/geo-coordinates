@@ -5,7 +5,7 @@
   import { edgeTicks } from '../edgeTicks';
   import type { ViewCtx } from '../geometry';
   import { gridUsesMinutes, resolveGridStep } from '../gridStep';
-  import { createLabelMemory, overlaps, rotateBoxAround, selectStableLabels, textBox, type LabelBox } from '../labelLayout';
+  import { createLabelMemory, overlaps, pointBox, rotateBoxAround, selectStablePlacements, textBox, type LabelBox } from '../labelLayout';
   import { lineLabelPoint, lineLabelSpecs } from '../lineLabels';
   import { mapState } from '../mapState.svelte';
   import { MAP_LABELS, PLACES, tierVisible } from '../places';
@@ -23,7 +23,7 @@
   const places = $derived(mapState.layers.places ? PLACES.filter((p) => p.kind === 'city' && tierVisible(p.tier, ctx.zoom)) : []);
   // Label density follows how big the whole world is actually drawn, in CSS px (a small phone map
   // cannot carry the same labels as a projected one). The globe shows half the world at once.
-  const worldPx = $derived(ctx.kind === 'flat' ? (ctx.width / ctx.px) * mapState.flat.zoom : (2 * ctx.width / ctx.px) * mapState.globeZoom);
+  const worldPx = $derived((ctx.width / ctx.px) * ctx.zoom);
   const roomy = $derived(worldPx >= 560);
   const showContinents = $derived(roomy && ctx.zoom <= (ctx.kind === 'flat' ? 4 : 8));
 
@@ -75,7 +75,7 @@
       { left: ctx.width, right: far, top: -far, bottom: far },
       { left: -far, right: far, top: -far, bottom: 0 },
     ];
-    for (const lat of edgeTicks(ctx, mapState.flat.center, mapState.flat.zoom, step).lats) {
+    for (const lat of edgeTicks(ctx, ctx.center, ctx.zoom, step).lats) {
       out.push(textBox(4 * ctx.px, lat.y + 4 * ctx.px, labelWidth(formatLat(lat.value, i18n.lang, precision), 11, ctx.px), 11 * ctx.px, 'start'));
     }
     return out;
@@ -83,38 +83,55 @@
 
   // Every named place (dot always stays visible; only the text label is at risk), with the box
   // it would occupy and how far it sits from what the view is currently centred on.
-  interface Candidate { id: string; featured: boolean; xy: [number, number]; box: LabelBox; distance: number }
-  const centre = $derived(ctx.kind === 'flat' ? mapState.flat.center : { lat: -mapState.rotate[1], lon: -mapState.rotate[0] });
-  const degreesFromCentre = (p: { lat: number; lon: number }) => Math.hypot(p.lat - centre.lat, ((p.lon - centre.lon + 540) % 360) - 180);
-  const placeCandidates = $derived.by<Candidate[]>(() => {
+  // A name goes right of its dot; when that is taken (by the point, another name…) left of it, then
+  // above or below it (clear of the point's ring, which is 13 px round the point).
+  type Side = 'right' | 'left' | 'above' | 'below';
+  const SIDES: readonly Side[] = ['right', 'left', 'above', 'below'];
+  const sideAnchor = (xy: [number, number], side: Side, px: number): { x: number; y: number; anchor: 'start' | 'end' | 'middle' } =>
+    side === 'right' ? { x: xy[0] + 6 * px, y: xy[1] + 4 * px, anchor: 'start' }
+    : side === 'left' ? { x: xy[0] - 6 * px, y: xy[1] + 4 * px, anchor: 'end' }
+    : side === 'above' ? { x: xy[0], y: xy[1] - 16 * px, anchor: 'middle' }
+    : { x: xy[0], y: xy[1] + 23 * px, anchor: 'middle' };
+  interface Candidate { id: string; featured: boolean; xy: [number, number]; boxes: LabelBox[]; distance: number }
+  const degreesFromCentre = (p: { lat: number; lon: number }) => Math.hypot(p.lat - ctx.center.lat, ((p.lon - ctx.center.lon + 540) % 360) - 180);
+  const candidates = $derived.by<Candidate[]>(() => {
     const size = roomy ? 12 : 10.5;
     return places.flatMap((p): Candidate[] => {
       if (!(p.featured || showAllNames)) return [];
       const xy = ctx.project(p);
       if (!xy) return [];
-      const box = textBox(xy[0] + 6 * ctx.px, xy[1] + 4 * ctx.px, labelWidth(t(`place.${p.id}`), size, ctx.px), size * ctx.px, 'start');
-      return [{ id: p.id, featured: p.featured, xy, box, distance: degreesFromCentre(p) }];
+      const width = labelWidth(t(`place.${p.id}`), size, ctx.px);
+      const boxes = SIDES.map((side) => {
+        const a = sideAnchor(xy, side, ctx.px);
+        return textBox(a.x, a.y, width, size * ctx.px, a.anchor);
+      });
+      return [{ id: p.id, featured: p.featured, xy, boxes, distance: degreesFromCentre(p) }];
     });
   });
-  const candidates = $derived(placeCandidates);
+  // The movable point is an obstacle too: names move aside (or hide) rather than sit under its ring.
+  const pointObstacles = $derived.by<LabelBox[]>(() => {
+    const p = mapState.point;
+    const xy = p ? ctx.project(p) : null;
+    return xy ? [pointBox(xy[0], xy[1], ctx.px)] : [];
+  });
   // Featured places always outrank non-featured ones; among non-featured places, one already
   // showing keeps its priority bonus over one that wasn't (so a tiny pan/zoom doesn't flicker
   // labels in and out), and distance-to-centre (bucketed, so small shifts don't reorder ties) is
   // only the final tiebreaker among places at the same tier.
-  const visibleIds = $derived.by<Set<string>>(() => {
+  const placements = $derived.by<Map<string, Side>>(() => {
     const previousVisible = labelMemory.previous(mapState.sceneVersion);
-    const visible = selectStableLabels(
+    const chosen = selectStablePlacements(
       candidates,
-      (c) => c.box,
+      (c) => c.boxes,
       (c) => c.featured,
       (c) => c.distance,
       (c) => previousVisible.has(c.id),
-      [...lineObstacles, ...continentObstacles, ...edgeObstacles],
+      [...lineObstacles, ...continentObstacles, ...edgeObstacles, ...pointObstacles],
     );
-    const ids = new Set<string>();
-    candidates.forEach((c, i) => { if (visible[i]) ids.add(c.id); });
-    labelMemory.remember(ids);
-    return ids;
+    const out = new Map<string, Side>();
+    candidates.forEach((c, i) => { if (chosen[i]! >= 0) out.set(c.id, SIDES[chosen[i]!]!); });
+    labelMemory.remember(new Set(out.keys()));
+    return out;
   });
 
   // River names (Wisła, Odra) from zoom 6, after the place names: each is written at the point of
@@ -123,7 +140,10 @@
   const RIVER_FONT = 11.5;
   const riverLabels = $derived.by(() => {
     if (!mapState.layers.places || ctx.zoom < REGION_DETAIL_ZOOM || !regionActive(ctx.zoom, ctx.bounds)) return [];
-    const placed: LabelBox[] = [...lineObstacles, ...continentObstacles, ...edgeObstacles, ...candidates.filter((c) => visibleIds.has(c.id)).map((c) => c.box)];
+    const placed: LabelBox[] = [...lineObstacles, ...continentObstacles, ...edgeObstacles, ...pointObstacles, ...candidates.flatMap((c) => {
+      const side = placements.get(c.id);
+      return side ? [c.boxes[SIDES.indexOf(side)]!] : [];
+    })];
     const out: { id: string; x: number; y: number }[] = [];
     for (const id of LABELLED_RIVERS) {
       const width = labelWidth(t(`river.${id}`), RIVER_FONT, ctx.px);
@@ -157,8 +177,10 @@
     {@const named = p.featured || showAllNames}
     {#if xy}
       <circle class="place" class:minor={!named} cx={xy[0]} cy={xy[1]} r={(named ? 3.2 : 2.2) * ctx.px} />
-      {#if named && visibleIds.has(p.id)}
-        <text class="halo place-name" x={xy[0] + 6 * ctx.px} y={xy[1] + 4 * ctx.px} font-size={(roomy ? 12 : 10.5) * ctx.px}>{t(`place.${p.id}`)}</text>
+      {@const side = named ? placements.get(p.id) : undefined}
+      {#if side}
+        {@const a = sideAnchor(xy, side, ctx.px)}
+        <text class="halo place-name" x={a.x} y={a.y} text-anchor={a.anchor} font-size={(roomy ? 12 : 10.5) * ctx.px}>{t(`place.${p.id}`)}</text>
       {/if}
     {/if}
   {/each}

@@ -36,7 +36,7 @@ export interface GeoBounds { west: number; south: number; east: number; north: n
 export const WORLD_BOUNDS: GeoBounds = { west: -180, south: -90, east: 180, north: 90 };
 
 /** Extra room around the view that paths are still generated for (so clipped stroke ends stay out of sight). */
-const CLIP_PAD = 24;
+export const CLIP_PAD = 24;
 
 export const TROPIC = 23.44;
 export const POLAR = 66.56;
@@ -122,8 +122,12 @@ export function panFlatCenter(c: LatLon, zoom: number, projection: FlatProjectio
   return clampFlatCenter({ lat, lon }, zoom, projection);
 }
 
-export function makeFlatCtx(width: number, height: number, center: LatLon, zoom: number, px: number, projectionKind: FlatProjection = 'grid'): ViewCtx {
-  const clip: [[number, number], [number, number]] = [[-CLIP_PAD, -CLIP_PAD], [width + CLIP_PAD, height + CLIP_PAD]];
+/**
+ * `clipPad` (view units) widens the area drawn around the view: FlatMap draws a pan with a wide pad
+ * once and slides it with a translate, instead of rebuilding every path on every pointer move.
+ */
+export function makeFlatCtx(width: number, height: number, center: LatLon, zoom: number, px: number, projectionKind: FlatProjection = 'grid', clipPad = CLIP_PAD): ViewCtx {
+  const clip: [[number, number], [number, number]] = [[-clipPad, -clipPad], [width + clipPad, height + clipPad]];
   const build = (precision: number) => {
     const p = (projectionKind === 'equal-earth'
       ? geoEqualEarth().scale(geoEqualEarth().fitWidth(width, SPHERE).scale() * zoom)
@@ -164,7 +168,7 @@ export function makeFlatCtx(width: number, height: number, center: LatLon, zoom:
   return {
     kind: 'flat', flatProjection: projectionKind, width, height, projection, path, px, zoom, center,
     get regionPath() { return (regionPath ??= makeRegionPath()); },
-    bounds: projectionKind === 'grid' ? gridBounds(center, zoom) : projectionKind === 'mercator' ? mercatorBounds(center, zoom) : sampledBounds(invert, width, height),
+    bounds: projectionKind === 'grid' ? gridBounds(center, zoom, width, clipPad - CLIP_PAD) : projectionKind === 'mercator' ? mercatorBounds(center, zoom, width, clipPad - CLIP_PAD) : sampledBounds((xy) => inRange(projection.invert?.(xy)), width, height, clipPad - CLIP_PAD),
     isVisible: () => true,
     // Mercator has no place for latitudes beyond ±85° (the poles are infinitely far away).
     project: (p) => (Math.abs(p.lat) > maxLat + 1e-9 ? null : (projection([p.lon, p.lat]) as [number, number])),
@@ -172,8 +176,10 @@ export function makeFlatCtx(width: number, height: number, center: LatLon, zoom:
   };
 }
 
-function gridBounds(center: LatLon, zoom: number): GeoBounds {
-  const halfLat = 90 / zoom, halfLon = 180 / zoom;
+/** `extra` view units beyond each side (a wide pan pad) are included. */
+function gridBounds(center: LatLon, zoom: number, width = 960, extra = 0): GeoBounds {
+  const extraDeg = (extra * 360) / (width * zoom);
+  const halfLat = 90 / zoom + extraDeg, halfLon = 180 / zoom + extraDeg;
   return {
     west: Math.max(-180, center.lon - halfLon), east: Math.min(180, center.lon + halfLon),
     south: Math.max(-90, center.lat - halfLat), north: Math.min(90, center.lat + halfLat),
@@ -181,9 +187,9 @@ function gridBounds(center: LatLon, zoom: number): GeoBounds {
 }
 
 /** The exact visible box of a Mercator view, within ±85°. */
-function mercatorBounds(center: LatLon, zoom: number): GeoBounds {
-  const halfLon = 180 / zoom;
-  const y = mercatorY(Math.max(-MERCATOR_MAX_LAT, Math.min(MERCATOR_MAX_LAT, center.lat))), half = mercatorHalfHeight(zoom);
+function mercatorBounds(center: LatLon, zoom: number, width = 960, extra = 0): GeoBounds {
+  const halfLon = 180 / zoom + (extra * 360) / (width * zoom);
+  const y = mercatorY(Math.max(-MERCATOR_MAX_LAT, Math.min(MERCATOR_MAX_LAT, center.lat))), half = mercatorHalfHeight(zoom) + (extra * 2 * Math.PI) / (width * zoom);
   return {
     west: Math.max(-180, center.lon - halfLon), east: Math.min(180, center.lon + halfLon),
     south: Math.max(-MERCATOR_MAX_LAT, mercatorLat(y - half)), north: Math.min(MERCATOR_MAX_LAT, mercatorLat(y + half)),
@@ -191,12 +197,12 @@ function mercatorBounds(center: LatLon, zoom: number): GeoBounds {
 }
 
 /** Bounds from inverting a grid of view points; any point off the map (outside the world outline) means the whole world. */
-function sampledBounds(invert: (xy: [number, number]) => LatLon | null, width: number, height: number): GeoBounds {
+function sampledBounds(invert: (xy: [number, number]) => LatLon | null, width: number, height: number, extra = 0): GeoBounds {
   const N = 8;
   const b = { west: Infinity, south: Infinity, east: -Infinity, north: -Infinity };
   for (let i = 0; i <= N; i++) {
     for (let j = 0; j <= N; j++) {
-      const ll = invert([(width * i) / N, (height * j) / N]);
+      const ll = invert([-extra + ((width + 2 * extra) * i) / N, -extra + ((height + 2 * extra) * j) / N]);
       if (!ll) return WORLD_BOUNDS;
       b.west = Math.min(b.west, ll.lon); b.east = Math.max(b.east, ll.lon);
       b.south = Math.min(b.south, ll.lat); b.north = Math.max(b.north, ll.lat);

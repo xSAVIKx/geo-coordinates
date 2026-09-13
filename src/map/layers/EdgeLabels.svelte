@@ -11,7 +11,7 @@
   const step = $derived(resolveGridStep(mapState.layers.graticuleStep, ctx));
   // Below 1° the grid is in minutes, and so are its labels (in the current language's notation).
   const precision = $derived(gridUsesMinutes(step) ? 'minute' : 'degree');
-  const ticks = $derived(edgeTicks(ctx, mapState.flat.center, mapState.flat.zoom, step));
+  const ticks = $derived(edgeTicks(ctx, ctx.center, ctx.zoom, step));
   // edgeTicks keeps ticks ≥ 34 px apart, which suits "40°E" but not "140° зх. д.". Thin the bottom
   // row further to every k-th tick, counted from the one nearest 0° so the prime meridian keeps its
   // label and the gaps stay regular; k comes from the widest label (≈0.62 em per character).

@@ -61,3 +61,47 @@ test('flat map zoom stops at 80 and the globe at 60', async ({ page }) => {
   expect(Math.abs(hb.x + hb.width / 2 - (box.x + box.width * 0.7))).toBeLessThan(2 + onePx);
   expect(Math.abs(hb.y + hb.height / 2 - (box.y + box.height * 0.3))).toBeLessThan(2 + onePx);
 });
+
+test('lab: zoomed in to 20 the point snaps to minutes, zoomed out to degrees again', async ({ page }) => {
+  await openPage(page, 'en/lab', '?test');
+  const readout = page.locator('output').first();
+  await expect(readout).toHaveText('50°N, 19°E');
+  await page.evaluate(() => { (window as unknown as { __mapState: { flat: unknown } }).__mapState.flat = { center: { lat: 50.26, lon: 19.02 }, zoom: 20 }; });
+  const flat = page.getByRole('group', { name: 'World map with parallels and meridians' });
+  await flat.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(readout).toHaveText('50°00′N, 19°01′E');
+  await expect(page.getByRole('slider', { name: 'Longitude' })).toHaveAttribute('aria-valuetext', /19 degrees 1 minute/);
+  // Dragging the point lands on a whole minute too.
+  const handle = flat.locator('[data-point-handle]');
+  const hb = (await handle.boundingBox())!;
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(hb.x + hb.width / 2 + 37, hb.y + hb.height / 2 - 23, { steps: 5 });
+  await page.mouse.up();
+  await expect(readout).toHaveText(/^\d+°\d\d′N, \d+°\d\d′E$/);
+  await expect(readout).not.toHaveText('50°00′N, 19°01′E');
+  for (let i = 0; i < 3; i++) await page.keyboard.press('-');
+  await expect(readout).toHaveText(/^\d+°N, \d+°E$/);
+});
+
+test('dragging the flat map slides the drawn map and redraws it at the end, landing where the pointer went', async ({ page }) => {
+  await openPage(page, 'en/lab', '?test');
+  await page.evaluate(() => { (window as unknown as { __mapState: { flat: unknown } }).__mapState.flat = { center: { lat: 51.5, lon: 19 }, zoom: 12 }; });
+  const map = page.locator('.view-flat svg[role="group"]');
+  const geo = map.locator('g.geo');
+  const box = (await map.boundingBox())!;
+  const x = box.x + box.width * 0.15, y = box.y + box.height * 0.2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + 60, y + 30, { steps: 6 });
+  await expect(geo).toHaveAttribute('transform', /^translate\(/);
+  await page.mouse.move(x + 120, y + 60, { steps: 6 });
+  await page.mouse.up();
+  await expect(geo).not.toHaveAttribute('transform', /.+/);
+  const c = await page.evaluate(() => (window as unknown as { __mapState: { flat: { center: { lat: number; lon: number } } } }).__mapState.flat.center);
+  const degPerCssPx = 360 / (box.width * 12);
+  expect(c.lon).toBeCloseTo(19 - 120 * degPerCssPx, 1);
+  expect(c.lat).toBeCloseTo(51.5 + 60 * degPerCssPx, 1);
+  expect(pageErrors(page)).toEqual([]);
+});

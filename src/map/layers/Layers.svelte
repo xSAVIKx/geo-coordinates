@@ -10,10 +10,13 @@
   import Places from './Places.svelte';
   import PointMarker from './PointMarker.svelte';
   import SpecialLines from './SpecialLines.svelte';
-  let { ctx, idPrefix }: { ctx: ViewCtx; idPrefix: string } = $props();
+  // While the flat map is dragged, `ctx` is the view where the drag began (drawn with a wide pad) and
+  // `offset` slides it to where the map is now; `edgeCtx` is the live view, for the edge numbers.
+  let { ctx, idPrefix, edgeCtx, offset = null }: { ctx: ViewCtx; idPrefix: string; edgeCtx?: ViewCtx; offset?: [number, number] | null } = $props();
   const sphereD = $derived(ctx.kind === 'globe' ? (ctx.path(sphere) ?? '') : '');
 </script>
 
+<g class="geo" transform={offset ? `translate(${offset[0]} ${offset[1]})` : undefined}>
 <Land {ctx} />
 {#if ctx.kind === 'globe'}
   <!-- Decorative sphere shading: a soft highlight up-left and a darker limb, so the disc reads as a ball. -->
@@ -35,8 +38,9 @@
 <Places {ctx} />
 <Overlays {ctx} />
 <PointMarker {ctx} />
+</g>
 <!-- Degree numbers last so guides and overlays never cover them; they ignore the pointer, so the point handle stays grabbable. -->
-{#if ctx.kind === 'flat'}<EdgeLabels {ctx} />{/if}
+{#if ctx.kind === 'flat'}<EdgeLabels ctx={edgeCtx ?? ctx} />{/if}
 {#if ctx.kind === 'globe'}<path class="rim" d={sphereD} />{/if}
 
 <style>

@@ -12,6 +12,6 @@ export const topic6: TopicDef = {
     { id: 'same-lon', scene: { views: ['flat'], point: null, flatPreset: 'europe', layers: { specialLines: true, places: false }, overlays: [{ kind: 'marker', p: kyiv, tone: 'a', label: '31°E' }, { kind: 'marker', p: warsaw, tone: 'b', label: '21°E' }, { kind: 'lon-diff', a: kyiv, b: warsaw }] } },
     { id: 'opposite-lon', scene: { views: ['flat'], point: null, flatView: { center: { lat: 40, lon: -25 }, zoom: 2 }, layers: { specialLines: true, places: false }, overlays: [{ kind: 'marker', p: newyork, tone: 'a', label: '74°W' }, { kind: 'marker', p: warsaw, tone: 'b', label: '21°E' }, { kind: 'lon-diff', a: newyork, b: warsaw }] } },
     { id: 'over-180', scene: { views: ['globe'], point: null, rotate: [-171, -30], layers: { specialLines: true, places: false }, overlays: [{ kind: 'marker', p: tokyo, tone: 'a', label: '140°E' }, { kind: 'marker', p: honolulu, tone: 'b', label: '158°W' }, { kind: 'lon-diff', a: tokyo, b: honolulu }] } },
-    { id: 'play', scene: { views: ['globe', 'flat'], point: { lat: 0, lon: 0 }, pointEditable: true, layers: { graticuleStep: 'auto', specialLines: true }, overlays: [{ kind: 'marker', p: warsaw, tone: 'b', label: '52°N, 21°E' }] } },
+    { id: 'play', scene: { views: ['globe', 'flat'], point: { lat: 0, lon: 0 }, pointEditable: true, precision: 'auto', layers: { graticuleStep: 'auto', specialLines: true }, overlays: [{ kind: 'marker', p: warsaw, tone: 'b', label: '52°N, 21°E' }] } },
   ],
 };

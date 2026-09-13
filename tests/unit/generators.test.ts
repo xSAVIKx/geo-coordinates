@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { extremeIndex, lonDifference, spansAntimeridian } from '../../src/geo/compare';
 import { normalizeLon } from '../../src/geo/format';
+import { PLACES } from '../../src/map/places';
 import { renderText } from '../../src/i18n/text';
 import { coordMistake } from '../../src/quiz/check';
 import { MODULES, generateSet } from '../../src/quiz/registry';
@@ -327,6 +328,20 @@ describe('which-place never singles out a Ukrainian city as the answer', () => {
       for (let s = 0; s < SEEDS; s++) {
         const q = mod.generate(createRng(`which-excl:${d}:${s}`), d, 4);
         expect(excluded.has(q.meta?.placeId as string), `seed ${s} ${d}`).toBe(false);
+      }
+    }
+  });
+});
+
+describe('which-place never uses a local-tier town as the answer', () => {
+  test('1000 seeds × difficulty pick only world or region places', () => {
+    const mod = MODULES.find((m) => m.type === 'which-place')!;
+    const local = new Set(PLACES.filter((p) => p.tier === 'local').map((p) => p.id));
+    expect(local.size).toBeGreaterThan(0);
+    for (const d of DIFFS) {
+      for (let s = 0; s < SEEDS; s++) {
+        const q = mod.generate(createRng(`which-local:${d}:${s}`), d, 4);
+        expect(local.has(q.meta?.placeId as string), `seed ${s} ${d}`).toBe(false);
       }
     }
   });
