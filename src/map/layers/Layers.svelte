@@ -30,9 +30,10 @@
 <Graticule {ctx} />
 <SpecialLines {ctx} />
 <Places {ctx} />
-{#if ctx.kind === 'flat'}<EdgeLabels {ctx} />{/if}
 <Overlays {ctx} />
 <PointMarker {ctx} />
+<!-- Degree numbers last so guides and overlays never cover them; they ignore the pointer, so the point handle stays grabbable. -->
+{#if ctx.kind === 'flat'}<EdgeLabels {ctx} />{/if}
 {#if ctx.kind === 'globe'}<path class="rim" d={sphereD} />{/if}
 
 <style>

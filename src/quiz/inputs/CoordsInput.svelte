@@ -60,7 +60,8 @@
   label { font-weight: var(--weight-strong); }
   input { min-height: 3rem; font-size: var(--step-1); font-weight: 600; font-variant-numeric: tabular-nums; padding: 0 var(--space-3); border: 2px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.05); transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
   input:hover:not(:disabled) { border-color: var(--text-muted); }
-  input:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus); }
+  input:focus-visible { outline: 2px solid transparent; outline-offset: 2px; border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus); }
+  @media (forced-colors: active) { input:focus-visible { outline-color: Highlight; } }
   input:disabled { background: var(--surface-2); color: var(--text); opacity: 1; }
   input[aria-invalid='true'] { border-color: var(--bad); background: var(--bad-soft); }
   .ex { color: var(--text-muted); font-size: var(--step--1); }

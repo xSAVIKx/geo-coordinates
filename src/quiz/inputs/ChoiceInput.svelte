@@ -38,6 +38,8 @@
   .tick { flex: none; fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; opacity: 0; transform: scale(0.6); transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease); }
   .checked .tick { opacity: 1; transform: none; }
   .choice:has(input:disabled) { cursor: default; }
+  /* After checking, the tick would read as "right" even when the answer was wrong: the feedback box carries the verdict. */
+  .choice:has(input:disabled) .tick { display: none; }
   .choice:has(input:disabled):not(.checked) { opacity: 0.7; box-shadow: none; }
   .choice:has(input:disabled):hover { border-color: var(--border); }
   .choice.checked:has(input:disabled):hover { border-color: var(--accent); }

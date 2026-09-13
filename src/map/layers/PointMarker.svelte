@@ -4,16 +4,20 @@
   let { ctx }: { ctx: ViewCtx } = $props();
   const p = $derived(mapState.point);
   const xy = $derived(p ? ctx.project(p) : null);
+  // A highlight-line overlay on the same parallel/meridian is the lesson's focus; the dashed guide
+  // (and its light casing) drawn above it would wash it out, so skip the guide along that axis.
+  const highlighted = (axis: 'lat' | 'lon', value: number) =>
+    mapState.overlays.some((o) => o.kind === 'highlight-line' && o.axis === axis && Math.abs(o.value - value) < 1e-6);
 </script>
 
 {#if p}
   {#if mapState.layers.pointGuides}
-    {@const lat = ctx.path(parallelLine(p.lat)) ?? ''}
-    {@const lon = ctx.path(meridianLine(p.lon)) ?? ''}
-    <path class="guide-casing" d={lat} />
-    <path class="guide-casing" d={lon} />
-    <path class="guide" d={lat} />
-    <path class="guide" d={lon} />
+    {@const lat = highlighted('lat', p.lat) ? '' : (ctx.path(parallelLine(p.lat)) ?? '')}
+    {@const lon = highlighted('lon', p.lon) ? '' : (ctx.path(meridianLine(p.lon)) ?? '')}
+    {#if lat}<path class="guide-casing" d={lat} />{/if}
+    {#if lon}<path class="guide-casing" d={lon} />{/if}
+    {#if lat}<path class="guide" d={lat} />{/if}
+    {#if lon}<path class="guide" d={lon} />{/if}
   {/if}
   {#if xy}
     <g class="point" class:editable={mapState.pointEditable} data-point-handle transform="translate({xy[0]} {xy[1]})">

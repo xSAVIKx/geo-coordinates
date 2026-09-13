@@ -41,7 +41,7 @@
 <SettingsDialog bind:open={settingsOpen} />
 
 <style>
-  .bar { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: saturate(1.4) blur(10px); -webkit-backdrop-filter: saturate(1.4) blur(10px); border-bottom: 1px solid var(--border); }
+  .bar { position: sticky; top: 0; z-index: 20; background: var(--surface); background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: saturate(1.4) blur(10px); -webkit-backdrop-filter: saturate(1.4) blur(10px); border-bottom: 1px solid var(--border); }
   .inner { display: flex; gap: var(--space-2) var(--space-4); align-items: center; justify-content: space-between; min-height: var(--header-h); padding: var(--space-2) var(--space-6); max-width: var(--page-max); margin-inline: auto; }
   .brand { display: inline-flex; gap: var(--space-3); align-items: center; color: var(--text); text-decoration: none; font-weight: var(--weight-heavy); font-size: var(--step-1); letter-spacing: var(--tracking-tight); min-height: var(--tap); min-width: 0; border-radius: var(--radius-sm); }
   .title { line-height: 1.15; }

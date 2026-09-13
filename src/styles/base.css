@@ -56,7 +56,7 @@ a:hover { text-decoration-thickness: 2px; }
  * A joined row of .btn (or labels wrapping a radio) with one selected item.
  */
 .seg { display: inline-flex; flex-wrap: wrap; max-width: 100%; padding: 3px; gap: 2px; background: var(--surface-2); border: 1px solid var(--border); border-radius: calc(var(--radius-sm) + 3px); }
-.seg > .btn, .seg > label { border-color: transparent; background: transparent; box-shadow: none; border-radius: var(--radius-sm); min-height: calc(var(--tap) - 2px); }
+.seg > .btn, .seg > label { border-color: transparent; background: transparent; box-shadow: none; border-radius: var(--radius-sm); min-height: var(--tap); }
 .seg > .btn:hover, .seg > label:hover { background: var(--surface); }
 .seg > .btn[aria-pressed='true'], .seg > label:has(input:checked) { background: var(--surface); border-color: var(--border-strong); color: var(--accent); box-shadow: var(--shadow-1), inset 0 -3px 0 var(--accent); }
 .seg > label { position: relative; display: inline-flex; align-items: center; justify-content: center; padding: 0 var(--space-4); font-weight: var(--weight-strong); cursor: pointer; border: 1px solid transparent; transition: background-color var(--dur) var(--ease); }

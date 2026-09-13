@@ -157,9 +157,7 @@
       <button type="button" class="btn icon" onclick={() => rotateBy(-15, 0)} aria-label={t('map.turnEast')} title={t('map.turnEast')}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></button>
       <button type="button" class="btn icon" onclick={() => rotateBy(0, -15)} aria-label={t('map.turnNorth')} title={t('map.turnNorth')}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" /></svg></button>
       <button type="button" class="btn icon" onclick={() => rotateBy(0, 15)} aria-label={t('map.turnSouth')} title={t('map.turnSouth')}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6" /></svg></button>
-    </div>
-    <div class="btn-group">
-      <button type="button" class="btn icon" onclick={() => mapState.zoomGlobe(1.5)} aria-label={t('map.globeZoomIn')} title={t('map.globeZoomIn')}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg></button>
+      <button type="button" class="btn icon zoom-start" onclick={() => mapState.zoomGlobe(1.5)} aria-label={t('map.globeZoomIn')} title={t('map.globeZoomIn')}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg></button>
       <button type="button" class="btn icon" onclick={() => mapState.zoomGlobe(1 / 1.5)} aria-label={t('map.globeZoomOut')} title={t('map.globeZoomOut')}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" /></svg></button>
     </div>
     {#if mapState.point}
@@ -177,8 +175,11 @@
   svg { display: block; width: 100%; height: auto; touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; overflow: visible; }
   svg:active { cursor: grabbing; }
   svg:focus-visible { outline: 3px solid var(--focus); border-radius: 50%; }
-  .toolbar { display: flex; flex-wrap: wrap; gap: var(--space-2); justify-content: center; }
-  .toolbar .btn { padding: 0 var(--space-3); font-size: var(--step--1); }
+  .toolbar { display: flex; flex-wrap: wrap; gap: var(--space-1); justify-content: center; }
+  .toolbar .btn { padding: 0 var(--space-2); font-size: var(--step--1); gap: var(--space-1); }
   .toolbar .btn.icon { padding: 0; }
+  .toolbar .zoom-start { border-left-width: 3px; border-left-style: double; }
+  .show-point svg { width: 1.1rem; height: 1.1rem; }
+  @media (max-width: 1439px) { .show-point svg { display: none; } }
   .toolbar svg { width: 1.25rem; height: 1.25rem; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 </style>
