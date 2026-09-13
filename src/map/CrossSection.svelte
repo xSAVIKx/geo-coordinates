@@ -41,7 +41,7 @@
   }
 
   function onkeydown(e: KeyboardEvent) {
-    if (!mapState.point) return;
+    if (!mapState.point || !mapState.pointEditable) return;
     const s = mapState.stepSize(e.shiftKey);
     if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
       e.preventDefault();
@@ -79,6 +79,8 @@
       <line x1={C} x2={C} y1={C - R - 24} y2={C + R + 24} class="axis" />
       <text x={C + 6} y={C - R - 10} class="halo lbl" font-size="16">{t('cross.northPole')}</text>
       <text x={C + 6} y={C + R + 22} class="halo lbl" font-size="16">{t('cross.southPole')}</text>
+      <text x={C - 6} y={C - R - 8} class="halo lbl small" font-size="12" text-anchor="end">{t('cross.axis')}</text>
+      <text x={C - 6} y={C + 18} class="halo lbl small" font-size="12" text-anchor="end">{t('cross.centre')}</text>
       <line x1={C - chordHalf(lat)} x2={px} y1={py} y2={py} class="parallel" />
       <text x={C - chordHalf(lat) + 4} y={py - 6} class="halo lbl small" font-size="12">{t('cross.parallel')}</text>
       <line x1={C} y1={C} x2={px} y2={py} class="radius" />
