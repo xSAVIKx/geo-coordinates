@@ -27,6 +27,10 @@ The owner's rule: Kyiv stays on the world map (featured label unchanged) and may
 - Topic 2 `east-west` (Kyiv with London), topic 6 `same-lon` (Kyiv with Warsaw), topic 8 `calculate` (Warsaw with Kyiv) and the lab clocks: unchanged.
 - Generated "which marker is at …" questions (whichPlace): the answer city is never `kyiv`, `lviv`, `odesa` or `kharkiv` (exclusion flag or list); other generators don't name cities.
 - Tests: unit test that whichPlace never picks the excluded ids as the answer (1000 seeds × difficulties); e2e/explore expectations updated for topic 4 if they check text.
+- **Examples from several countries.** Examples span Poland, Ukraine, India and the USA:
+  - Lab clocks: Katowice (once Task 21 adds it; until then Warsaw), London, Kyiv, Delhi, New York, Tokyo — ordered west to east as now.
+  - Topic 8 `east-later` or `calculate` gets one extra sentence or a new short step `far-away` (EN: "Delhi (77°E) is 56° east of Warsaw (21°E): 56 × 4 = 224 minutes, about 3 h 44 min later. New York (74°W) is 95° west of Warsaw: 95 × 4 = 380 minutes, about 6 h 20 min earlier."), with a scene showing the three cities and the noon line; verify the arithmetic with geo helpers.
+  - Topic 3 or 4: one example uses a US or Indian city with S/W or E letters together with a Polish city (e.g. "New York 41°N, 74°W and Kraków 50°N, 20°E").
 
 ### Task 23a: Maple Bear schools dataset (research)
 
@@ -52,7 +56,7 @@ Produce `src/map/data/maple-bear-schools.json`:
 
 ### Task 21: Katowice, detailed Central Europe and deep zoom
 
-- **Places:** add Katowice, Łódź, Szczecin, Lublin, Białystok, Rzeszów, Bydgoszcz, Olsztyn, Zakopane, and neighbour capitals Berlin (exists), Prague, Bratislava, Vienna, Budapest, Vilnius, Riga; localized names in EN/PL/UK. A new `tier` field: `world` (shown at world zoom), `region` (zoom ≥ 3), `local` (zoom ≥ 8). Katowice is `region`.
+- **Places:** add Katowice, Łódź, Szczecin, Lublin, Białystok, Rzeszów, Bydgoszcz, Olsztyn, Zakopane, Mumbai, Bengaluru, Washington, Chicago, and neighbour capitals Berlin (exists), Prague, Bratislava, Vienna, Budapest, Vilnius, Riga; localized names in EN/PL/UK. A new `tier` field: `world` (shown at world zoom), `region` (zoom ≥ 3), `local` (zoom ≥ 8). Katowice is `region`.
 - **Regional data:** Natural Earth 10m land + country borders + admin-1 (Polish voivodeships only) + major rivers (Vistula/Wisła, Oder/Odra, Warta, Bug, Dnieper/Dnipro, Danube) + lakes, clipped to lon 8–32°E, lat 44–58°N, simplified and quantized with `topojson-server`/`topojson-simplify`/`topojson-client` in a build-time script `scripts/build-regional-data.ts` whose output `src/map/data/central-europe.json` is committed (the script documents the download source; the downloaded raw files are not committed). If Natural Earth downloads are blocked in this environment, report NEEDS_CONTEXT.
 - **Level of detail:** `world.ts` exposes `landFor(zoom, view)`/`bordersFor(...)`: world 110m below zoom 4; regional 10m features drawn on top when the view intersects the region bbox and zoom ≥ 4 (world land still drawn underneath outside the bbox). Voivodeship borders (thin, dashed) and rivers (blue lines, labelled Wisła/Odra at zoom ≥ 6) appear at zoom ≥ 6 in the region.
 - **Deep zoom:** flat `MAX_ZOOM` 12 → 80; globe `GLOBE_MAX_ZOOM` 8 → 60. Wheel/pinch/keys scale unchanged. Pan clamping still keeps the view within the world.
