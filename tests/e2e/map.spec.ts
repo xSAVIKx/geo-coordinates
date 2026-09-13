@@ -38,3 +38,38 @@ test('keyboard moves the point on the flat map', async ({ page }) => {
   const after = (await map.locator('[data-point-handle]').boundingBox())!;
   expect(after.x).toBeGreaterThan(before.x + 5);
 });
+
+test('turning the globe past the point hides it, "Show the point" brings it back', async ({ page }) => {
+  await openPage(page, 'en/lab');
+  const globe = page.getByRole('group', { name: 'Globe that you can turn' });
+  const handle = globe.locator('[data-point-handle]');
+  await expect(handle).toHaveCount(1);
+  const turnSouth = page.getByRole('button', { name: 'Tilt globe to show the south' });
+  // The point (Warsaw, 52°N) starts centred; 8 south tilts (15° each) swing the visible
+  // centre to well past the opposite hemisphere, taking the point below the horizon.
+  // This also guards against the recentre effect firing on rotation: if it did, the point
+  // would be snapped back into view after every click and this would never reach 0.
+  for (let i = 0; i < 8; i++) await turnSouth.click();
+  await expect(handle).toHaveCount(0);
+  await page.getByRole('button', { name: 'Show the point' }).click();
+  await expect(handle).toHaveCount(1);
+});
+
+test('dragging the globe rotates the view', async ({ page }) => {
+  await openPage(page, 'en/lab');
+  const globe = page.getByRole('group', { name: 'Globe that you can turn' });
+  const handle = globe.locator('[data-point-handle]');
+  const box = (await globe.boundingBox())!;
+  const before = (await handle.boundingBox())!;
+  await page.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.5);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.85, box.y + box.height * 0.5, { steps: 10 });
+  await page.mouse.up();
+  if ((await handle.count()) === 0) {
+    // The drag rotated the point off the visible side — the view clearly changed.
+    expect(await handle.count()).toBe(0);
+  } else {
+    const after = (await handle.boundingBox())!;
+    expect(Math.abs(after.x - before.x)).toBeGreaterThan(5);
+  }
+});

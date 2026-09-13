@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { t } from '../i18n/i18n.svelte';
   import { settings } from '../app/settings.svelte';
   import { makeGlobeCtx } from './geometry';
@@ -61,6 +62,11 @@
     drag = null;
   }
 
+  function onpointercancel() {
+    cancelAnimationFrame(frame);
+    drag = null;
+  }
+
   function onkeydown(e: KeyboardEvent) {
     const s = mapState.stepSize(e.shiftKey);
     const arrows: Record<string, [number, number]> = { ArrowUp: [s, 0], ArrowDown: [-s, 0], ArrowLeft: [0, -s], ArrowRight: [0, s] };
@@ -72,10 +78,15 @@
   }
 
   // Keep the point in view when it moves off the visible side by keyboard, sliders or program.
+  // Depends only on the point and its change source, never on mapState.rotate — otherwise this
+  // would re-run (and snap the view back onto the point) on every manual drag/turn rotation.
   $effect(() => {
     const p = mapState.point;
-    if (!p || mapState.lastChange === 'map') return;
-    if (!makeGlobeCtx(SIZE, mapState.rotate, 1).isVisible(p)) mapState.centerGlobeOn(p);
+    const change = mapState.lastChange;
+    untrack(() => {
+      if (!p || change === 'map') return;
+      if (!makeGlobeCtx(SIZE, mapState.rotate, 1).isVisible(p)) mapState.centerGlobeOn(p);
+    });
   });
 </script>
 
@@ -91,7 +102,7 @@
       aria-label={t('map.globe.label')}
       aria-describedby="{uid}-hint"
       tabindex="0"
-      {onpointerdown} {onpointermove} {onpointerup} onpointercancel={() => (drag = null)} {onkeydown}
+      {onpointerdown} {onpointermove} {onpointerup} {onpointercancel} {onkeydown}
     >
       <Layers {ctx} idPrefix={uid} />
     </svg>
