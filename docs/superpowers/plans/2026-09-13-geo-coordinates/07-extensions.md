@@ -19,19 +19,14 @@ Tests: unit tests for labelLayout; e2e: after a wrong answer the correct option 
 
 ---
 
-### Task 17c: Neutral example places (owner request)
+### Task 17c: Neutral example places (owner request, refined)
 
-The owner asked for politically neutral example places, because Polish teachers may not be comfortable with Kyiv used in lessons. Replace every *example* that uses a Ukrainian city, keep the geography identical where possible, and keep the maths in the texts correct.
+The owner's rule: Kyiv stays on the world map (featured label unchanged) and may appear in examples **together with another city** (e.g. Warsaw and Kyiv, London and Kyiv). An example where a Ukrainian city is **the single highlighted answer** should use a neutral place instead.
 
-- Topic 2 `east-west`: marker Kyiv (31°E) → Lublin (51.25°N, 22.57°E, label "23°E"); text "Lublin (23°E) is east of the 20°E meridian. London (0°) is west of it. …".
-- Topic 4 `plan` / `meridian` / `cross`: 50°N, 30°E (Kyiv) → 50°N, 20°E (Kraków): "Let's find 50°N, 20°E …", "Now find the meridian 20°E …", "… It is Kraków!"; overlays/markers updated to lat 50 / lon 20; the `europe` preset still frames it.
-- Topic 6 `same-lon`: Kyiv 31°E → Cairo 31°E (30°N, 31°E): "Cairo is at 31°E and Warsaw at 21°E. Both are east of Greenwich: 31 − 21 = 10°." Marker/overlay use Cairo; the scene may switch to the world preset or a flatView that frames both.
-- Topic 8 `calculate`: Kyiv → Cairo: "Warsaw (21°E) and Cairo (31°E) are 10° apart … it is 12:40 in Cairo, because Cairo is further east." Markers updated.
-- Lab clocks: `CLOCK_PLACES` kyiv → cairo (comment updated).
-- `places.ts`: Kyiv no longer `featured` (not labelled at world zoom); Ukrainian cities stay available on the map and in the place list as ordinary places.
-- Generated questions: exclude `kyiv`, `lviv`, `odesa`, `kharkiv` from the city pool used by question generators (e.g. an `inQuestions: false` flag or an exclusion list in whichPlace), so random questions don't feature them.
-- PL/UK texts updated with the same meaning (Lublin/Lublin/Люблін; Kraków/Kraków/Краків; Cairo/Kair/Каїр).
-- Tests: update e2e tests that used Kyiv (controls.spec place list → use another city, lab.spec clocks); add a unit test asserting no topic step overlay/marker and no generated which-place question uses the excluded ids (e.g. search topic texts in all languages for the localized names of excluded cities).
+- Topic 4 `plan` / `meridian` / `cross` (the only example where Kyiv is alone): 50°N, 30°E → 50°N, 20°E (Kraków): "Let's find 50°N, 20°E …", "Now find the meridian 20°E …", "… It is Kraków!"; overlays/markers updated to lat 50 / lon 20. PL/UK texts updated accordingly (Kraków/Краків).
+- Topic 2 `east-west` (Kyiv with London), topic 6 `same-lon` (Kyiv with Warsaw), topic 8 `calculate` (Warsaw with Kyiv) and the lab clocks: unchanged.
+- Generated "which marker is at …" questions (whichPlace): the answer city is never `kyiv`, `lviv`, `odesa` or `kharkiv` (exclusion flag or list); other generators don't name cities.
+- Tests: unit test that whichPlace never picks the excluded ids as the answer (1000 seeds × difficulties); e2e/explore expectations updated for topic 4 if they check text.
 
 ### Task 23a: Maple Bear schools dataset (research)
 
