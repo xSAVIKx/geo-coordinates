@@ -84,7 +84,8 @@ export class MapState {
 
   setFlatPreset(preset: FlatPreset): void {
     const v = FLAT_PRESETS[preset];
-    this.flat = { center: { ...v.center }, zoom: v.zoom };
+    const zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, v.zoom));
+    this.flat = { zoom, center: this.clampCenter(v.center, zoom) };
   }
 
   zoomFlat(factor: number): void {

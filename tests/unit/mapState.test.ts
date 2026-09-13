@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { DEFAULT_LAYERS, MapState } from '../../src/map/mapState.svelte';
+import type { Overlay } from '../../src/map/types';
 
 describe('MapState', () => {
   test('applyScene fills defaults', () => {
@@ -65,5 +66,29 @@ describe('MapState', () => {
     s.zoomFlat(2);
     s.panFlat(80, 0);
     expect(s.flat.center.lat).toBe(45); // half-height at zoom 2 is 45°
+  });
+  test('setFlatPreset applies the preset through the same clamp path as zoom/pan', () => {
+    const s = new MapState();
+    s.setFlatPreset('poland');
+    expect(s.flat).toEqual({ center: { lat: 52, lon: 19 }, zoom: 9 });
+    s.zoomFlat(2);
+    s.panFlat(80, 0);
+    s.setFlatPreset('world');
+    expect(s.flat).toEqual({ center: { lat: 0, lon: 0 }, zoom: 1 });
+  });
+  test('centerGlobeOn clamps latitude to +/-60', () => {
+    const s = new MapState();
+    s.centerGlobeOn({ lat: 85, lon: 30 });
+    expect(s.rotate).toEqual([-30, -60]);
+    s.centerGlobeOn({ lat: -85, lon: -40 });
+    expect(s.rotate).toEqual([40, 60]);
+  });
+  test('addOverlays appends to existing overlays', () => {
+    const s = new MapState();
+    const a: Overlay[] = [{ kind: 'noon-meridian' }];
+    const b: Overlay[] = [{ kind: 'marker', p: { lat: 1, lon: 2 }, tone: 'a' }];
+    s.addOverlays(a);
+    s.addOverlays(b);
+    expect(s.overlays).toEqual([...a, ...b]);
   });
 });
