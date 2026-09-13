@@ -3,6 +3,7 @@
   import Header from './Header.svelte';
   import Home from './Home.svelte';
   import LabPage from './LabPage.svelte';
+  import TopicPage from './TopicPage.svelte';
   import Footer from './Footer.svelte';
   import LiveRegion from './LiveRegion.svelte';
   import { router, startRouter } from './router.svelte';
@@ -46,6 +47,10 @@
 <main id="main" bind:this={main}>
   {#if route.name === 'lab'}
     <LabPage />
+  {:else if route.name === 'explore'}
+    <TopicPage topic={route.topic} tab="explore" step={route.step} />
+  {:else if route.name === 'practice'}
+    <TopicPage topic={route.topic} tab="practice" step={0} />
   {:else}
     <Home />
   {/if}
