@@ -1,5 +1,6 @@
 <script lang="ts">
   import { announce } from '../app/announcer.svelte';
+  import type { TopicId } from '../app/ids';
   import { formatRoute } from '../app/router';
   import { readString, writeString } from '../app/storage';
   import { expose } from '../app/testMode';
@@ -24,18 +25,43 @@
   let index = $state(0);
   let results = $state<CheckResult[]>([]);
   let finished = $state(false);
-  let best = $state<number | null>(null);
+  // The best score for the *currently selected* difficulty — shown both beside the difficulty
+  // selector and in the round summary. Loaded on init, reloaded whenever `difficulty` (or the
+  // topic) changes, and updated the moment a round finishes, so it never goes stale like a plain
+  // `bestScore(...)` call in the template would (that read isn't reactive to state changes).
+  let currentBest = $state<number | null>(null);
+  $effect(() => {
+    currentBest = bestScore(scoreId(topic.id, difficulty));
+  });
 
   const questions = $derived(generateSet(seed, [topic.id], difficulty, ROUND));
   const question = $derived(questions[index]!);
   const result = $derived(results[index] ?? null);
   const score = $derived(results.filter((r) => r.correct).length);
+  // Identifies the current question *within its round*; `question.id` alone repeats across
+  // different seeds/difficulties at the same position, so QuestionCard uses this (not
+  // `question.id`) to know when to reset/remount its input.
+  const roundKey = $derived(`${topic.id}:${seed}:${difficulty}:${index}`);
+
+  // TopicPage doesn't remount Practice when navigating between topics while staying on the
+  // Practice tab (only the `topic` prop changes), so start a fresh round for the new topic
+  // instead of carrying over the previous topic's index/results/scene.
+  let lastTopicId: TopicId | null = null;
+  $effect(() => {
+    if (topic.id === lastTopicId) return;
+    const first = lastTopicId === null;
+    lastTopicId = topic.id;
+    if (first) return;
+    seed = randomSeed();
+    index = 0;
+    results = [];
+    finished = false;
+  });
 
   let applied = '';
   $effect(() => {
-    const key = `${seed}:${difficulty}:${index}`;
-    if (key === applied || finished) return;
-    applied = key;
+    if (roundKey === applied || finished) return;
+    applied = roundKey;
     mapState.applyScene(question.scene);
     expose('__practice', { question, answer: question.answer });
   });
@@ -52,7 +78,7 @@
   function next() {
     if (index < ROUND - 1) { index += 1; return; }
     finished = true;
-    best = recordScore(scoreId(topic.id, difficulty), score);
+    currentBest = recordScore(scoreId(topic.id, difficulty), score);
   }
 
   function newRound(d: Difficulty = difficulty) {
@@ -66,7 +92,26 @@
 
   let summaryHeading = $state<HTMLHeadingElement>();
   $effect(() => { if (finished) queueMicrotask(() => summaryHeading?.focus()); });
+
+  // On phones (<1024px) the question card is rendered right after the map view(s) — inside
+  // MapStage, above the coordinate sliders/place list — so the prompt (and, for a mapPick
+  // question, the map holding the target) stay on screen together; at >=1024px it moves to the
+  // sticky side panel instead. Only one of the two ever actually renders the snippet below, so
+  // there is never more than one QuestionCard mounted at once.
+  let wide = $state(typeof matchMedia === 'function' ? matchMedia('(min-width: 1024px)').matches : true);
+  $effect(() => {
+    if (typeof matchMedia !== 'function') return;
+    const mq = matchMedia('(min-width: 1024px)');
+    const onChange = (e: MediaQueryListEvent) => (wide = e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  });
 </script>
+
+{#snippet questionCard()}
+  <QuestionCard {question} number={index + 1} total={ROUND} {result} onsubmit={submit} onnext={next}
+    nextLabel={index < ROUND - 1 ? t('practice.next') : t('practice.results')} {roundKey} />
+{/snippet}
 
 <div class="practice">
   <fieldset class="difficulty">
@@ -74,24 +119,25 @@
     {#each DIFFS as d (d)}
       <label><input type="radio" name="difficulty-{topic.id}" checked={difficulty === d} onchange={() => newRound(d)} /> {t(`difficulty.${d}`)}</label>
     {/each}
-    {#if bestScore(scoreId(topic.id, difficulty)) !== null}
-      <span class="best">{t('practice.best', { best: bestScore(scoreId(topic.id, difficulty))!, total: ROUND })}</span>
+    {#if currentBest !== null}
+      <span class="best">{t('practice.best', { best: currentBest, total: ROUND })}</span>
     {/if}
   </fieldset>
 
   {#if !finished}
-    <div class="layout">
-      <div class="stage"><MapStage /></div>
-      <div class="panel">
-        <QuestionCard {question} number={index + 1} total={ROUND} {result} onsubmit={submit} onnext={next}
-          nextLabel={index < ROUND - 1 ? t('practice.next') : t('practice.results')} />
-      </div>
+    <div class="layout" class:wide>
+      <div class="stage"><MapStage midContent={wide ? undefined : questionCard} /></div>
+      {#if wide}
+        <div class="panel">
+          {@render questionCard()}
+        </div>
+      {/if}
     </div>
   {:else}
     <section class="summary" aria-labelledby="summary-title">
       <h2 id="summary-title" tabindex="-1" bind:this={summaryHeading}>{t('practice.done')}</h2>
       <p class="score">{t('practice.score', { score, total: ROUND })}</p>
-      {#if best !== null}<p>{t('practice.best', { best, total: ROUND })}</p>{/if}
+      {#if currentBest !== null}<p>{t('practice.best', { best: currentBest, total: ROUND })}</p>{/if}
       <h3>{t('practice.review')}</h3>
       <ol class="review">
         {#each questions as q, i (q.id)}

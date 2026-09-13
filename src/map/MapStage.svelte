@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { Snippet } from 'svelte';
   import { announceThrottled } from '../app/announcer.svelte';
   import { i18n, t } from '../i18n/i18n.svelte';
   import { spokenLat, spokenLon } from '../i18n/spoken';
@@ -9,7 +10,10 @@
   import { mapState } from './mapState.svelte';
   import PlaceList from './PlaceList.svelte';
 
-  let { showPlaces = false, label }: { showPlaces?: boolean; label?: string } = $props();
+  // `midContent`, when given, renders right after the map view(s) and before the coordinate
+  // sliders / place list — used by Practice on narrow screens so the question stays visible
+  // next to the map instead of being pushed below all of the map's own controls.
+  let { showPlaces = false, label, midContent }: { showPlaces?: boolean; label?: string; midContent?: Snippet } = $props();
   let width = $state(1024);
   const wide = $derived(width >= 640);
   const shown = $derived(wide ? mapState.views : mapState.views.filter((v) => v === mapState.phoneView));
@@ -41,6 +45,7 @@
       </div>
     {/each}
   </div>
+  {#if midContent}{@render midContent()}{/if}
   {#if mapState.point}<CoordinateControls />{/if}
   {#if showPlaces && mapState.pointEditable}<PlaceList />{/if}
 </section>

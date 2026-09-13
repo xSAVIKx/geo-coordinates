@@ -80,3 +80,37 @@ test('submitting without an answer asks for one', async ({ page }) => {
   await page.getByRole('button', { name: 'Sprawdź' }).click();
   await expect(page.getByRole('alert')).toHaveText('Najpierw wybierz lub wpisz odpowiedź.');
 });
+
+test('switching difficulty at question 1 does not leave a stale selection or feedback behind', async ({ page }) => {
+  // Question ids repeat across seeds/difficulties (`${type}-${i}`), so this exercises the case
+  // where question 1 of the new round happens to carry the same generator id as the old one —
+  // the round must still reset because Practice/QuestionCard key on a per-round key, not on
+  // `question.id`.
+  await openPage(page, 'en/topic-1/practice', '?test');
+  const options = card(page).locator('label.choice');
+  await options.nth(1).click();
+  await expect(card(page).getByRole('radio').nth(1)).toBeChecked();
+  await page.getByRole('button', { name: 'Check' }).click();
+  await expect(card(page).getByText(/Correct!|Not quite/)).toBeVisible();
+
+  await page.getByRole('radio', { name: 'Medium' }).check();
+
+  const radiosAfter = card(page).getByRole('radio');
+  const count = await radiosAfter.count();
+  for (let i = 0; i < count; i++) await expect(radiosAfter.nth(i)).not.toBeChecked();
+  await expect(card(page).getByText('Correct!', { exact: true })).toHaveCount(0);
+  await expect(card(page).getByText('Not quite', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Check' })).toBeVisible();
+});
+
+test('the best score updates live and is still shown after starting a new round at the same difficulty', async ({ page }) => {
+  await openPage(page, 'en/topic-1/practice', '?test');
+  for (let i = 0; i < 10; i++) {
+    await answerCorrectlyWithKeyboard(page);
+    await expect(card(page).getByText('Correct!', { exact: true })).toBeVisible();
+    await page.keyboard.press('Enter');
+  }
+  await expect(page.getByRole('heading', { name: 'Round complete' })).toBeFocused();
+  await page.getByRole('button', { name: 'New round' }).click();
+  await expect(page.getByText('Your best: 10 out of 10')).toBeVisible();
+});

@@ -7,9 +7,14 @@
   import NumberInput from './inputs/NumberInput.svelte';
   import type { Answer, CheckResult, Question } from './types';
 
-  let { question, number, total, result, onsubmit, onnext, nextLabel, showFeedback = true, big = false }: {
+  // `roundKey` identifies this question *within its round* (e.g. `${seed}:${difficulty}:${index}`
+  // from Practice), not `question.id` — generator ids are `${type}-${seedIndex}` and repeat across
+  // different seeds/difficulties at the same position, so keying the reset/remount logic on
+  // `question.id` would leave a stale selection/typed answer/feedback on screen when, say, the
+  // difficulty changes while staying on question 1.
+  let { question, number, total, result, onsubmit, onnext, nextLabel, roundKey, showFeedback = true, big = false }: {
     question: Question; number: number; total: number; result: CheckResult | null;
-    onsubmit: (a: Answer) => void; onnext: () => void; nextLabel: string; showFeedback?: boolean; big?: boolean;
+    onsubmit: (a: Answer) => void; onnext: () => void; nextLabel: string; roundKey: string; showFeedback?: boolean; big?: boolean;
   } = $props();
 
   let value = $state<Answer | null>(null);
@@ -20,11 +25,11 @@
   const uid = `q-${Math.random().toString(36).slice(2, 8)}`;
   const answered = $derived(result !== null);
 
-  let lastId = '';
+  let lastKey = '';
   $effect(() => {
-    if (question.id === lastId) return;
-    const first = lastId === '';
-    lastId = question.id;
+    if (roundKey === lastKey) return;
+    const first = lastKey === '';
+    lastKey = roundKey;
     value = null;
     invalid = false;
     if (!first) queueMicrotask(() => heading?.focus());
@@ -33,6 +38,12 @@
   $effect(() => {
     if (!answered) return;
     queueMicrotask(() => (showFeedback ? feedbackBox : nextButton)?.focus());
+  });
+
+  // Once the user has produced a valid answer, drop the "choose or enter an answer" warning
+  // instead of leaving it up until the next Check press.
+  $effect(() => {
+    if (value !== null && invalid) invalid = false;
   });
 
   function trySubmit(): void {
@@ -68,7 +79,7 @@
   <p class="progress">{t('practice.progress', { n: number, total })}</p>
   <h2 tabindex="-1" bind:this={heading} id="{uid}-prompt">{renderText(question.prompt)}</h2>
 
-  {#key question.id}
+  {#key roundKey}
     {#if question.input.kind === 'choice'}
       <ChoiceInput options={question.input.options} bind:value disabled={answered} {invalid} describedBy="{uid}-prompt" {big} />
     {:else if question.input.kind === 'coords'}

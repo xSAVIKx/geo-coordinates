@@ -16,13 +16,13 @@
   }
 </script>
 
-{#each mapState.overlays as o, i (i)}
+{#each mapState.overlays as o, i (`${i}:${o.kind}`)}
   {#if o.kind === 'highlight-region'}
     <path class="hl-region" d={ctx.path(hemisphere(o.region)) ?? ''} />
   {:else if o.kind === 'highlight-line'}
     <path class="hl-line" d={ctx.path(o.axis === 'lat' ? parallelLine(o.value) : meridianLine(o.value)) ?? ''} />
   {:else if o.kind === 'marker'}
-    {@const xy = o.p ? ctx.project(o.p) : null}
+    {@const xy = ctx.project(o.p)}
     {#if xy}
       <g transform="translate({xy[0]} {xy[1]})" class="marker tone-{o.tone}">
         <path d={shape(o.tone, 8 * ctx.px)} />

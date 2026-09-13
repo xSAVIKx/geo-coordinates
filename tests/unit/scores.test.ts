@@ -26,3 +26,21 @@ test('works when storage throws', () => {
   expect(recordScore('x', 5)).toBe(5);
   expect(bestScore('x')).toBeNull();
 });
+
+test('recovers from non-object JSON in storage instead of throwing', () => {
+  const store = new Map<string, string>([['geo-coords:scores', 'null']]);
+  (globalThis as { localStorage?: unknown }).localStorage = {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => void store.set(k, v),
+    removeItem: (k: string) => void store.delete(k),
+  };
+  expect(bestScore('x')).toBeNull();
+  expect(recordScore('x', 7)).toBe(7);
+
+  store.set('geo-coords:scores', '[1,2,3]');
+  expect(bestScore('x')).toBeNull();
+  expect(recordScore('x', 3)).toBe(3);
+
+  store.set('geo-coords:scores', '"oops"');
+  expect(bestScore('x')).toBeNull();
+});
