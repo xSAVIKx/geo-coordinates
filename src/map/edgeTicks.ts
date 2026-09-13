@@ -59,7 +59,10 @@ function greedyKeep<T extends { value: number; pos: number }>(items: T[], minGap
  */
 export function edgeTicks(ctx: ViewCtx, center: LatLon, zoom: number, graticuleStep: number): EdgeTicks {
   const halfLat = 90 / zoom, halfLon = 180 / zoom;
-  const latMin = Math.max(-90, center.lat - halfLat), latMax = Math.min(90, center.lat + halfLat);
+  // Mercator stretches latitude, so its visible span comes from the view's exact bounds (within ±85°).
+  const mercator = ctx.flatProjection === 'mercator';
+  const latMin = mercator ? ctx.bounds.south : Math.max(-90, center.lat - halfLat);
+  const latMax = mercator ? ctx.bounds.north : Math.min(90, center.lat + halfLat);
   const lonMin = Math.max(-180, center.lon - halfLon), lonMax = Math.min(180, center.lon + halfLon);
   const bottomLat = latMin;
   const minGap = MIN_GAP_PX * ctx.px;

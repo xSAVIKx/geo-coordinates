@@ -44,6 +44,17 @@ describe('resolveGridStep', () => {
     expect(gridUsesMinutes(1 / 2)).toBe(true);
     expect(gridUsesMinutes(1)).toBe(false);
   });
+  test("'auto' on Mercator follows its stretched scale: finer grid further north at the same zoom", () => {
+    const px = 960 / 573;
+    const equator = resolveGridStep('auto', makeFlatCtx(960, 480, { lat: 0, lon: 0 }, 9, px, 'mercator'));
+    const north = resolveGridStep('auto', makeFlatCtx(960, 480, { lat: 70, lon: 0 }, 9, px, 'mercator'));
+    expect(north).toBeLessThan(equator);
+    for (const [c, z] of [[{ lat: 0, lon: 0 }, 0.51], [{ lat: 50.26, lon: 19.02 }, 9], [{ lat: 50.26, lon: 19.02 }, 80]] as const) {
+      const ctx = makeFlatCtx(960, 480, c, z, px, 'mercator');
+      const gap = resolveGridStep('auto', ctx) * pxPerDegreeAtCenter(ctx);
+      expect(gap).toBeGreaterThanOrEqual(24); expect(gap).toBeLessThanOrEqual(200);
+    }
+  });
   test("'auto' on the globe gets finer as it zooms", () => {
     const px = 500 / 287;
     const a = resolveGridStep('auto', makeGlobeCtx(500, [-19, -50], px, 1));

@@ -2,7 +2,7 @@ import type { Axis, LatLon, Precision } from '../geo/types';
 
 export type ViewId = 'globe' | 'flat' | 'cross-section';
 export type FlatPreset = 'world' | 'europe' | 'poland';
-export type FlatProjection = 'grid' | 'equal-earth';
+export type FlatProjection = 'grid' | 'equal-earth' | 'mercator';
 export interface LayerFlags {
   graticuleStep: 1 | 5 | 10 | 15 | 30 | 'auto'; // 'auto': adapts to the zoom (see gridStep.ts)
   specialLines: boolean;      // equator, prime meridian, 180°
@@ -39,6 +39,7 @@ export interface SceneSpec {
   flatPreset?: FlatPreset;
   flatView?: { center: LatLon; zoom: number }; // overrides flatPreset
   flatProjection?: FlatProjection;       // forces this projection for the scene; absent = viewer preference applies
+  projectionSwitch?: boolean;            // with flatProjection: keep the projection switch; a choice then applies to this scene only
   overlays?: Overlay[];
   sun?: { utcMinutes: number; dayOfYear: number } | null;
   labControls?: LabControl[];

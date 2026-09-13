@@ -105,3 +105,41 @@ test('the Equal Earth preference is remembered after a reload', async ({ page })
   await expect(page.getByRole('button', { name: 'Equal Earth' })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByRole('button', { name: 'Grid map' })).toHaveAttribute('aria-pressed', 'false');
 });
+
+test('Map app (Mercator): the whole world at first, zoom in and pan north past 66°, click sets a point, no errors', async ({ page }) => {
+  await openPage(page, 'en/lab', '?test');
+  const map = page.getByRole('group', { name: 'World map with parallels and meridians' });
+  const mercator = page.getByRole('button', { name: 'Map app (Mercator)' });
+  await mercator.click();
+  await expect(mercator).toHaveAttribute('aria-pressed', 'true');
+  type S = { __mapState: { flat: { zoom: number; center: { lat: number } }; flatMinZoom: number } };
+  const state = () => page.evaluate(() => { const s = (window as unknown as S).__mapState; return { zoom: s.flat.zoom, lat: s.flat.center.lat, min: s.flatMinZoom }; });
+  const world = await state();
+  expect(world.zoom).toBeCloseTo(world.min, 6);
+  expect(world.min).toBeLessThan(0.51);
+  // Zoom in (the world gets taller than the view) and drag the map down to see further north.
+  await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
+  const box = (await map.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + 20);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height - 10, { steps: 8 });
+  await page.mouse.up();
+  const panned = await state();
+  expect(panned.zoom).toBeGreaterThan(world.min);
+  expect(panned.lat).toBeGreaterThan(10);
+  expect(panned.lat).toBeLessThan(85);
+  await map.click({ position: { x: box.width / 2, y: box.height / 2 } });
+  await expect(map.locator('[data-point-handle]')).toHaveCount(1);
+  await expectNoAxeViolations(page, 'lab mercator');
+  // A sweep of views, north to south and deep into Katowice: no broken (NaN) SVG anywhere.
+  for (const [lat, lon, zoom] of [[84, -40, 0.8], [70, -40, 1.3], [60, 170, 2], [-80, 0, 1.1], [0, -179, 3], [50.26, 19.02, 9], [50.26, 19.02, 80], [-60, 60, 30]] as const) {
+    const bad = await page.evaluate(async ([la, lo, z]) => {
+      const s = (window as unknown as S).__mapState as unknown as { zoomFlat(f: number): void; panFlat(a: number, b: number): void; flat: { zoom: number; center: { lat: number; lon: number } } };
+      s.zoomFlat(z / s.flat.zoom); s.panFlat(la - s.flat.center.lat, lo - s.flat.center.lon);
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      return [...document.querySelectorAll('svg path, svg circle, svg text, svg g[transform]')].map((el) => [...el.attributes].map((at) => at.value).join(' ')).filter((v) => /NaN|Infinity/.test(v)).length;
+    }, [lat, lon, zoom] as const);
+    expect(bad, `view ${lat},${lon} zoom ${zoom}`).toBe(0);
+  }
+  expect(pageErrors(page)).toEqual([]);
+});

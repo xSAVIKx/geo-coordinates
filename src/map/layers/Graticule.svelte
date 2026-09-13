@@ -1,6 +1,6 @@
 <script lang="ts">
   import { geoGraticule } from 'd3-geo';
-  import type { ViewCtx } from '../geometry';
+  import { MERCATOR_MAX_LAT, type ViewCtx } from '../geometry';
   import { gridExtent, resolveGridStep } from '../gridStep';
   import { mapState } from '../mapState.svelte';
   let { ctx }: { ctx: ViewCtx } = $props();
@@ -8,6 +8,8 @@
   const d = $derived.by(() => {
     // Only the visible part of the grid: a 1′ grid over the whole world would be 21 600 meridians.
     const extent = gridExtent(ctx.bounds, step);
+    // Mercator has no latitudes past ±85° (beyond the pole d3 would make NaN): stop the lines there.
+    if (ctx.flatProjection === 'mercator') { extent[0][1] = Math.max(extent[0][1], -MERCATOR_MAX_LAT); extent[1][1] = Math.min(extent[1][1], MERCATOR_MAX_LAT); }
     const span = Math.max(extent[1][0] - extent[0][0], extent[1][1] - extent[0][1]);
     return ctx.path(geoGraticule().step([step, step]).extent(extent).precision(Math.min(2, span / 60))()) ?? '';
   });

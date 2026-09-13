@@ -55,12 +55,11 @@
       const ll = ctx.invert(toView(e.clientX, e.clientY));
       if (ll) mapState.userSetPoint(ll, 'map');
     } else {
-      if (drag.mode === 'maybe-click' && Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) > 6 && mapState.flat.zoom > 1) drag.mode = 'pan';
+      if (drag.mode === 'maybe-click' && Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) > 6 && mapState.canPanFlat) drag.mode = 'pan';
       if (drag.mode === 'pan') {
         const [x0, y0] = toView(drag.lastX, drag.lastY);
         const [x1, y1] = toView(e.clientX, e.clientY);
-        const dpu = 360 / (W * mapState.flat.zoom);
-        mapState.panFlat((y1 - y0) * dpu, -(x1 - x0) * dpu);
+        mapState.panFlatBy(x1 - x0, y1 - y0);
       }
     }
     drag.lastX = e.clientX; drag.lastY = e.clientY;
@@ -73,7 +72,7 @@
       // One finger remains after a pinch: hand off to a pan (or stay inert at zoom 1) from where it
       // currently is, rather than leaving it dead or letting it fire a click-to-place on release.
       const pos = [...pinch.values()][0]!;
-      drag = { mode: mapState.flat.zoom > 1 ? 'pan' : 'idle', startX: pos.x, startY: pos.y, lastX: pos.x, lastY: pos.y };
+      drag = { mode: mapState.canPanFlat ? 'pan' : 'idle', startX: pos.x, startY: pos.y, lastX: pos.x, lastY: pos.y };
       return;
     }
     if (drag?.mode === 'maybe-click' && mapState.pointEditable) {
@@ -94,14 +93,12 @@
         const s = mapState.stepSize(big);
         mapState.nudge(dir[0] * s, dir[1] * s, 'map');
         e.preventDefault();
-      } else if (mapState.flat.zoom > 1) {
-        // Panning has no notion of coordinate precision, so the step is a fraction of the
-        // currently visible span (independent of `stepSize`, which is degree/minute-based
-        // and would be ~0.03° under 'minute' precision — effectively no movement at all).
+      } else if (mapState.canPanFlat) {
+        // Panning has no notion of coordinate precision, so the step is a tenth of the view
+        // (independent of `stepSize`, which is degree/minute-based and would be ~0.03° under
+        // 'minute' precision — effectively no movement at all).
         const mult = big ? 3 : 1;
-        const latStep = (180 / mapState.flat.zoom) * 0.1 * mult;
-        const lonStep = (360 / mapState.flat.zoom) * 0.1 * mult;
-        mapState.panFlat(dir[0] * latStep, dir[1] * lonStep);
+        mapState.panFlatBy(-dir[1] * W * 0.1 * mult, dir[0] * H * 0.1 * mult);
         e.preventDefault();
       }
       return;
@@ -122,7 +119,7 @@
   });
 
   const PRESETS: FlatPreset[] = ['world', 'europe', 'poland'];
-  const PROJECTIONS: FlatProjection[] = ['grid', 'equal-earth'];
+  const PROJECTIONS: FlatProjection[] = ['grid', 'equal-earth', 'mercator'];
 </script>
 
 <figure class="flat">
@@ -137,7 +134,7 @@
       aria-label={t('map.flat.label')}
       aria-describedby="{uid}-hint"
       tabindex="0"
-      style:touch-action={mapState.flat.zoom > 1 ? 'none' : 'pan-y'}
+      style:touch-action={mapState.canPanFlat ? 'none' : 'pan-y'}
       {onpointerdown} {onpointermove} {onpointerup} {onpointercancel} {onkeydown}
     >
       <defs><clipPath id="{uid}-clip"><rect width={W} height={H} /></clipPath></defs>
@@ -159,7 +156,7 @@
         <button type="button" class="btn" onclick={() => mapState.setFlatPreset(p)}>{t(`map.preset.${p}`)}</button>
       {/each}
     </div>
-    {#if mapState.projectionOverride === null}
+    {#if mapState.projectionOverride === null || mapState.projectionSwitch}
       <div class="projection-group seg" role="group" aria-label={t('map.projection')} aria-describedby="{uid}-projection-hint">
         {#each PROJECTIONS as proj (proj)}
           <button
@@ -167,7 +164,7 @@
             class="btn"
             aria-pressed={mapState.flatProjection === proj}
             title={t('map.projection.hint')}
-            onclick={() => mapState.setProjectionPreference(proj)}
+            onclick={() => mapState.chooseProjection(proj)}
           >{t(`map.projection.${proj}`)}</button>
         {/each}
       </div>

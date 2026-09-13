@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { boundsIntersect, hemisphere, makeFlatCtx, makeGlobeCtx, meridianLine, parallelLine } from '../../src/map/geometry';
+import { boundsIntersect, clampFlatCenter, flatMinZoom, hemisphere, makeFlatCtx, makeGlobeCtx, MERCATOR_MAX_LAT, mercatorLat, mercatorY, meridianLine, panFlatCenter, parallelLine } from '../../src/map/geometry';
 
 describe('flat ctx', () => {
   const ctx = makeFlatCtx(960, 480, { lat: 0, lon: 0 }, 1, 1);
@@ -197,5 +197,98 @@ describe('regionPath', () => {
     const line: GeoJSON.LineString = { type: 'LineString', coordinates: [[19, 50.2], [19.05, 50.3]] };
     expect(makeGlobeCtx(500, [-19, -50], 1, 6).regionPath(line)).toMatch(/^M/);
     expect(makeFlatCtx(960, 480, { lat: 50, lon: 19 }, 6, 1, 'equal-earth').regionPath(line)).toMatch(/^M/);
+  });
+});
+
+describe('mercator flat ctx (Task 22)', () => {
+  test('centre projects to the middle; parallels spread out towards the poles', () => {
+    const ctx = makeFlatCtx(960, 480, { lat: 0, lon: 0 }, 1, 1, 'mercator');
+    expect(ctx.project({ lat: 0, lon: 0 })).toEqual([480, 240]);
+    const y = (lat: number) => ctx.project({ lat, lon: 0 })![1];
+    expect(y(0) - y(10)).toBeLessThan(y(50) - y(60));
+    // Same horizontal scale as the grid map at the same zoom.
+    expect(ctx.project({ lat: 0, lon: 90 })![0]).toBeCloseTo(720, 6);
+  });
+  test('invert round-trips and stops at ±85°', () => {
+    const ctx = makeFlatCtx(960, 480, { lat: 40, lon: -30 }, 1.3, 1, 'mercator');
+    for (const p of [{ lat: 60, lon: -150 }, { lat: 72, lon: -40 }, { lat: 20, lon: 10 }]) {
+      const xy = ctx.project(p)!;
+      if (xy[0] < 0 || xy[0] > 960 || xy[1] < 0 || xy[1] > 480) continue;
+      const back = ctx.invert(xy)!;
+      expect(back.lat).toBeCloseTo(p.lat, 6); expect(back.lon).toBeCloseTo(p.lon, 6);
+    }
+    expect(ctx.project({ lat: 86, lon: 0 })).toBeNull();
+    expect(ctx.project({ lat: -90, lon: 0 })).toBeNull();
+    // At the smallest zoom the world is narrower than the view: the open sea beside it is not a place.
+    const world = makeFlatCtx(960, 480, { lat: 0, lon: 0 }, flatMinZoom('mercator'), 1, 'mercator');
+    expect(world.invert([100, 240])).toBeNull();
+    expect(world.invert([480, 1])!.lat).toBeCloseTo(MERCATOR_MAX_LAT, 0);
+  });
+  test('the smallest zoom fits ±85° into the height exactly', () => {
+    const z = flatMinZoom('mercator');
+    expect(z).toBeGreaterThan(0.5); expect(z).toBeLessThan(0.51);
+    expect(flatMinZoom('grid')).toBe(1); expect(flatMinZoom('equal-earth')).toBe(1);
+    const ctx = makeFlatCtx(960, 480, { lat: 0, lon: 0 }, z, 1, 'mercator');
+    expect(ctx.project({ lat: 85, lon: 0 })![1]).toBeCloseTo(0, 6);
+    expect(ctx.project({ lat: -85, lon: 0 })![1]).toBeCloseTo(480, 6);
+    expect(ctx.bounds).toEqual({ west: -180, east: 180, south: -85, north: 85 });
+  });
+  test('paths have no NaN/Infinity and stay inside ±85° (land, graticule, polar caps)', () => {
+    for (const [c, z] of [[{ lat: 0, lon: 0 }, flatMinZoom('mercator')], [{ lat: 70, lon: -40 }, 2], [{ lat: -80, lon: 0 }, 3]] as const) {
+      const ctx = makeFlatCtx(960, 480, c, z, 1, 'mercator');
+      const top = Math.max(-24, ctx.projection([0, 85])![1]);
+      for (const g of [hemisphere('N'), hemisphere('S'), parallelLine(89), meridianLine(10)]) {
+        const d = ctx.path(g) ?? '';
+        expect(d).not.toMatch(/NaN|Infinity/);
+        const ys = [...d.matchAll(/[ML][-\d.]+,([-\d.]+)/g)].map((m) => Number(m[1]));
+        if (ys.length) expect(Math.min(...ys)).toBeGreaterThanOrEqual(top - 1e-6);
+      }
+    }
+  });
+  test('bounds match the view edges', () => {
+    const ctx = makeFlatCtx(960, 480, { lat: 50.26, lon: 19.02 }, 9, 1, 'mercator');
+    expect(ctx.bounds.north).toBeCloseTo(ctx.invert([480, 0])!.lat, 6);
+    expect(ctx.bounds.south).toBeCloseTo(ctx.invert([480, 480])!.lat, 6);
+    expect(ctx.bounds.west).toBeCloseTo(ctx.invert([0, 240])!.lon, 6);
+    expect(ctx.flatProjection).toBe('mercator');
+  });
+  test('deep zoom 80 round-trips well under a pixel', () => {
+    const ctx = makeFlatCtx(960, 480, { lat: 50.26, lon: 19.02 }, 80, 1, 'mercator');
+    for (const xy of [[10, 10], [950, 470], [480.5, 240.5]] as [number, number][]) {
+      const back = ctx.project(ctx.invert(xy)!)!;
+      expect(Math.hypot(back[0] - xy[0], back[1] - xy[1])).toBeLessThan(1e-6);
+    }
+    expect(ctx.regionPath({ type: 'LineString', coordinates: [[19, 50.2], [19.05, 50.3]] })).toMatch(/^M/);
+  });
+});
+
+describe('flat view clamping and panning', () => {
+  const inside = (c: { lat: number; lon: number }, zoom: number) => {
+    const ctx = makeFlatCtx(960, 480, c, zoom, 1, 'mercator');
+    // Every view corner is on the map (inside ±85° and ±180°).
+    for (const xy of [[0.5, 0.5], [959.5, 0.5], [0.5, 479.5], [959.5, 479.5]] as [number, number][]) expect(ctx.invert(xy), `${zoom} ${JSON.stringify(c)} ${xy}`).not.toBeNull();
+  };
+  test('mercator: any centre is moved so the view stays inside the projected world', () => {
+    for (const zoom of [1, 1.5, 3, 9, 80]) {
+      for (const c of [{ lat: 89, lon: 179 }, { lat: -89, lon: -179 }, { lat: 84, lon: 0 }, { lat: 0, lon: 0 }, { lat: 50, lon: 19 }]) {
+        inside(clampFlatCenter(c, zoom, 'mercator'), zoom);
+      }
+    }
+    expect(clampFlatCenter({ lat: 60, lon: 40 }, flatMinZoom('mercator'), 'mercator')).toEqual({ lat: 0, lon: 0 });
+    const z1 = clampFlatCenter({ lat: 80, lon: 0 }, 1, 'mercator');
+    expect(z1.lat).toBeCloseTo(mercatorLat(mercatorY(85) - Math.PI / 2), 9);
+  });
+  test('grid and Equal Earth keep the 90/zoom and 180/zoom clamp', () => {
+    expect(clampFlatCenter({ lat: 80, lon: 170 }, 2, 'grid')).toEqual({ lat: 45, lon: 90 });
+    expect(clampFlatCenter({ lat: 80, lon: 170 }, 2, 'equal-earth')).toEqual({ lat: 45, lon: 90 });
+  });
+  test('panning by view units: degrees on the grid map, stretched y on Mercator (the map follows the pointer)', () => {
+    const grid = panFlatCenter({ lat: 50, lon: 19 }, 9, 'grid', -96, 48);
+    expect(grid.lon).toBeCloseTo(19 + 36 / 9, 9); expect(grid.lat).toBeCloseTo(50 + 18 / 9, 9);
+    const start = { lat: 60, lon: 19 };
+    const moved = panFlatCenter(start, 9, 'mercator', 0, 30);
+    const before = makeFlatCtx(960, 480, start, 9, 1, 'mercator');
+    // The point that was 30 units above the centre is now at the centre.
+    expect(moved.lat).toBeCloseTo(before.invert([480, 210])!.lat, 6);
   });
 });

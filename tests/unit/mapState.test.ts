@@ -135,6 +135,47 @@ describe('MapState', () => {
     s.panFlat(80, 0);
     expect(s.flat.center.lat).toBe(45); // half-height at zoom 2 is 45°
   });
+  test('mercator: zooms out to the whole world, pans vertically at zoom 1, and stays inside ±85°', () => {
+    const s = new MapState();
+    s.setProjectionPreference('mercator');
+    expect(globalThis.localStorage.getItem('geo-coords:projection')).toBe('mercator');
+    // The whole-world view stays whole-world when the projection changes.
+    expect(s.flat.zoom).toBeCloseTo(s.flatMinZoom, 12);
+    expect(s.flatMinZoom).toBeLessThan(0.51);
+    expect(s.canPanFlat).toBe(false);
+    s.zoomFlat(1000); s.zoomFlat(0.0001);
+    expect(s.flat.zoom).toBeCloseTo(s.flatMinZoom, 12);
+    s.zoomFlat(1 / s.flatMinZoom); // zoom 1: the world fills the width, ±66.5° of its height
+    expect(s.canPanFlat).toBe(true);
+    s.panFlatBy(0, 10_000);
+    expect(s.flat.center.lat).toBeGreaterThan(60);
+    expect(s.flat.center.lat).toBeLessThan(85);
+    expect(s.flat.center.lon).toBe(0);
+    s.setFlatPreset('world');
+    expect(s.flat.zoom).toBeCloseTo(s.flatMinZoom, 12);
+    s.setFlatPreset('poland');
+    expect(s.flat.zoom).toBe(9);
+    s.setProjectionPreference('grid');
+    expect(s.flat.zoom).toBe(9);
+    s.setFlatPreset('world'); s.setProjectionPreference('mercator'); s.zoomFlat(1.2);
+    s.setProjectionPreference('grid');
+    expect(s.flat.zoom).toBe(1); // below the grid map's minimum: clamped
+  });
+  test('a mercator scene with the whole-world preset shows the whole world; projectionSwitch keeps choices scene-local', () => {
+    const s = new MapState();
+    s.applyScene({ views: ['flat'], flatProjection: 'mercator', projectionSwitch: true });
+    expect(s.flat.zoom).toBeCloseTo(s.flatMinZoom, 12);
+    expect(s.projectionSwitch).toBe(true);
+    s.chooseProjection('equal-earth');
+    expect(s.flatProjection).toBe('equal-earth');
+    expect(s.flat.zoom).toBe(1);
+    expect(s.projectionPreference).toBe('grid');
+    expect(globalThis.localStorage.getItem('geo-coords:projection')).toBeNull();
+    s.applyScene({ views: ['flat'] });
+    expect(s.projectionSwitch).toBe(false);
+    s.chooseProjection('equal-earth');
+    expect(s.projectionPreference).toBe('equal-earth');
+  });
   test('setFlatPreset applies the preset through the same clamp path as zoom/pan', () => {
     const s = new MapState();
     s.setFlatPreset('poland');
