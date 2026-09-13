@@ -1,13 +1,23 @@
 <script lang="ts">
-  import { t } from '../i18n/i18n.svelte';
+  import { announceThrottled } from '../app/announcer.svelte';
+  import { i18n, t } from '../i18n/i18n.svelte';
+  import { spokenLat, spokenLon } from '../i18n/spoken';
+  import CoordinateControls from './CoordinateControls.svelte';
   import FlatMap from './FlatMap.svelte';
   import Globe from './Globe.svelte';
   import { mapState } from './mapState.svelte';
+  import PlaceList from './PlaceList.svelte';
 
   let { showPlaces = false, label }: { showPlaces?: boolean; label?: string } = $props();
   let width = $state(1024);
   const wide = $derived(width >= 640);
   const shown = $derived(wide ? mapState.views : mapState.views.filter((v) => v === mapState.phoneView));
+
+  $effect(() => {
+    const p = mapState.point;
+    if (!p || mapState.lastChange !== 'map' || !mapState.showReadout) return;
+    announceThrottled('point', `${spokenLat(p.lat, i18n.lang, mapState.precision)}, ${spokenLon(p.lon, i18n.lang, mapState.precision)}`, 700);
+  });
 </script>
 
 <section class="stage" bind:clientWidth={width} aria-label={label ?? t('map.stage')}>
@@ -25,6 +35,8 @@
       </div>
     {/each}
   </div>
+  {#if mapState.point}<CoordinateControls />{/if}
+  {#if showPlaces && mapState.pointEditable}<PlaceList />{/if}
 </section>
 
 <style>
