@@ -1,0 +1,19 @@
+{
+  "app.title": "Współrzędne na kuli ziemskiej",
+  "app.skip": "Przejdź do treści",
+  "unit.degree#one": "{count} stopień",
+  "unit.degree#few": "{count} stopnie",
+  "unit.degree#many": "{count} stopni",
+  "unit.degree#other": "{count} stopnia",
+  "unit.minute#one": "{count} minuta",
+  "unit.minute#few": "{count} minuty",
+  "unit.minute#many": "{count} minut",
+  "unit.minute#other": "{count} minuty",
+  "dir.north": "na północ",
+  "dir.south": "na południe",
+  "dir.east": "na wschód",
+  "dir.west": "na zachód",
+  "spoken.lat": "{amount} {dir}",
+  "spoken.lon": "{amount} {dir}",
+  "spoken.zero": "{amount}"
+}

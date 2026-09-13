@@ -1,0 +1,19 @@
+{
+  "app.title": "Координати на земній кулі",
+  "app.skip": "Перейти до основного вмісту",
+  "unit.degree#one": "{count} градус",
+  "unit.degree#few": "{count} градуси",
+  "unit.degree#many": "{count} градусів",
+  "unit.degree#other": "{count} градуса",
+  "unit.minute#one": "{count} хвилина",
+  "unit.minute#few": "{count} хвилини",
+  "unit.minute#many": "{count} хвилин",
+  "unit.minute#other": "{count} хвилини",
+  "dir.north": "північної широти",
+  "dir.south": "південної широти",
+  "dir.east": "східної довготи",
+  "dir.west": "західної довготи",
+  "spoken.lat": "{amount} {dir}",
+  "spoken.lon": "{amount} {dir}",
+  "spoken.zero": "{amount}"
+}

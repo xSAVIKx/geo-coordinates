@@ -1,0 +1,15 @@
+{
+  "app.title": "Coordinates on the globe",
+  "app.skip": "Skip to main content",
+  "unit.degree#one": "{count} degree",
+  "unit.degree#other": "{count} degrees",
+  "unit.minute#one": "{count} minute",
+  "unit.minute#other": "{count} minutes",
+  "dir.north": "north",
+  "dir.south": "south",
+  "dir.east": "east",
+  "dir.west": "west",
+  "spoken.lat": "{amount} {dir}",
+  "spoken.lon": "{amount} {dir}",
+  "spoken.zero": "{amount}"
+}
