@@ -65,7 +65,7 @@ and 6 are treated as core and built first.
 
 Each topic has two tabs.
 
-**Explore** — a guided walkthrough of 4–8 short steps. Each step has one idea in a sentence or two,
+**Explore** — a guided walkthrough of 4–9 short steps. Each step has one idea in a sentence or two,
 plus a map scene configured for it (view, visible layers, point position, allowed interactions,
 and optional highlight). The last step is free play. Steps advance with buttons or ← → keys.
 
