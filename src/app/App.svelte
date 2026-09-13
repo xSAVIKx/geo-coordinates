@@ -21,6 +21,10 @@
   let main: HTMLElement;
   const route = $derived(router.route);
   const focusKey = $derived(`${route.name}:${'topic' in route ? route.topic : ''}`);
+  // previousKey starts null so the very first run (whatever route that is, including a deep
+  // link) never focuses the h1 — router.route is initialised synchronously at module load
+  // (see router.svelte.ts) with the real route, so this first run already sees the correct
+  // value and there is no later "correction" from onMount that could be mistaken for a change.
   let previousKey: string | null = null;
   $effect(() => {
     const key = focusKey;

@@ -50,3 +50,10 @@ test('no horizontal scroll at 320px', async ({ page }) => {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(0);
 });
+
+test('h1 focus follows route changes, not first paint', async ({ page }) => {
+  await openPage(page, 'en/lab');
+  await expect(page.locator('h1')).not.toBeFocused();
+  await page.evaluate(() => { location.hash = '#en/'; });
+  await expect(page.locator('h1')).toBeFocused();
+});

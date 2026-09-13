@@ -40,8 +40,8 @@
   .brand { display: inline-flex; gap: var(--space-2); align-items: center; color: var(--text); text-decoration: none; font-weight: 700; font-size: 1.15rem; min-height: var(--tap); }
   .actions { display: flex; gap: var(--space-2); align-items: center; }
   .langs { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-  .langs button { border: 0; background: transparent; padding: 0 var(--space-3); font-weight: 600; }
-  .langs button[aria-pressed='true'] { background: var(--accent); color: var(--accent-contrast); }
+  .langs button { border: 0; background: transparent; padding: 0 var(--space-3); font-weight: 500; }
+  .langs button[aria-pressed='true'] { background: var(--accent); color: var(--accent-contrast); font-weight: 800; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 2px; }
   .icon-btn { display: inline-flex; gap: var(--space-2); align-items: center; background: transparent; border: 1px solid var(--border); border-radius: var(--radius); padding: 0 var(--space-3); }
   @media (max-width: 599px) { .icon-btn .label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } .brand span { font-size: 1rem; } }
 </style>
