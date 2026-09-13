@@ -13,7 +13,7 @@
   const uiScale = $derived(settings.largeText ? 1.25 : 1);
   const ctx = $derived(makeFlatCtx(W, H, mapState.flat.center, mapState.flat.zoom, (W / Math.max(1, clientWidth)) * uiScale));
 
-  type Drag = { mode: 'point' | 'pan' | 'maybe-click'; startX: number; startY: number; lastX: number; lastY: number };
+  type Drag = { mode: 'point' | 'pan' | 'maybe-click' | 'idle'; startX: number; startY: number; lastX: number; lastY: number };
   let drag: Drag | null = null;
   let pinch = new Map<number, { x: number; y: number }>();
   let pinchDist = 0;
@@ -67,6 +67,13 @@
   function onpointerup(e: PointerEvent) {
     pinch.delete(e.pointerId);
     if (pinch.size < 2) pinchDist = 0;
+    if (pinch.size === 1) {
+      // One finger remains after a pinch: hand off to a pan (or stay inert at zoom 1) from where it
+      // currently is, rather than leaving it dead or letting it fire a click-to-place on release.
+      const pos = [...pinch.values()][0]!;
+      drag = { mode: mapState.flat.zoom > 1 ? 'pan' : 'idle', startX: pos.x, startY: pos.y, lastX: pos.x, lastY: pos.y };
+      return;
+    }
     if (drag?.mode === 'maybe-click' && mapState.pointEditable) {
       const ll = ctx.invert(toView(e.clientX, e.clientY));
       if (ll) mapState.userSetPoint(ll, 'map');
@@ -78,15 +85,26 @@
 
   function onkeydown(e: KeyboardEvent) {
     const big = e.shiftKey;
-    const s = mapState.stepSize(big);
-    const arrows: Record<string, [number, number]> = { ArrowUp: [s, 0], ArrowDown: [-s, 0], ArrowLeft: [0, -s], ArrowRight: [0, s] };
-    const delta = arrows[e.key];
-    if (delta) {
-      if (mapState.pointEditable) mapState.nudge(delta[0], delta[1], 'map');
-      else if (mapState.flat.zoom > 1) mapState.panFlat(delta[0] * 2, delta[1] * 2);
-      else return;
-      e.preventDefault();
-    } else if (e.key === '+' || e.key === '=') { mapState.zoomFlat(1.5); e.preventDefault(); }
+    const dirs: Record<string, [number, number]> = { ArrowUp: [1, 0], ArrowDown: [-1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] };
+    const dir = dirs[e.key];
+    if (dir) {
+      if (mapState.pointEditable) {
+        const s = mapState.stepSize(big);
+        mapState.nudge(dir[0] * s, dir[1] * s, 'map');
+        e.preventDefault();
+      } else if (mapState.flat.zoom > 1) {
+        // Panning has no notion of coordinate precision, so the step is a fraction of the
+        // currently visible span (independent of `stepSize`, which is degree/minute-based
+        // and would be ~0.03° under 'minute' precision — effectively no movement at all).
+        const mult = big ? 3 : 1;
+        const latStep = (180 / mapState.flat.zoom) * 0.1 * mult;
+        const lonStep = (360 / mapState.flat.zoom) * 0.1 * mult;
+        mapState.panFlat(dir[0] * latStep, dir[1] * lonStep);
+        e.preventDefault();
+      }
+      return;
+    }
+    if (e.key === '+' || e.key === '=') { mapState.zoomFlat(1.5); e.preventDefault(); }
     else if (e.key === '-' || e.key === '_') { mapState.zoomFlat(1 / 1.5); e.preventDefault(); }
     else if (e.key === '0') { mapState.setFlatPreset('world'); e.preventDefault(); }
   }

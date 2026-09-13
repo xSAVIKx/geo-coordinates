@@ -42,11 +42,11 @@
 
 <style>
   .line { fill: none; vector-effect: non-scaling-stroke; }
-  .equator { stroke: var(--equator); stroke-width: 3; }
-  .prime { stroke: var(--prime); stroke-width: 3; stroke-dasharray: 12 5; }
-  .antimeridian { stroke: var(--antimeridian); stroke-width: 3; stroke-dasharray: 3 5 12 5; }
-  .tropic { stroke: var(--tropics); stroke-width: 2; stroke-dasharray: 2 4; }
-  .polar { stroke: var(--tropics); stroke-width: 2; stroke-dasharray: 8 4 2 4; }
+  path.equator { stroke: var(--equator); stroke-width: 3; }
+  path.prime { stroke: var(--prime); stroke-width: 3; stroke-dasharray: 12 5; }
+  path.antimeridian { stroke: var(--antimeridian); stroke-width: 3; stroke-dasharray: 3 5 12 5; }
+  path.tropic { stroke: var(--tropics); stroke-width: 2; stroke-dasharray: 2 4; }
+  path.polar { stroke: var(--tropics); stroke-width: 2; stroke-dasharray: 8 4 2 4; }
   text.equator { fill: var(--equator); } text.prime { fill: var(--prime); } text.antimeridian { fill: var(--antimeridian); }
   text.tropic, text.polar { fill: var(--tropics); }
 </style>
