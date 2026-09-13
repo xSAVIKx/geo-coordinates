@@ -51,12 +51,25 @@
     <p class="progress eyebrow">{t('explore.progress', { n: index + 1, total })}</p>
     <h2 id="step-title" tabindex="-1" bind:this={heading}>{t(`topic.${topic.id}.step.${current.id}.title`)}</h2>
     {#key index}<p class="body">{t(`topic.${topic.id}.step.${current.id}.body`)}</p>{/key}
+    {#if current.illustration === 'map-pin'}
+      <!-- Decorative (the step text says it all): a generic map pin with a decimal coordinate pair under it — no app's look. -->
+      <svg class="illustration" viewBox="0 0 240 132" aria-hidden="true">
+        <rect x="1" y="1" width="238" height="130" rx="14" class="ill-map" />
+        <path d="M1 44h238M1 88h238M60 1v130M120 1v130M180 1v130" class="ill-grid" />
+        <path d="M120 70c-17-18-25-30-25-41a25 25 0 0 1 50 0c0 11-8 23-25 41z" class="ill-pin" />
+        <circle cx="120" cy="29" r="9" class="ill-dot" />
+        <rect x="46" y="84" width="148" height="34" rx="17" class="ill-chip" />
+        <text x="120" y="106.5" text-anchor="middle" class="ill-text">50.2649, 19.0238</text>
+      </svg>
+    {/if}
     <div class="nav">
       <button type="button" class="btn" onclick={() => go(index - 1)} disabled={index === 0}>← {t('explore.prev')}</button>
       {#if index < total - 1}
         <button type="button" class="btn primary" onclick={() => go(index + 1)}>{t('explore.next')} →</button>
-      {:else}
+      {:else if topic.questionTypes.length > 0}
         <a class="btn primary" href={formatRoute({ name: 'practice', lang: i18n.lang, topic: topic.id })}>{t('explore.practiceNow')} →</a>
+      {:else}
+        <a class="btn primary" href={formatRoute({ name: 'home', lang: i18n.lang })}>{t('explore.backHome')}</a>
       {/if}
     </div>
     <ol class="dots">
@@ -80,6 +93,13 @@
   h2:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; border-radius: 4px; }
   .body { margin: 0 0 var(--space-5); font-size: var(--step-1); line-height: 1.55; max-width: var(--measure); animation: rise 260ms var(--ease) both; }
   @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .illustration { display: block; width: min(100%, 15rem); height: auto; margin: 0 0 var(--space-5); }
+  .ill-map { fill: var(--ocean); stroke: var(--border); stroke-width: 2; }
+  .ill-grid { fill: none; stroke: var(--grid); stroke-width: 1.5; opacity: 0.6; }
+  .ill-pin { fill: var(--warm); stroke: var(--halo); stroke-width: 3; }
+  .ill-dot { fill: var(--surface); }
+  .ill-chip { fill: var(--surface); stroke: var(--border-strong); stroke-width: 1.5; }
+  .ill-text { fill: var(--text); font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
   .nav { display: flex; gap: var(--space-2); flex-wrap: wrap; justify-content: space-between; }
   .nav .primary { margin-left: auto; }
   .dots { list-style: none; display: flex; flex-wrap: wrap; gap: var(--space-1); padding: var(--space-4) 0 0; margin: var(--space-4) 0 0; border-top: 1px solid var(--border); }

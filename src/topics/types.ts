@@ -6,6 +6,8 @@ export interface ExploreStep {
   id: string;
   scene: SceneSpec;
   showPlaces?: boolean;
+  /** A small decorative drawing beside the step text (the text says everything it shows). */
+  illustration?: 'map-pin';
 }
 
 export interface TopicDef {

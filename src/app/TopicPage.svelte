@@ -6,11 +6,17 @@
   import Explore from './Explore.svelte';
   import Practice from '../quiz/Practice.svelte';
   import { formatRoute } from './router';
+  import { navigate } from './router.svelte';
 
   let { topic, tab, step }: { topic: TopicId; tab: 'explore' | 'practice'; step: number } = $props();
   const def = $derived(getTopic(topic));
   const prev = $derived(TOPIC_IDS[TOPIC_IDS.indexOf(topic) - 1]);
   const next = $derived(TOPIC_IDS[TOPIC_IDS.indexOf(topic) + 1]);
+  // A topic without question types (topic 9) is Explore only: no Practise tab, and its practice address opens Explore.
+  const hasPractice = $derived((def?.questionTypes.length ?? 0) > 0);
+  $effect(() => {
+    if (def && tab === 'practice' && !hasPractice) navigate({ name: 'explore', lang: i18n.lang, topic, step: 0 }, { replace: true });
+  });
 </script>
 
 <div class="head">
@@ -20,16 +26,18 @@
       <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 5.5c2.7-1 5.3-1 8 .8 2.7-1.8 5.3-1.8 8-.8v13c-2.7-1-5.3-1-8 .8-2.7-1.8-5.3-1.8-8-.8zM12 6.3v13" /></svg>
       {t('topic.explore')}
     </a>
-    <a href={formatRoute({ name: 'practice', lang: i18n.lang, topic })} aria-current={tab === 'practice' ? 'page' : undefined}>
-      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="4.5" /><circle cx="12" cy="12" r="0.8" /></svg>
-      {t('topic.practice')}
-    </a>
+    {#if hasPractice}
+      <a href={formatRoute({ name: 'practice', lang: i18n.lang, topic })} aria-current={tab === 'practice' ? 'page' : undefined}>
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="4.5" /><circle cx="12" cy="12" r="0.8" /></svg>
+        {t('topic.practice')}
+      </a>
+    {/if}
   </nav>
 </div>
 
 {#if !def}
   <p>{t('topic.soon')}</p>
-{:else if tab === 'explore'}
+{:else if tab === 'explore' || !hasPractice}
   <Explore topic={def} {step} />
 {:else}
   <Practice topic={def} />

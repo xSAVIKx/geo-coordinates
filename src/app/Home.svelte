@@ -2,6 +2,7 @@
   import { i18n, t } from '../i18n/i18n.svelte';
   import { TOPIC_IDS } from './ids';
   import { formatRoute } from './router';
+  import { getTopic } from '../topics';
 
   const modes = [
     { key: 'rehearsal', route: 'rehearsal' },
@@ -37,7 +38,9 @@
       <div class="card-body">
         <h3><a href={formatRoute({ name: 'explore', lang: i18n.lang, topic: id, step: 0 })}>{t(`topic.${id}.title`)}</a></h3>
         <p>{t(`topic.${id}.summary`)}</p>
-        <a class="btn practise" href={formatRoute({ name: 'practice', lang: i18n.lang, topic: id })}>{t('home.practice')}<span class="visually-hidden">: {t(`topic.${id}.title`)}</span></a>
+        {#if (getTopic(id)?.questionTypes.length ?? 0) > 0}
+          <a class="btn practise" href={formatRoute({ name: 'practice', lang: i18n.lang, topic: id })}>{t('home.practice')}<span class="visually-hidden">: {t(`topic.${id}.title`)}</span></a>
+        {/if}
       </div>
     </li>
   {/each}

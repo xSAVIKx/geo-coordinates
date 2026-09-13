@@ -6,7 +6,7 @@ for (const lang of ['en', 'pl', 'uk'] as const) {
     await openPage(page, `${lang}/`);
     await expect(page.locator('html')).toHaveAttribute('lang', lang);
     await expect(page.locator('h1')).toBeVisible();
-    await expect(page.locator('ol.cards > li')).toHaveCount(8);
+    await expect(page.locator('ol.cards > li')).toHaveCount(9);
     await expectNoAxeViolations(page, lang);
     expect(pageErrors(page)).toEqual([]);
   });

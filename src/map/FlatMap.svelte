@@ -183,5 +183,6 @@
   .toolbar .btn.icon { padding: 0; }
   .toolbar svg { fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
   .projection-group { margin-left: auto; }
-  @media (max-width: 599px) { .projection-group { margin-left: 0; } }
+  /* Three map types wrap on a phone: rows of evenly stretched buttons rather than a ragged group. */
+  @media (max-width: 599px) { .projection-group { margin-left: 0; display: flex; width: 100%; } .projection-group .btn { flex: 1 1 auto; } }
 </style>
