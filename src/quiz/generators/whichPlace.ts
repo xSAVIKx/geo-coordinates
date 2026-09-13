@@ -43,7 +43,7 @@ export const whichPlace: QuestionModule = {
   topics: [4],
   generate(rng, difficulty): Question {
     for (;;) {
-      const place = rng.pick(PLACES.filter((x) => x.kind === 'city' && !EXCLUDED_ANSWER_IDS.has(x.id)));
+      const place = rng.pick(PLACES.filter((x) => x.kind === 'city' && x.tier !== 'local' && !EXCLUDED_ANSWER_IDS.has(x.id)));
       const p: LatLon = { lat: Math.round(place.lat), lon: Math.round(place.lon) };
       if (Math.abs(p.lat) < 5 || Math.abs(p.lon) < 5 || Math.abs(p.lon) > 175) continue; // mirrors would be ambiguous
       const others = distractors(rng, difficulty, p);

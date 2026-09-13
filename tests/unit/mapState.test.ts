@@ -73,6 +73,16 @@ describe('MapState', () => {
     expect(s.phoneView).toBe('flat');
     expect(s.rotate).toEqual([-20, -10]);
   });
+  test('applyScene bumps sceneVersion (layers reset per-scene memory such as label hysteresis)', () => {
+    const s = new MapState();
+    const v0 = s.sceneVersion;
+    s.applyScene({ views: ['flat'] });
+    s.applyScene({ views: ['flat'] });
+    expect(s.sceneVersion).toBe(v0 + 2);
+    s.zoomFlat(2);
+    s.setPoint({ lat: 1, lon: 2 });
+    expect(s.sceneVersion).toBe(v0 + 2);
+  });
   test('flatView overrides preset and is clamped', () => {
     const s = new MapState();
     s.applyScene({ views: ['flat'], flatPreset: 'europe', flatView: { center: { lat: 89, lon: 21 }, zoom: 6 } });

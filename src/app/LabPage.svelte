@@ -4,9 +4,10 @@
   import LabControls from '../map/LabControls.svelte';
   import MapStage from '../map/MapStage.svelte';
   import { mapState } from '../map/mapState.svelte';
+  import { HOME } from '../map/places';
 
   onMount(() => {
-    mapState.applyScene({ views: ['globe', 'flat'], point: { lat: 52, lon: 21 }, pointEditable: true, layers: { specialLines: true, tropics: true, daylight: true }, sun: { utcMinutes: 720, dayOfYear: 80 }, overlays: [{ kind: 'noon-meridian' }], labControls: ['sun-time', 'sun-date', 'now', 'clocks'] });
+    mapState.applyScene({ views: ['globe', 'flat'], point: HOME, pointEditable: true, layers: { specialLines: true, tropics: true, daylight: true }, sun: { utcMinutes: 720, dayOfYear: 80 }, overlays: [{ kind: 'noon-meridian' }], labControls: ['sun-time', 'sun-date', 'now', 'clocks'] });
     mapState.setSunNow();
   });
 

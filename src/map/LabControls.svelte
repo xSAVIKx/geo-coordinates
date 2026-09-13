@@ -9,8 +9,8 @@
   import Slider from './Slider.svelte';
 
   // Rows below are re-sorted by longitude (west to east) before rendering, so this list's order
-  // doesn't matter for display. Warsaw stands in for Katowice until Task 21 adds it.
-  const CLOCK_PLACES = ['newyork', 'london', 'warsaw', 'kyiv', 'delhi', 'tokyo'];
+  // doesn't matter for display. Katowice is the lesson's home city.
+  const CLOCK_PLACES = ['newyork', 'london', 'katowice', 'kyiv', 'delhi', 'tokyo'];
   /** Simulated minutes per real millisecond while the Earth spins: a whole day in 12 seconds. */
   const SPIN_SPEED = 1440 / 12_000;
   const GREENWICH_LAT = 51.48;
@@ -76,7 +76,7 @@
   const clocks = $derived.by(() => {
     const sun = mapState.sun;
     if (!sun || !sunPoint || !has('clocks')) return [];
-    // Whole-degree meridians, as in the lesson's sums: London 0°, Warsaw 21°E, Kyiv 31°E.
+    // Whole-degree meridians, as in the lesson's sums: London 0°, Katowice 19°E, Kyiv 31°E.
     const rows = CLOCK_PLACES.map((id) => {
       const p = placeById(id);
       return { id, name: t(`place.${id}`), lat: p.lat, lon: Math.round(p.lon) + 0 };

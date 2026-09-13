@@ -2,6 +2,7 @@ import { expect, test } from 'vitest';
 import en from '../../src/i18n/en.json';
 import pl from '../../src/i18n/pl.json';
 import uk from '../../src/i18n/uk.json';
+import { HOME } from '../../src/map/places';
 import { TOPICS } from '../../src/topics';
 
 test('every step has title and body in every language and a valid scene', () => {
@@ -18,5 +19,14 @@ test('every step has title and body in every language and a valid scene', () => 
       if (step.scene.point) { expect(Math.abs(step.scene.point.lat)).toBeLessThanOrEqual(90); }
     }
     expect(topic!.steps.at(-1)!.id).toBe('play');
+  }
+});
+
+test('free-play steps start at Katowice unless their text is about Warsaw', () => {
+  for (const topic of Object.values(TOPICS)) {
+    const play = topic!.steps.find((s) => s.id === 'play')!;
+    const body = (en as Record<string, string>)[`topic.${topic!.id}.step.play.body`]!;
+    if (/Warsaw/.test(body)) continue;
+    expect(play.scene.point, `topic ${topic!.id}`).toEqual(HOME);
   }
 });

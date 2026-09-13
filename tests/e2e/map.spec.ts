@@ -45,7 +45,7 @@ test('turning the globe past the point hides it, "Show the point" brings it back
   const handle = globe.locator('[data-point-handle]');
   await expect(handle).toHaveCount(1);
   const turnSouth = page.getByRole('button', { name: 'Tilt globe to show the south' });
-  // The point (Warsaw, 52°N) starts centred; 8 south tilts (15° each) swing the visible
+  // The point (Katowice, 50°N) starts centred; 8 south tilts (15° each) swing the visible
   // centre to well past the opposite hemisphere, taking the point below the horizon.
   // This also guards against the recentre effect firing on rotation: if it did, the point
   // would be snapped back into view after every click and this would never reach 0.

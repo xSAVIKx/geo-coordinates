@@ -4,15 +4,15 @@ import { expectNoAxeViolations, openPage } from './helpers';
 test('latitude slider is keyboard operable and speaks values', async ({ page }) => {
   await openPage(page, 'en/lab');
   const lat = page.getByRole('slider', { name: 'Latitude' });
-  await expect(lat).toHaveAttribute('aria-valuetext', '52 degrees north');
+  await expect(lat).toHaveAttribute('aria-valuetext', '50 degrees north');
   await lat.focus();
   await page.keyboard.press('ArrowUp');
-  await expect(lat).toHaveAttribute('aria-valuetext', '53 degrees north');
-  await expect(page.locator('output')).toHaveText('53°N, 21°E');
+  await expect(lat).toHaveAttribute('aria-valuetext', '51 degrees north');
+  await expect(page.locator('output')).toHaveText('51°N, 19°E');
   await page.keyboard.press('Shift+ArrowDown');
-  await expect(page.locator('output')).toHaveText('43°N, 21°E');
+  await expect(page.locator('output')).toHaveText('41°N, 19°E');
   await page.keyboard.press('End');
-  await expect(page.locator('output')).toHaveText('90°N, 21°E');
+  await expect(page.locator('output')).toHaveText('90°N, 19°E');
 });
 
 test('longitude wraps across 180° with the plus button', async ({ page }) => {
@@ -20,9 +20,9 @@ test('longitude wraps across 180° with the plus button', async ({ page }) => {
   const lon = page.getByRole('slider', { name: 'Географічна довгота' });
   await lon.focus();
   await page.keyboard.press('End');
-  await expect(page.locator('output')).toHaveText('52° пн. ш., 180°');
+  await expect(page.locator('output')).toHaveText('50° пн. ш., 180°');
   await page.getByRole('button', { name: 'Збільшити: Географічна довгота' }).click();
-  await expect(page.locator('output')).toHaveText('52° пн. ш., 179° зх. д.');
+  await expect(page.locator('output')).toHaveText('50° пн. ш., 179° зх. д.');
 });
 
 test('place list moves the point', async ({ page }) => {
@@ -53,7 +53,7 @@ test('keyboard slider changes rely on aria-valuetext, not the live region', asyn
   const lat = page.getByRole('slider', { name: 'Latitude' });
   await lat.focus();
   await page.keyboard.press('ArrowUp');
-  await expect(lat).toHaveAttribute('aria-valuetext', '53 degrees north');
+  await expect(lat).toHaveAttribute('aria-valuetext', '51 degrees north');
   await page.waitForTimeout(1000);
   await expect(live).toHaveText('');
 });

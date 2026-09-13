@@ -46,6 +46,8 @@ export class MapState {
   lastChange = $state<ChangeSource>('program');
   projectionPreference = $state<FlatProjection>(initialProjectionPreference());
   projectionOverride = $state<FlatProjection | null>(null);
+  /** Bumped by every `applyScene`, so layers can drop per-scene memory (e.g. label hysteresis). */
+  sceneVersion = $state(0);
 
   get flatProjection(): FlatProjection {
     return this.projectionOverride ?? this.projectionPreference;
@@ -68,6 +70,7 @@ export class MapState {
   }
 
   private replaceScene(scene: SceneSpec): void {
+    this.sceneVersion += 1;
     this.views = [...scene.views];
     this.layers = { ...DEFAULT_LAYERS, ...scene.layers };
     this.projectionOverride = scene.flatProjection ?? null;

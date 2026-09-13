@@ -81,3 +81,27 @@ export function selectStableLabels<T>(
   };
   return selectVisibleLabels(items, box, rank, obstacles);
 }
+
+/**
+ * Remembers which label ids were visible last time, for `selectStableLabels`' `wasVisible` bonus —
+ * but only within one scene: `previous(sceneKey)` starts from an empty set whenever `sceneKey`
+ * differs from the last call's (MapState.applyScene bumps `sceneVersion`), so a label that happened
+ * to show in one question or step gets no priority in an unrelated later one on the same map.
+ * Plain (non-reactive) state, so remembering never re-triggers the derived that reads it.
+ */
+export function createLabelMemory(): { previous(sceneKey: number): ReadonlySet<string>; remember(ids: ReadonlySet<string>): void } {
+  let scene: number | undefined;
+  let visible: ReadonlySet<string> = new Set();
+  return {
+    previous(sceneKey) {
+      if (sceneKey !== scene) {
+        scene = sceneKey;
+        visible = new Set();
+      }
+      return visible;
+    },
+    remember(ids) {
+      visible = ids;
+    },
+  };
+}

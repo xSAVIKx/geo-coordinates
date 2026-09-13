@@ -1,7 +1,23 @@
-export interface Place { id: string; lat: number; lon: number; kind: 'city' | 'pole'; featured: boolean }
+import type { LatLon } from '../geo/types';
+
+/**
+ * `tier` decides from which zoom a place is drawn at all (see `tierVisible`): `world` places show on
+ * the whole-world map, `region` places from zoom 3 (Europe), `local` places from zoom 8 (Poland).
+ */
+export type PlaceTier = 'world' | 'region' | 'local';
+export interface Place { id: string; lat: number; lon: number; kind: 'city' | 'pole'; featured: boolean; tier: PlaceTier }
 export interface MapLabel { id: string; lat: number; lon: number; kind: 'continent' | 'ocean' }
 
-const p = (id: string, lat: number, lon: number, featured = false, kind: Place['kind'] = 'city'): Place => ({ id, lat, lon, kind, featured });
+const p = (id: string, lat: number, lon: number, featured = false, kind: Place['kind'] = 'city', tier: PlaceTier = 'world'): Place => ({ id, lat, lon, kind, featured, tier });
+const region = (id: string, lat: number, lon: number): Place => p(id, lat, lon, false, 'city', 'region');
+const local = (id: string, lat: number, lon: number): Place => p(id, lat, lon, false, 'city', 'local');
+
+export const TIER_MIN_ZOOM: Record<PlaceTier, number> = { world: 0, region: 3, local: 8 };
+
+/** Whether a place of `tier` is drawn at flat-map zoom `zoom` (the globe passes its flat-equivalent zoom). */
+export function tierVisible(tier: PlaceTier, zoom: number): boolean {
+  return zoom >= TIER_MIN_ZOOM[tier];
+}
 
 export const PLACES: readonly Place[] = [
   p('warsaw', 52.23, 21.01, true), p('krakow', 50.06, 19.94), p('gdansk', 54.35, 18.65), p('wroclaw', 51.11, 17.03), p('poznan', 52.41, 16.93),
@@ -13,8 +29,15 @@ export const PLACES: readonly Place[] = [
   p('rio', -22.91, -43.17, true), p('buenosaires', -34.6, -58.38, true), p('lima', -12.05, -77.04), p('quito', -0.18, -78.47),
   p('tokyo', 35.68, 139.69, true), p('beijing', 39.9, 116.4), p('delhi', 28.61, 77.21, true), p('singapore', 1.35, 103.82), p('jakarta', -6.21, 106.85), p('dubai', 25.2, 55.27),
   p('sydney', -33.87, 151.21, true), p('auckland', -36.85, 174.76), p('suva', -18.14, 178.44),
+  p('mumbai', 19.08, 72.88), p('bengaluru', 12.97, 77.59), p('washington', 38.9, -77.04), p('chicago', 41.88, -87.63),
+  p('katowice', 50.26, 19.02, true, 'city', 'region'), region('lodz', 51.76, 19.46), region('szczecin', 53.43, 14.55), region('lublin', 51.25, 22.57), region('bialystok', 53.13, 23.16),
+  region('prague', 50.08, 14.44), region('bratislava', 48.15, 17.11), region('vienna', 48.21, 16.37), region('budapest', 47.5, 19.04), region('vilnius', 54.69, 25.28), region('riga', 56.95, 24.11),
+  local('rzeszow', 50.04, 22), local('bydgoszcz', 53.12, 18.01), local('olsztyn', 53.78, 20.48), local('zakopane', 49.3, 19.95),
   p('northpole', 90, 0, false, 'pole'), p('southpole', -90, 0, false, 'pole'),
 ];
+
+/** Katowice — the lesson's home city: the free-play steps and the lab start here. */
+export const HOME: LatLon = { lat: 50.26, lon: 19.02 };
 
 export function placeById(id: string): Place {
   const place = PLACES.find((x) => x.id === id);

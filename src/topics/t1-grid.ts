@@ -1,4 +1,5 @@
 import type { TopicDef } from './types';
+import { HOME } from '../map/places';
 
 export const topic1: TopicDef = {
   id: 1,
@@ -12,6 +13,6 @@ export const topic1: TopicDef = {
     { id: 'prime', scene: { views: ['globe', 'flat'], point: null, rotate: [0, -20], layers: { specialLines: true, hemispheres: 'ew', places: false } } },
     { id: 'projections', scene: { views: ['flat'], point: null, flatProjection: 'equal-earth', layers: { specialLines: true, hemispheres: 'none', places: true } } },
     { id: 'tropics', scene: { views: ['flat', 'cross-section'], point: { lat: 23, lon: 0 }, layers: { specialLines: true, tropics: true, places: false, pointGuides: false } } },
-    { id: 'play', scene: { views: ['globe', 'flat'], point: { lat: 52, lon: 21 }, pointEditable: true, layers: { specialLines: true, tropics: true } } },
+    { id: 'play', scene: { views: ['globe', 'flat'], point: HOME, pointEditable: true, layers: { specialLines: true, tropics: true } } },
   ],
 };

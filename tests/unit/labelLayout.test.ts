@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { overlaps, rotateBoxAround, selectStableLabels, selectVisibleLabels, textBox } from '../../src/map/labelLayout';
+import { createLabelMemory, overlaps, rotateBoxAround, selectStableLabels, selectVisibleLabels, textBox } from '../../src/map/labelLayout';
 
 test('overlaps', () => {
   expect(overlaps({ left: 0, right: 10, top: 0, bottom: 10 }, { left: 5, right: 15, top: 5, bottom: 15 })).toBe(true);
@@ -96,4 +96,22 @@ test('selectStableLabels: a newly-relevant featured label still wins over a prev
   const wasVisible = (i: (typeof items)[number]) => i.id === 'a';
   const result = selectStableLabels(items, (i) => boxAt(i.x), (i) => i.featured, () => 0, wasVisible);
   expect(result).toEqual([false, true]); // b (featured) beats a's hysteresis bonus
+});
+
+test('createLabelMemory: the hysteresis bonus survives view changes but not a new scene', () => {
+  const boxAt = (x: number) => textBox(x, 0, 20, 10);
+  const items = [{ id: 'a', x: 0 }, { id: 'b', x: 10 }] as const;
+  const memory = createLabelMemory();
+  const run = (scene: number, d: Record<'a' | 'b', number>) => {
+    const previous = memory.previous(scene);
+    const result = selectStableLabels(items, (i) => boxAt(i.x), () => false, (i) => d[i.id], (i) => previous.has(i.id));
+    const shown = new Set(items.filter((_, idx) => result[idx]).map((i) => i.id));
+    memory.remember(shown);
+    return [...shown];
+  };
+  expect(run(1, { a: 1, b: 50 })).toEqual(['a']);
+  // Same scene, 'b' now clearly closer: 'a' keeps its label thanks to the bonus.
+  expect(run(1, { a: 50, b: 1 })).toEqual(['a']);
+  // A new scene (applyScene bumped sceneVersion): no bonus carried over, the closer 'b' wins.
+  expect(run(2, { a: 50, b: 1 })).toEqual(['b']);
 });

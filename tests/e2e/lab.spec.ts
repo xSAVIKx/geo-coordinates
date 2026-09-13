@@ -7,17 +7,17 @@ test('lab: time slider moves night and updates clocks', async ({ page }) => {
   await time.focus();
   await page.keyboard.press('Home');
   await expect(time).toHaveAttribute('aria-valuetext', '00:00 UTC');
-  const warsaw = page.getByRole('row', { name: /Warsaw/ });
-  await expect(warsaw).toContainText('01:24');
-  await expect(warsaw).toContainText('night');
+  const katowice = page.getByRole('row', { name: /Katowice/ });
+  await expect(katowice).toContainText('01:16');
+  await expect(katowice).toContainText('night');
   const noonAt = async () => page.locator('.view-flat path.noon').getAttribute('d');
   const before = await noonAt();
   await page.keyboard.press('PageUp'); // +60 min
-  await expect(warsaw).toContainText('02:24');
+  await expect(katowice).toContainText('02:16');
   // The noon line moved 15° west.
   await expect.poll(noonAt).not.toBe(before);
   // The clocks run west to east.
-  await expect(page.locator('.clocks tbody th .name')).toHaveText(['New York', 'London', 'Warsaw', 'The point (21°E)', 'Kyiv', 'Delhi', 'Tokyo']);
+  await expect(page.locator('.clocks tbody th .name')).toHaveText(['New York', 'London', 'Katowice', 'The point (19°E)', 'Kyiv', 'Delhi', 'Tokyo']);
   await expectNoAxeViolations(page, 'lab');
   expect(pageErrors(page)).toEqual([]);
 });

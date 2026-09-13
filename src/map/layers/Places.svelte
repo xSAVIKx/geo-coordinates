@@ -2,26 +2,26 @@
   import { i18n, t } from '../../i18n/i18n.svelte';
   import { labelWidth } from '../brackets';
   import type { ViewCtx } from '../geometry';
-  import { rotateBoxAround, selectStableLabels, textBox, type LabelBox } from '../labelLayout';
+  import { createLabelMemory, rotateBoxAround, selectStableLabels, textBox, type LabelBox } from '../labelLayout';
   import { lineLabelPoint, lineLabelSpecs } from '../lineLabels';
   import { mapState } from '../mapState.svelte';
-  import { MAP_LABELS, PLACES, type Place } from '../places';
+  import { MAP_LABELS, PLACES, tierVisible, type Place } from '../places';
   let { ctx }: { ctx: ViewCtx } = $props();
 
-  // Which place labels were visible the *previous* time this ran — read (for the hysteresis bonus
-  // in `candidates`' rank) and written (from `visibleIds`) below. A plain, non-reactive variable:
-  // Svelte doesn't track reads/writes of it, so updating it as a side effect of computing
-  // `visibleIds` cannot itself re-trigger that (or any other) derived — it's simply the value
-  // `candidates` will see the *next* time something else invalidates it.
-  let previousVisible = new Set<string>();
+  // Which place labels were visible the *previous* time this ran, for the hysteresis bonus in
+  // `visibleIds` — per scene: a new scene (MapState.sceneVersion) starts without any bonus. Plain,
+  // non-reactive memory, so remembering the result cannot itself re-trigger the derived.
+  const labelMemory = createLabelMemory();
 
-  const showAllNames = $derived(ctx.kind === 'flat' && mapState.flat.zoom >= 2.5);
-  const places = $derived(mapState.layers.places ? PLACES.filter((p) => p.kind === 'city') : []);
+  // `ctx.zoom` is flat-map zoom (the globe reports its flat equivalent): non-featured names from
+  // Europe-sized views, and places of the `region`/`local` tiers only once zoomed in that far.
+  const showAllNames = $derived(ctx.kind === 'flat' ? ctx.zoom >= 2.5 : ctx.zoom >= 4);
+  const places = $derived(mapState.layers.places ? PLACES.filter((p) => p.kind === 'city' && tierVisible(p.tier, ctx.zoom)) : []);
   // Label density follows how big the whole world is actually drawn, in CSS px (a small phone map
   // cannot carry the same labels as a projected one). The globe shows half the world at once.
   const worldPx = $derived(ctx.kind === 'flat' ? (ctx.width / ctx.px) * mapState.flat.zoom : (2 * ctx.width / ctx.px) * mapState.globeZoom);
   const roomy = $derived(worldPx >= 560);
-  const showContinents = $derived(roomy && !(ctx.kind === 'flat' && mapState.flat.zoom > 4));
+  const showContinents = $derived(roomy && ctx.zoom <= (ctx.kind === 'flat' ? 4 : 8));
 
   // Special-line labels (equator, tropics…) are drawn by a sibling layer, but their exact
   // position is shared via lineLabels.ts so they can act as fixed obstacles here: a place name
@@ -78,6 +78,7 @@
   // labels in and out), and distance-to-centre (bucketed, so small shifts don't reorder ties) is
   // only the final tiebreaker among places at the same tier.
   const visibleIds = $derived.by<Set<string>>(() => {
+    const previousVisible = labelMemory.previous(mapState.sceneVersion);
     const visible = selectStableLabels(
       candidates,
       (c) => c.box,
@@ -88,7 +89,7 @@
     );
     const ids = new Set<string>();
     candidates.forEach((c, i) => { if (visible[i]) ids.add(c.place.id); });
-    previousVisible = ids;
+    labelMemory.remember(ids);
     return ids;
   });
 </script>

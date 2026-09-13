@@ -9,6 +9,8 @@ export interface ViewCtx {
   projection: GeoProjection;
   path: GeoPath;
   px: number;
+  /** Map scale as a flat-map zoom factor (1 = whole world across the width); the globe reports its flat equivalent. */
+  zoom: number;
   isVisible(p: LatLon): boolean;
   project(p: LatLon): [number, number] | null;
   invert(xy: [number, number]): LatLon | null;
@@ -61,7 +63,7 @@ export function makeFlatCtx(width: number, height: number, center: LatLon, zoom:
           .precision(0.5);
   const path = geoPath(projection);
   return {
-    kind: 'flat', width, height, projection, path, px,
+    kind: 'flat', width, height, projection, path, px, zoom,
     isVisible: () => true,
     project: (p) => projection([p.lon, p.lat]) as [number, number],
     invert: (xy) => {
@@ -83,6 +85,8 @@ export function makeGlobeCtx(size: number, rotate: [number, number], px: number,
   const isVisible = (p: LatLon) => geoDistance([p.lon, p.lat], centre) < Math.PI / 2 - 1e-6;
   return {
     kind: 'globe', width: size, height: size, projection, path, px, isVisible,
+    // The whole globe disc spans 180° of longitude — about what a flat map shows at zoom 2.
+    zoom: 2 * zoom,
     project: (p) => (isVisible(p) ? (projection([p.lon, p.lat]) as [number, number]) : null),
     invert: (xy) => {
       if (xy[0] < 0 || xy[0] > size || xy[1] < 0 || xy[1] > size) return null;
