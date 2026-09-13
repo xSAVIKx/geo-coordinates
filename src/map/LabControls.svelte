@@ -8,7 +8,9 @@
   import { placeById } from './places';
   import Slider from './Slider.svelte';
 
-  const CLOCK_PLACES = ['newyork', 'london', 'warsaw', 'kyiv', 'tokyo'];
+  // Rows below are re-sorted by longitude (west to east) before rendering, so this list's order
+  // doesn't matter for display. Warsaw stands in for Katowice until Task 21 adds it.
+  const CLOCK_PLACES = ['newyork', 'london', 'warsaw', 'kyiv', 'delhi', 'tokyo'];
   /** Simulated minutes per real millisecond while the Earth spins: a whole day in 12 seconds. */
   const SPIN_SPEED = 1440 / 12_000;
   const GREENWICH_LAT = 51.48;

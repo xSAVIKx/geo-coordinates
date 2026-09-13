@@ -318,3 +318,16 @@ describe('distance tolerances', () => {
     expect(check('forward', 3222.7).correct).toBe(false);
   });
 });
+
+describe('which-place never singles out a Ukrainian city as the answer', () => {
+  test('1000 seeds × difficulty never pick kyiv, lviv, odesa or kharkiv', () => {
+    const mod = MODULES.find((m) => m.type === 'which-place')!;
+    const excluded = new Set(['kyiv', 'lviv', 'odesa', 'kharkiv']);
+    for (const d of DIFFS) {
+      for (let s = 0; s < SEEDS; s++) {
+        const q = mod.generate(createRng(`which-excl:${d}:${s}`), d, 4);
+        expect(excluded.has(q.meta?.placeId as string), `seed ${s} ${d}`).toBe(false);
+      }
+    }
+  });
+});

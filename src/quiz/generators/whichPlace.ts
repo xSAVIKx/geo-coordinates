@@ -7,6 +7,9 @@ import { LABELS, TONES, signed } from '../values';
 import type { Question, QuestionModule, Rng, Difficulty } from '../types';
 
 type Kind = 'answer' | 'ns' | 'ew' | 'both' | 'swap' | 'random';
+// A Ukrainian city must never be the single highlighted answer of a "which place is at" question
+// (owner request): Kyiv only appears in examples together with another city, never alone.
+const EXCLUDED_ANSWER_IDS = new Set(['kyiv', 'lviv', 'odesa', 'kharkiv']);
 const far = (a: LatLon, b: LatLon, d: number) => Math.abs(a.lat - b.lat) >= d || lonDifference(a.lon, b.lon) >= d;
 const MIN_SPACING = 8; // markers closer than this are hard to tell apart on the world map
 
@@ -40,7 +43,7 @@ export const whichPlace: QuestionModule = {
   topics: [4],
   generate(rng, difficulty): Question {
     for (;;) {
-      const place = rng.pick(PLACES.filter((x) => x.kind === 'city'));
+      const place = rng.pick(PLACES.filter((x) => x.kind === 'city' && !EXCLUDED_ANSWER_IDS.has(x.id)));
       const p: LatLon = { lat: Math.round(place.lat), lon: Math.round(place.lon) };
       if (Math.abs(p.lat) < 5 || Math.abs(p.lon) < 5 || Math.abs(p.lon) > 175) continue; // mirrors would be ambiguous
       const others = distractors(rng, difficulty, p);

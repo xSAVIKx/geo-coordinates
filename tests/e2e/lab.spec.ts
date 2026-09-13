@@ -17,7 +17,7 @@ test('lab: time slider moves night and updates clocks', async ({ page }) => {
   // The noon line moved 15° west.
   await expect.poll(noonAt).not.toBe(before);
   // The clocks run west to east.
-  await expect(page.locator('.clocks tbody th .name')).toHaveText(['New York', 'London', 'Warsaw', 'The point (21°E)', 'Kyiv', 'Tokyo']);
+  await expect(page.locator('.clocks tbody th .name')).toHaveText(['New York', 'London', 'Warsaw', 'The point (21°E)', 'Kyiv', 'Delhi', 'Tokyo']);
   await expectNoAxeViolations(page, 'lab');
   expect(pageErrors(page)).toEqual([]);
 });
