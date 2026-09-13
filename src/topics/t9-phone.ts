@@ -42,6 +42,7 @@ export const topic9: TopicDef = {
         overlays: [{ kind: 'marker', p: KATOWICE, tone: 'a', label: '50.2649, 19.0238' }, { kind: 'marker', p: SWAPPED, tone: 'wrong', label: '19.0238, 50.2649' }],
       },
     },
-    { id: 'play', showPlaces: true, scene: { views: ['globe', 'flat'], ...MAP_APP, flatPreset: 'europe', point: KATOWICE, pointEditable: true, precision: 'minute', readout: 'both', layers: { graticuleStep: 'auto', specialLines: true, tropics: true } } },
+    // The text asks pupils to turn on the Maple Bear schools layer: the step offers the switch (the layer starts off).
+    { id: 'play', showPlaces: true, scene: { views: ['globe', 'flat'], ...MAP_APP, flatPreset: 'europe', point: KATOWICE, pointEditable: true, precision: 'minute', readout: 'both', layers: { graticuleStep: 'auto', specialLines: true, tropics: true }, schoolsToggle: true } },
   ],
 };

@@ -6,6 +6,7 @@
   import Layers from './layers/Layers.svelte';
   import { FLAT_MAX_ZOOM, mapState } from './mapState.svelte';
   import { clusterTargetByKey } from './schools';
+  import SchoolsToggle from './SchoolsToggle.svelte';
   import type { FlatPreset, FlatProjection } from './types';
 
   const W = 960, H = 480;
@@ -191,6 +192,7 @@
         <button type="button" class="btn" onclick={() => mapState.setFlatPreset(p)}>{t(`map.preset.${p}`)}</button>
       {/each}
     </div>
+    <SchoolsToggle />
     {#if mapState.projectionOverride === null || mapState.projectionSwitch}
       <div class="projection-group seg" role="group" aria-label={t('map.projection')} aria-describedby="{uid}-projection-hint">
         {#each PROJECTIONS as proj (proj)}

@@ -10,6 +10,7 @@
   import LabControls from './LabControls.svelte';
   import { mapState } from './mapState.svelte';
   import PlaceList from './PlaceList.svelte';
+  import SchoolList from './SchoolList.svelte';
 
   // `midContent`, when given, renders right after the map view(s) and before the coordinate
   // sliders / place list — used by Practice on narrow screens so the question stays visible
@@ -51,6 +52,7 @@
   {#if mapState.point}<CoordinateControls />{/if}
   {#if showLab && mapState.labControls.length}<LabControls />{/if}
   {#if showPlaces && mapState.pointEditable}<PlaceList />{/if}
+  {#if mapState.schoolsToggle && mapState.layers.schools}<SchoolList />{/if}
 </section>
 
 <style>

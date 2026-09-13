@@ -7,7 +7,7 @@
   import { HOME } from '../map/places';
 
   onMount(() => {
-    mapState.applyScene({ views: ['globe', 'flat'], point: HOME, pointEditable: true, precision: 'auto', layers: { graticuleStep: 'auto', specialLines: true, tropics: true, daylight: true }, sun: { utcMinutes: 720, dayOfYear: 80 }, overlays: [{ kind: 'noon-meridian' }], labControls: ['sun-time', 'sun-date', 'now', 'clocks'] });
+    mapState.applyScene({ views: ['globe', 'flat'], point: HOME, pointEditable: true, precision: 'auto', layers: { graticuleStep: 'auto', specialLines: true, tropics: true, daylight: true }, sun: { utcMinutes: 720, dayOfYear: 80 }, overlays: [{ kind: 'noon-meridian' }], labControls: ['sun-time', 'sun-date', 'now', 'clocks'], schoolsToggle: true });
     mapState.setSunNow();
   });
 

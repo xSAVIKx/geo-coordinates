@@ -6,6 +6,7 @@
   import Layers from './layers/Layers.svelte';
   import { GLOBE_MAX_ZOOM, mapState } from './mapState.svelte';
   import { clusterTargetByKey } from './schools';
+  import SchoolsToggle from './SchoolsToggle.svelte';
 
   const SIZE = 500;
   const uid = `globe-${Math.random().toString(36).slice(2, 8)}`;
@@ -179,6 +180,7 @@
         {t('map.showPoint')}
       </button>
     {/if}
+    <SchoolsToggle />
   </div>
 </figure>
 
