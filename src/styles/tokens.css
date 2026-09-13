@@ -1,39 +1,98 @@
+/*
+ * Design tokens. Light palette on :root; the dark palette is repeated for the system preference
+ * and for the explicit data-theme="dark" setting (CSS has no mixins). Later modes (presenter,
+ * day/night) should override tokens here rather than restyling components.
+ */
 :root {
-  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", Ubuntu, sans-serif;
+  /* Type */
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif;
   --fs-base: 1rem;
   --fs-scale: 1;
-  --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; --space-6: 1.5rem; --space-8: 2rem;
-  --radius: 0.75rem;
+  /* Fluid type scale (≈1.2 ratio on phones, ≈1.25 on large screens). */
+  --step--1: clamp(0.84rem, 0.82rem + 0.1vw, 0.92rem);
+  --step-0: clamp(1rem, 0.97rem + 0.15vw, 1.1rem);
+  --step-1: clamp(1.13rem, 1.06rem + 0.3vw, 1.35rem);
+  --step-2: clamp(1.3rem, 1.17rem + 0.6vw, 1.75rem);
+  --step-3: clamp(1.55rem, 1.3rem + 1.2vw, 2.4rem);
+  --step-4: clamp(1.9rem, 1.45rem + 2.2vw, 3.3rem);
+  --lh-tight: 1.2;
+  --lh-body: 1.55;
+  --weight-strong: 650;
+  --weight-heavy: 780;
+  --tracking-tight: -0.015em;
+  --tracking-caps: 0.08em;
+
+  /* Spacing (4 px base) */
+  --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; --space-5: 1.25rem;
+  --space-6: 1.5rem; --space-8: 2rem; --space-10: 2.5rem; --space-12: 3rem;
+  --page-max: 1880px;
+  --measure: 62ch;
+
+  /* Radii */
+  --radius-sm: 0.5rem;   /* buttons, inputs, chips */
+  --radius: 0.75rem;     /* controls groups, list items */
+  --radius-lg: 1rem;     /* cards, panels, map frames */
+  --radius-pill: 999px;
+
+  /* Sizes */
   --tap: 44px;
+  --header-h: 4rem;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --dur: 160ms;
 
-  --bg: #f7f5ef;
+  /* Surfaces and text */
+  --bg: #f5f3ec;
+  --bg-deep: #ebe7dc;
   --surface: #ffffff;
-  --surface-2: #eef2f6;
-  --text: #1b2430;
-  --text-muted: #4a5666;
-  --border: #c9d1db;
-  --focus: #0b57d0;
-  --accent: #0b57d0;
-  --accent-contrast: #ffffff;
-  --ok: #1a7f37;
-  --bad: #b3261e;
+  --surface-2: #f0f2f5;
+  --text: #16202b;
+  --text-muted: #4b5766;
+  --border: #dcdfe4;
+  --border-strong: #8793a1;
 
-  --ocean: #d8e9f5;
-  --land: #e9dfc7;
-  --land-stroke: #9a8b6a;
-  --grid: #7d93a8;
+  /* Brand */
+  --accent: #1759c9;
+  --accent-hover: #0f49ab;
+  --accent-soft: #e5edfb;
+  --accent-contrast: #ffffff;
+  --warm: #e89a2c;
+  --warm-soft: #fcefd9;
+  --warm-text: #8a4b00;
+  --focus: #1759c9;
+
+  /* Status */
+  --ok: #17753a;
+  --ok-soft: #e6f4ea;
+  --bad: #b42318;
+  --bad-soft: #fdecea;
+
+  /* Elevation */
+  --shadow-1: 0 1px 2px rgb(22 32 43 / 0.06), 0 1px 1px rgb(22 32 43 / 0.03);
+  --shadow-2: 0 1px 2px rgb(22 32 43 / 0.05), 0 6px 20px -6px rgb(22 32 43 / 0.14);
+  --shadow-3: 0 2px 6px rgb(22 32 43 / 0.06), 0 16px 40px -10px rgb(22 32 43 / 0.22);
+
+  /* Map */
+  --ocean: #d4e6f1;
+  --ocean-deep: #9fc2dc;
+  --ocean-light: #ffffff;
+  --land: #f0e7cf;
+  --land-stroke: #a8966f;
+  --grid: #6d88a0;
+  --map-label: #3c4b5a;
+  --ocean-label: #34617f;
+  --halo: #f8fbfd;
   --equator: #c2410c;
   --prime: #6d28d9;
   --antimeridian: #0f766e;
   --tropics: #a16207;
-  --hemi-a: rgb(11 87 208 / 0.14);
-  --hemi-b: rgb(194 65 12 / 0.14);
-  --marker-a: #0b57d0;
+  --hemi-a: rgb(23 89 201 / 0.10);
+  --hemi-b: rgb(194 65 12 / 0.10);
+  --marker-a: #1759c9;
   --marker-b: #c2410c;
   --marker-c: #6d28d9;
   --marker-d: #0f766e;
-  --marker-answer: #1a7f37;
-  --marker-wrong: #b3261e;
+  --marker-answer: #17753a;
+  --marker-wrong: #b42318;
   --night: rgb(8 16 40 / 0.55);
   --twilight: rgb(8 16 40 / 0.28);
   --sun: #f59e0b;
@@ -41,24 +100,36 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #10151c; --surface: #18202a; --surface-2: #222c38; --text: #eef2f6; --text-muted: #b6c2d0;
-    --border: #3a4756; --focus: #8ab4f8; --accent: #8ab4f8; --accent-contrast: #0b1320;
-    --ok: #6fdd8b; --bad: #ff8a80;
-    --ocean: #16324a; --land: #3b3a2e; --land-stroke: #a59d7c; --grid: #8aa2b8;
+    --bg: #0e131a; --bg-deep: #0a0e14; --surface: #161d26; --surface-2: #202935;
+    --text: #edf1f5; --text-muted: #aebbc9; --border: #2c3744; --border-strong: #6b7a8b;
+    --accent: #82b1ff; --accent-hover: #a5c8ff; --accent-soft: #1b2a44; --accent-contrast: #0b1320;
+    --warm: #f2b25c; --warm-soft: #3a2a12; --warm-text: #f7c77f; --focus: #9cc2ff;
+    --ok: #6fdd8b; --ok-soft: #13271b; --bad: #ff8a80; --bad-soft: #34191a;
+    --shadow-1: 0 1px 2px rgb(0 0 0 / 0.35);
+    --shadow-2: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -8px rgb(0 0 0 / 0.55);
+    --shadow-3: 0 2px 6px rgb(0 0 0 / 0.35), 0 18px 44px -12px rgb(0 0 0 / 0.7);
+    --ocean: #132c43; --ocean-deep: #07131f; --ocean-light: #2a5577; --land: #353b2f; --land-stroke: #8d8a6e;
+    --grid: #7f9ab3; --map-label: #c3cdd8; --ocean-label: #8fb8d6; --halo: #0f2233;
     --equator: #fb923c; --prime: #c4b5fd; --antimeridian: #5eead4; --tropics: #facc15;
-    --hemi-a: rgb(138 180 248 / 0.18); --hemi-b: rgb(251 146 60 / 0.18);
-    --marker-a: #8ab4f8; --marker-b: #fb923c; --marker-c: #c4b5fd; --marker-d: #5eead4;
+    --hemi-a: rgb(130 177 255 / 0.14); --hemi-b: rgb(251 146 60 / 0.14);
+    --marker-a: #82b1ff; --marker-b: #fb923c; --marker-c: #c4b5fd; --marker-d: #5eead4;
     --marker-answer: #6fdd8b; --marker-wrong: #ff8a80;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #10151c; --surface: #18202a; --surface-2: #222c38; --text: #eef2f6; --text-muted: #b6c2d0;
-  --border: #3a4756; --focus: #8ab4f8; --accent: #8ab4f8; --accent-contrast: #0b1320;
-  --ok: #6fdd8b; --bad: #ff8a80;
-  --ocean: #16324a; --land: #3b3a2e; --land-stroke: #a59d7c; --grid: #8aa2b8;
+  --bg: #0e131a; --bg-deep: #0a0e14; --surface: #161d26; --surface-2: #202935;
+  --text: #edf1f5; --text-muted: #aebbc9; --border: #2c3744; --border-strong: #6b7a8b;
+  --accent: #82b1ff; --accent-hover: #a5c8ff; --accent-soft: #1b2a44; --accent-contrast: #0b1320;
+  --warm: #f2b25c; --warm-soft: #3a2a12; --warm-text: #f7c77f; --focus: #9cc2ff;
+  --ok: #6fdd8b; --ok-soft: #13271b; --bad: #ff8a80; --bad-soft: #34191a;
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.35);
+  --shadow-2: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -8px rgb(0 0 0 / 0.55);
+  --shadow-3: 0 2px 6px rgb(0 0 0 / 0.35), 0 18px 44px -12px rgb(0 0 0 / 0.7);
+  --ocean: #132c43; --ocean-deep: #07131f; --ocean-light: #2a5577; --land: #353b2f; --land-stroke: #8d8a6e;
+  --grid: #7f9ab3; --map-label: #c3cdd8; --ocean-label: #8fb8d6; --halo: #0f2233;
   --equator: #fb923c; --prime: #c4b5fd; --antimeridian: #5eead4; --tropics: #facc15;
-  --hemi-a: rgb(138 180 248 / 0.18); --hemi-b: rgb(251 146 60 / 0.18);
-  --marker-a: #8ab4f8; --marker-b: #fb923c; --marker-c: #c4b5fd; --marker-d: #5eead4;
+  --hemi-a: rgb(130 177 255 / 0.14); --hemi-b: rgb(251 146 60 / 0.14);
+  --marker-a: #82b1ff; --marker-b: #fb923c; --marker-c: #c4b5fd; --marker-d: #5eead4;
   --marker-answer: #6fdd8b; --marker-wrong: #ff8a80;
 }
 :root[data-large-text="true"] { --fs-scale: 1.25; }
