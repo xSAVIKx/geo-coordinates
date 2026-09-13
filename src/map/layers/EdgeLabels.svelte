@@ -26,7 +26,17 @@
   {/each}
   {#each ticks.lons as lon (lon)}
     {@const xy = ctx.project({ lat: mapState.flat.center.lat, lon })}
-    {#if xy}<text class="halo" x={xy[0]} y={ctx.height - 5 * ctx.px} text-anchor="middle" font-size={11 * ctx.px}>{formatLon(lon, i18n.lang)}</text>{/if}
+    {#if xy}
+      {@const atLeftEdge = xy[0] <= 2 * ctx.px}
+      {@const atRightEdge = xy[0] >= ctx.width - 2 * ctx.px}
+      <text
+        class="halo"
+        x={atLeftEdge ? xy[0] + 4 * ctx.px : atRightEdge ? xy[0] - 4 * ctx.px : xy[0]}
+        y={ctx.height - 5 * ctx.px}
+        text-anchor={atLeftEdge ? 'start' : atRightEdge ? 'end' : 'middle'}
+        font-size={11 * ctx.px}
+      >{formatLon(lon, i18n.lang)}</text>
+    {/if}
   {/each}
 </g>
 

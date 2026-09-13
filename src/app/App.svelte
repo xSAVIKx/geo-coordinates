@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import Header from './Header.svelte';
   import Home from './Home.svelte';
+  import LabPage from './LabPage.svelte';
   import Footer from './Footer.svelte';
   import LiveRegion from './LiveRegion.svelte';
   import { router, startRouter } from './router.svelte';
@@ -43,8 +44,8 @@
 <a class="skip" href="#main" onclick={skip}>{t('app.skip')}</a>
 <Header />
 <main id="main" bind:this={main}>
-  {#if route.name === 'home'}
-    <Home />
+  {#if route.name === 'lab'}
+    <LabPage />
   {:else}
     <Home />
   {/if}
