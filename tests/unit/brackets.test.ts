@@ -4,7 +4,9 @@ import { bracketModel, EDGE_BOTTOM, labelWidth, lonSegments, type BracketLabel, 
 import { makeFlatCtx, makeGlobeCtx, type ViewCtx } from '../../src/map/geometry';
 import { MapState } from '../../src/map/mapState.svelte';
 import type { FlatProjection, Overlay, SceneSpec } from '../../src/map/types';
+import { labelBox, labelPlaces } from '../../src/map/markerLabel';
 import { MODULES } from '../../src/quiz/registry';
+import { MAX_FIT_ZOOM } from '../../src/quiz/values';
 import { createRng } from '../../src/quiz/rng';
 import { TOPICS } from '../../src/topics';
 
@@ -124,6 +126,35 @@ describe('bracket labels stay on the map and off each other and the markers', ()
             expect(x >= 0 && x <= ctx.width && y >= 0 && y <= ctx.height - EDGE_BOTTOM * px, `${type} ${d} seed ${s} marker ${JSON.stringify(p)}`).toBe(true);
           }
           for (const o of all.filter(isBracket)) expectReadable(bracketModel(o, ctx, fmt), ctx, markers, `${type} ${d} seed ${s} px ${px}`);
+        }
+      }
+    }
+  });
+});
+
+describe('A and B on a phone', () => {
+  test('marker centres are at least 24 CSS px apart when the zoom allows it, and labels keep the north–south order', () => {
+    const px = 2.56;
+    for (const type of ['difference', 'distance']) {
+      const mod = MODULES.find((m) => m.type === type)!;
+      for (const d of ['easy', 'medium', 'hard'] as const) for (let s = 0; s < 1000; s++) {
+        const q = mod.generate(createRng(`phone-ab:${type}:${d}:${s}`), d, mod.topics[0]!);
+        if (q.scene.views[0] === 'globe') continue;
+        const markers = [...(q.scene.overlays ?? []), ...q.solution].filter((o) => o.kind === 'marker') as { p: LatLon; label?: string }[];
+        expect(markers).toHaveLength(2);
+        const ctx = flatCtx(q.scene, px, 'grid');
+        const [a, b] = markers.map((m) => ctx.project(m.p)!);
+        const gap = Math.hypot(a![0] - b![0], a![1] - b![1]);
+        const best = makeFlatCtx(960, 480, { lat: 0, lon: 0 }, MAX_FIT_ZOOM, px); // distances between projected points do not depend on the centre
+        const [a12, b12] = markers.map((m) => best.project(m.p)!);
+        const possible = Math.hypot(a12![0] - b12![0], a12![1] - b12![1]);
+        expect(gap, `${type} ${d} seed ${s} ${JSON.stringify(markers.map((m) => m.p))}`).toBeGreaterThanOrEqual(Math.min(24 * px, possible) - 1e-6);
+        const spots = markers.map((m, i) => ({ x: [a, b][i]![0], y: [a, b][i]![1], width: labelWidth(m.label!, 15, px) }));
+        const places = labelPlaces(spots, 15, px, ctx.width);
+        const boxes = spots.map((sp, i) => labelBox(sp, places[i]!, 15, px));
+        const [north, south] = spots[0]!.y <= spots[1]!.y ? [0, 1] : [1, 0];
+        if (spots[0]!.y !== spots[1]!.y && boxes[0]!.left < boxes[1]!.right && boxes[1]!.left < boxes[0]!.right) {
+          expect(boxes[north]!.top, `${type} ${d} seed ${s} label order`).toBeLessThan(boxes[south]!.top);
         }
       }
     }

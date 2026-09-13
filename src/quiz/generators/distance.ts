@@ -4,12 +4,13 @@ import type { LatLon } from '../../geo/types';
 import type { Overlay } from '../../map/types';
 import { round1 } from '../../map/brackets';
 import { numberText } from '../answerText';
-import { fitFlatView, gridInt, signed } from '../values';
-import type { Difficulty, Question, QuestionModule, Rng } from '../types';
+import { fitFlatView, gridInt, gridStepFor, signed } from '../values';
+import type { CheckResult, Difficulty, Question, QuestionModule, Rng } from '../types';
 import { differenceExplanation, differenceMethod, differenceMistake, type DiffMethod } from './difference';
 
 const KM_TOLERANCE = 1;   // km answers: ±1 km
 const DEG_TOLERANCE = 0.1; // degree answers from a km distance: ±0.1°
+const EPS = 1e-9;
 
 // Latitudes stay ≤ 70° so markers and labels are never squeezed against the map edge.
 function pickLatitudes(rng: Rng, d: Difficulty): [number, number] {
@@ -57,7 +58,7 @@ export const distance: QuestionModule = {
         input: { kind: 'number', unit: 'deg' },
         answer: { kind: 'number', value: deg },
         explanation: { key: 'q.dist.explainReverse', params: { km, deg } },
-        scene: { views: ['flat'], point: null, flatView, flatProjection: 'grid', layers: { specialLines: true, places: false }, overlays: [meridian] },
+        scene: { views: ['flat'], point: null, flatView, flatProjection: 'grid', layers: { specialLines: true, places: false, graticuleStep: gridStepFor(flatView.zoom) }, overlays: [meridian] },
         solution: [...markers, bracket],
         meta: { mode: 'reverse', deg, km },
       };
@@ -68,7 +69,7 @@ export const distance: QuestionModule = {
       input: { kind: 'number', unit: 'km' },
       answer: { kind: 'number', value: km },
       explanation: { key: 'q.dist.explain', params: { diff: { text: differenceExplanation('lat', a, b) }, deg, km } },
-      scene: { views: ['flat'], point: null, flatView, flatProjection: 'grid', layers: { specialLines: true, places: false }, overlays: [meridian, ...markers] },
+      scene: { views: ['flat'], point: null, flatView, flatProjection: 'grid', layers: { specialLines: true, places: false, graticuleStep: gridStepFor(flatView.zoom) }, overlays: [meridian, ...markers] },
       solution: [bracket],
       meta: { mode: 'forward', deg, km, method, x: Math.abs(a), y: Math.abs(b) },
     };
@@ -77,17 +78,22 @@ export const distance: QuestionModule = {
     if (r.kind !== 'number' || q.answer.kind !== 'number') return { correct: false };
     const m = q.meta as { mode: 'forward' | 'reverse'; deg: number; km: number; method?: DiffMethod; x?: number; y?: number };
     const v = r.value;
+    // Within a tolerance, allowing for binary rounding (|28.9 − 29| is 0.10000000000000142).
+    const within = (value: number, target: number, tolerance: number) => Math.abs(value - target) <= tolerance + EPS;
+    // Accepted with 111.2 km per degree; otherwise accepted with 111 km, and only then the note (the answer only works with 111).
+    const accept = (exact: number, with111: number, tolerance: number): CheckResult | null =>
+      within(v, exact, tolerance) ? { correct: true } : within(v, with111, tolerance) ? { correct: true, note: { key: 'q.dist.note111' } } : null;
     if (m.mode === 'reverse') {
-      if (Math.abs(v - m.deg) <= DEG_TOLERANCE) return { correct: true };
-      if (Math.abs(v - m.km / 111) <= DEG_TOLERANCE) return { correct: true, note: { key: 'q.dist.note111' } };
-      if (Math.abs(v - m.km * KM_PER_DEGREE) <= KM_TOLERANCE || Math.abs(v - m.km * 111) <= KM_TOLERANCE) return { correct: false, mistake: { key: 'q.dist.mistake.multiplied' } };
+      const ok = accept(m.deg, m.km / 111, DEG_TOLERANCE);
+      if (ok) return ok;
+      if (within(v, m.km * KM_PER_DEGREE, KM_TOLERANCE) || within(v, m.km * 111, KM_TOLERANCE)) return { correct: false, mistake: { key: 'q.dist.mistake.multiplied' } };
       return { correct: false };
     }
-    if (Math.abs(v - m.deg * KM_PER_DEGREE) <= KM_TOLERANCE) return { correct: true };
-    if (Math.abs(v - m.deg * 111) <= KM_TOLERANCE) return { correct: true, note: { key: 'q.dist.note111' } };
-    if (Math.abs(v - m.deg) < 1e-9) return { correct: false, mistake: { key: 'q.dist.mistake.degrees' } };
+    const ok = accept(m.deg * KM_PER_DEGREE, m.deg * 111, KM_TOLERANCE);
+    if (ok) return ok;
+    if (Math.abs(v - m.deg) < EPS) return { correct: false, mistake: { key: 'q.dist.mistake.degrees' } };
     // The wrong rule for the degrees, then either km factor.
-    const mistake = differenceMistake('lat', m.method!, m.x!, m.y!, v, KM_PER_DEGREE, KM_TOLERANCE) ?? differenceMistake('lat', m.method!, m.x!, m.y!, v, 111, KM_TOLERANCE);
+    const mistake = differenceMistake('lat', m.method!, m.x!, m.y!, v, KM_PER_DEGREE, KM_TOLERANCE + EPS) ?? differenceMistake('lat', m.method!, m.x!, m.y!, v, 111, KM_TOLERANCE + EPS);
     return mistake ? { correct: false, mistake } : { correct: false };
   },
   describeAnswer: (q) => numberText((q.answer as { value: number }).value, q.input.kind === 'number' ? q.input.unit : 'km'),

@@ -4,7 +4,7 @@ import type { Axis, LatLon } from '../../geo/types';
 import type { Text } from '../../i18n/text';
 import type { SceneSpec } from '../../map/types';
 import { numberText } from '../answerText';
-import { fitFlatView, gridInt, signed } from '../values';
+import { fitFlatView, gridInt, gridStepFor, signed } from '../values';
 import type { Difficulty, Question, QuestionModule, Rng } from '../types';
 
 export type DiffMethod = 'same-subtract' | 'opposite-add' | 'opposite-over-180' | 'zero-line';
@@ -27,12 +27,15 @@ export function differenceExplanation(axis: Axis, a: number, b: number): Text {
 
 /**
  * The hint for a wrong difference, or undefined. Each hint fires only in its own situation:
- * "subtracted" when the points are on different sides and the answer is |x − y|, "added" when they
+ * "subtracted" when the points are on different sides and the answer is |x − y| ("subtracted over 180" when their sum
+ * passes 180°), "added" when they
  * are on the same side and the answer is x + y, "over 180" when the sum passed 180° and the answer is that sum.
  */
 export function differenceMistake(axis: Axis, method: DiffMethod, x: number, y: number, response: number, scale = 1, tolerance = 1e-9): Text | undefined {
   const near = (v: number) => Math.abs(response - v * scale) <= tolerance;
-  if ((method === 'opposite-add' || method === 'opposite-over-180') && near(Math.abs(x - y))) return { key: `q.diff.mistake.subtracted.${axis}` };
+  if (method === 'opposite-add' && near(Math.abs(x - y))) return { key: `q.diff.mistake.subtracted.${axis}` };
+  // Across 180° adding alone is not the answer either, so this hint names both steps.
+  if (method === 'opposite-over-180' && near(Math.abs(x - y))) return { key: 'q.diff.mistake.subtractedOver180' };
   if (method === 'same-subtract' && near(x + y)) return { key: `q.diff.mistake.added.${axis}` };
   if (method === 'opposite-over-180' && near(x + y)) return { key: 'q.diff.mistake.over180' };
   return undefined;
@@ -94,7 +97,8 @@ export const difference: QuestionModule = {
       const midLat = Math.round((A.lat + B.lat) / 2);
       scene = { views: ['globe', 'flat'], point: null, flatProjection: 'grid', rotate: [-midLon, -Math.max(-40, Math.min(40, midLat))], layers: { specialLines: true, places: false }, overlays: [...markers] };
     } else {
-      scene = { views: ['flat'], point: null, flatView: fitFlatView([A, B], axis === 'lat' ? 'side' : 'top'), flatProjection: 'grid', layers: { specialLines: true, places: false }, overlays: [...markers] };
+      const flatView = fitFlatView([A, B], axis === 'lat' ? 'side' : 'top');
+      scene = { views: ['flat'], point: null, flatView, flatProjection: 'grid', layers: { specialLines: true, places: false, graticuleStep: gridStepFor(flatView.zoom) }, overlays: [...markers] };
     }
     return {
       id: '', type: 'difference', topic: 6, difficulty,

@@ -205,7 +205,7 @@ describe('difference and distance', () => {
           const res = mod.check(q, num(c));
           expect(res.correct, `seed ${s} candidate ${c}`).toBe(false);
           let want: string | undefined;
-          if (!onLine && sign(va) !== sign(vb) && c === Math.abs(x - y)) want = `q.diff.mistake.subtracted.${axis}`;
+          if (!onLine && sign(va) !== sign(vb) && c === Math.abs(x - y)) want = crosses180 ? 'q.diff.mistake.subtractedOver180' : `q.diff.mistake.subtracted.${axis}`;
           else if (!onLine && sign(va) === sign(vb) && c === x + y) want = `q.diff.mistake.added.${axis}`;
           else if (crosses180 && c === x + y) want = 'q.diff.mistake.over180';
           expect(res.mistake?.key, `seed ${s} candidate ${c}`).toBe(want);
@@ -285,4 +285,36 @@ describe('difference and distance', () => {
       if (d === 'hard') { expect(reverse).toBeGreaterThan(SEEDS / 3); expect(reverse).toBeLessThan((2 * SEEDS) / 3); }
     });
   }
+});
+
+describe('distance tolerances', () => {
+  const mod = MODULES.find((m) => m.type === 'distance')!;
+  const q29 = (mode: 'forward' | 'reverse'): Question => ({
+    id: 'distance-0', type: 'distance', topic: 7, difficulty: 'hard', prompt: { key: 'q.dist.prompt' },
+    input: { kind: 'number', unit: mode === 'forward' ? 'km' : 'deg' },
+    answer: { kind: 'number', value: mode === 'forward' ? 3224.8 : 29 },
+    explanation: { key: 'q.dist.explain' }, scene: { views: ['flat'] }, solution: [],
+    meta: mode === 'forward' ? { mode, deg: 29, km: 3224.8, method: 'same-subtract', x: 40, y: 11 } : { mode, deg: 29, km: 3224.8 },
+  });
+  const check = (mode: 'forward' | 'reverse', value: number) => mod.check(q29(mode), { kind: 'number', value });
+
+  test('degrees from kilometres: ±0.1° exactly at the edges, the 111 note only when 111.2 does not already give the answer', () => {
+    expect(check('reverse', 28.9)).toEqual({ correct: true });
+    expect(check('reverse', 29.1)).toEqual({ correct: true });
+    expect(check('reverse', 29)).toEqual({ correct: true });
+    // 3224.8 ÷ 111 = 29.05…: 29.15 is 0.15 from 29 but within 0.1 of the 111 result.
+    expect(check('reverse', 29.15)).toEqual({ correct: true, note: { key: 'q.dist.note111' } });
+    expect(check('reverse', 28.85).correct).toBe(false);
+    expect(check('reverse', 29.2).correct).toBe(false);
+  });
+
+  test('kilometres: ±1 km exactly at the edges, the 111 note only when the answer needs 111', () => {
+    expect(check('forward', 3223.8)).toEqual({ correct: true });
+    expect(check('forward', 3225.8)).toEqual({ correct: true });
+    expect(check('forward', 3225.9).correct).toBe(false);
+    expect(check('forward', 3219)).toEqual({ correct: true, note: { key: 'q.dist.note111' } }); // 29 × 111
+    expect(check('forward', 3218)).toEqual({ correct: true, note: { key: 'q.dist.note111' } });
+    expect(check('forward', 3220)).toEqual({ correct: true, note: { key: 'q.dist.note111' } });
+    expect(check('forward', 3222.7).correct).toBe(false);
+  });
 });

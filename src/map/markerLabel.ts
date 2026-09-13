@@ -34,7 +34,8 @@ export function labelBox(s: LabelSpot, place: LabelPlace, size: number, px: numb
 
 /**
  * Where each marker label goes. Labels normally sit up-right of the marker; a label that would cover an
- * earlier label or any marker symbol, or would run off the side of a view `width` wide, tries below-right,
+ * earlier label or any marker symbol, would run off the side of a view `width` wide, or would sit above the label of a
+ * marker north of it (or below one south of it) in the same column, tries below-right,
  * then up-left, then below-left (first free spot wins, up-right if none is free). `size` is the font size and
  * `px` the viewBox units per CSS px.
  */
@@ -42,12 +43,15 @@ export function labelPlaces(spots: readonly (LabelSpot | null)[], size: number, 
   type Box = ReturnType<typeof labelBox>;
   const r = 9 * px;
   const symbols: Box[] = spots.flatMap((s) => (s ? [{ left: s.x - r, right: s.x + r, top: s.y - r, bottom: s.y + r }] : []));
-  const labels: Box[] = [];
-  const hits = (b: Box) => b.left < 0 || b.right > width || [...labels, ...symbols].some((o) => b.left < o.right && o.left < b.right && b.top < o.bottom && o.top < b.bottom);
+  const labels: { box: Box; y: number }[] = [];
+  const overlap = (b: Box, o: Box) => b.left < o.right && o.left < b.right && b.top < o.bottom && o.top < b.bottom;
+  // Labels in the same column keep the north–south order of their markers, so a label never reads as the other point's.
+  const outOfOrder = (b: Box, y: number) => labels.some((o) => b.left < o.box.right && o.box.left < b.right && (y > o.y ? b.top < o.box.top : y < o.y && b.top > o.box.top));
+  const bad = (b: Box, y: number) => b.left < 0 || b.right > width || symbols.some((o) => overlap(b, o)) || labels.some((o) => overlap(b, o.box)) || outOfOrder(b, y);
   return spots.map((s) => {
     if (!s) return 'up-right';
-    const place = PLACES.find((p) => !hits(labelBox(s, p, size, px))) ?? 'up-right';
-    labels.push(labelBox(s, place, size, px));
+    const place = PLACES.find((p) => !bad(labelBox(s, p, size, px), s.y)) ?? 'up-right';
+    labels.push({ box: labelBox(s, place, size, px), y: s.y });
     return place;
   });
 }
