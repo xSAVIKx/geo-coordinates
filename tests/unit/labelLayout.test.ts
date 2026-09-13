@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { createLabelMemory, overlaps, pointBox, selectLabelPlacements, rotateBoxAround, selectStableLabels, selectVisibleLabels, textBox } from '../../src/map/labelLayout';
+import { createLabelMemory, overlaps, pointBox, preferClear, selectLabelPlacements, rotateBoxAround, selectStableLabels, selectVisibleLabels, textBox } from '../../src/map/labelLayout';
 
 test('overlaps', () => {
   expect(overlaps({ left: 0, right: 10, top: 0, bottom: 10 }, { left: 5, right: 15, top: 5, bottom: 15 })).toBe(true);
@@ -128,4 +128,11 @@ test('pointBox covers the point ring (9 px radius plus halo) at any scale', () =
   const b = pointBox(100, 50, 2);
   expect(b.left).toBeLessThanOrEqual(100 - 9 * 2); expect(b.right).toBeGreaterThanOrEqual(100 + 9 * 2);
   expect(b.top).toBeLessThanOrEqual(50 - 9 * 2); expect(b.bottom).toBeGreaterThanOrEqual(50 + 9 * 2);
+});
+
+test('preferClear: boxes clear of the soft obstacles come first, in order', () => {
+  const boxes = [textBox(0, 10, 10, 10), textBox(20, 10, 10, 10), textBox(40, 10, 10, 10)];
+  expect(preferClear(boxes, [])).toEqual([0, 1, 2]);
+  expect(preferClear(boxes, [{ left: 0, right: 12, top: 0, bottom: 20 }])).toEqual([1, 2, 0]);
+  expect(preferClear(boxes, [{ left: -100, right: 100, top: -100, bottom: 100 }])).toEqual([0, 1, 2]);
 });

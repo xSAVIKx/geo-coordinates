@@ -7,13 +7,19 @@
   import Hemispheres from './Hemispheres.svelte';
   import Land from './Land.svelte';
   import Overlays from './Overlays.svelte';
+  import { mapState } from '../mapState.svelte';
+  import { clusterSchools } from '../schools';
   import Places from './Places.svelte';
   import PointMarker from './PointMarker.svelte';
+  import Schools from './Schools.svelte';
   import SpecialLines from './SpecialLines.svelte';
   // While the flat map is dragged, `ctx` is the view where the drag began (drawn with a wide pad) and
   // `offset` slides it to where the map is now; `edgeCtx` is the live view, for the edge numbers.
   let { ctx, idPrefix, edgeCtx, offset = null }: { ctx: ViewCtx; idPrefix: string; edgeCtx?: ViewCtx; offset?: [number, number] | null } = $props();
   const sphereD = $derived(ctx.kind === 'globe' ? (ctx.path(sphere) ?? '') : '');
+  // Grouped in the drawing's coordinates, so the badges slide with everything else while the flat
+  // map is dragged; the flat grouping itself is cached per zoom (see schools.ts), so a pan never regroups.
+  const schoolClusters = $derived(mapState.layers.schools ? clusterSchools(ctx) : []);
 </script>
 
 <g class="geo" transform={offset ? `translate(${offset[0]} ${offset[1]})` : undefined}>
@@ -35,7 +41,9 @@
 <!-- Night shading dims land and the grid but not the equator/meridian lines and their names, nor places and overlays. -->
 <Daylight {ctx} />
 <SpecialLines {ctx} />
-<Places {ctx} />
+<!-- Schools under places: a city's dot and name stay on top of a school's square and badge. -->
+{#if schoolClusters.length}<Schools {ctx} clusters={schoolClusters} />{/if}
+<Places {ctx} {schoolClusters} />
 <Overlays {ctx} />
 <PointMarker {ctx} />
 </g>

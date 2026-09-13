@@ -22,7 +22,7 @@ export type ChangeSource = 'map' | 'slider' | 'program';
 
 export const DEFAULT_LAYERS: LayerFlags = {
   graticuleStep: 10, specialLines: true, tropics: false, hemispheres: 'none',
-  places: true, borders: true, daylight: false, pointGuides: true,
+  places: true, borders: true, daylight: false, pointGuides: true, schools: false,
 };
 
 export const FLAT_PRESETS: Record<FlatPreset, { center: LatLon; zoom: number }> = {
@@ -63,6 +63,13 @@ export class MapState {
   projectionChoice = $state<FlatProjection | null>(null);
   /** Whether the projection switch shows while a scene sets `flatProjection` (the scene's `projectionSwitch`). */
   projectionSwitch = $state(false);
+  /** Whether the scene offers the Maple Bear schools switch (`SceneSpec.schoolsToggle`). */
+  schoolsToggle = $state(false);
+  /**
+   * View units per CSS px as the flat map and the globe last drew them (plain, not reactive: set by
+   * the views, read only when a school is chosen from the list to work out how close to zoom in).
+   */
+  viewPx: { flat: number; globe: number } = { flat: 1, globe: 1 };
   /** Bumped by every `applyScene`, so layers can drop per-scene memory (e.g. label hysteresis). */
   sceneVersion = $state(0);
 
@@ -159,6 +166,7 @@ export class MapState {
     this.overlays = [...(scene.overlays ?? [])];
     this.sun = scene.sun ? { ...scene.sun, year: new Date().getUTCFullYear() } : null;
     this.labControls = [...(scene.labControls ?? [])];
+    this.schoolsToggle = scene.schoolsToggle ?? false;
     this.phoneView = scene.phoneView && scene.views.includes(scene.phoneView) ? scene.phoneView : scene.views.includes('flat') ? 'flat' : (scene.views[0] ?? 'flat');
     this.lastChange = 'program';
   }
@@ -215,6 +223,10 @@ export class MapState {
     this.rotate = [-p.lon, -Math.max(-60, Math.min(60, p.lat))];
   }
 
+  setGlobeZoom(zoom: number): void {
+    this.globeZoom = Math.max(GLOBE_MIN_ZOOM, Math.min(GLOBE_MAX_ZOOM, zoom));
+  }
+
   zoomGlobe(factor: number): void {
     this.globeZoom = Math.max(GLOBE_MIN_ZOOM, Math.min(GLOBE_MAX_ZOOM, this.globeZoom * factor));
   }
@@ -224,6 +236,12 @@ export class MapState {
     const v = FLAT_PRESETS[preset];
     const zoom = preset === 'world' ? this.flatMinZoom : this.clampZoom(v.zoom);
     this.flat = { zoom, center: this.clampCenter(v.center, zoom) };
+  }
+
+  /** Centres the flat map on `center` at `zoom` (both kept within the world). */
+  setFlatView(center: LatLon, zoom: number): void {
+    const z = this.clampZoom(zoom);
+    this.flat = { zoom: z, center: this.clampCenter(center, z) };
   }
 
   zoomFlat(factor: number): void {

@@ -12,6 +12,7 @@ export interface LayerFlags {
   borders: boolean;
   daylight: boolean;
   pointGuides: boolean;       // dashed parallel + meridian through the point
+  schools: boolean;           // Maple Bear schools (offered only where the scene sets `schoolsToggle`)
 }
 export type MarkerTone = 'a' | 'b' | 'c' | 'd' | 'answer' | 'wrong';
 export type OverlayKind =
@@ -49,4 +50,5 @@ export interface SceneSpec {
   overlays?: Overlay[];
   sun?: { utcMinutes: number; dayOfYear: number } | null;
   labControls?: LabControl[];
+  schoolsToggle?: boolean;               // offers the "Maple Bear schools" layer switch (the layer itself starts off)
 }

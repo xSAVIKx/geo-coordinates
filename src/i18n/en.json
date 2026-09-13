@@ -251,6 +251,8 @@
   "map.turnNorth": "Tilt globe to show the north",
   "map.turnSouth": "Tilt globe to show the south",
   "map.showPoint": "Show the point",
+  "map.schools.count#one": "{count} school",
+  "map.schools.count#other": "{count} schools",
   "cross.label": "Cross-section of the Earth showing latitude as an angle",
   "cross.desc": "Latitude is the angle between the equator plane and the line from the centre of the Earth to the point: {value}.",
   "cross.centre": "centre of the Earth",

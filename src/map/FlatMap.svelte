@@ -4,7 +4,8 @@
   import type { LatLon } from '../geo/types';
   import { CLIP_PAD, makeFlatCtx } from './geometry';
   import Layers from './layers/Layers.svelte';
-  import { mapState } from './mapState.svelte';
+  import { FLAT_MAX_ZOOM, mapState } from './mapState.svelte';
+  import { clusterTargetByKey } from './schools';
   import type { FlatPreset, FlatProjection } from './types';
 
   const W = 960, H = 480;
@@ -15,6 +16,8 @@
   const px = $derived((W / Math.max(1, clientWidth)) * uiScale);
   // The live view: pointer and keyboard maths, and the edge numbers.
   const ctx = $derived(makeFlatCtx(W, H, mapState.flat.center, mapState.flat.zoom, px, mapState.flatProjection));
+  // For choosing a school from the list: how close to zoom in depends on how big the map is drawn.
+  $effect(() => { mapState.viewPx.flat = px; });
 
   // Cheap pans. d3's `center()` only shifts a projection (no rotation), so on every flat map a pan
   // just slides the picture: a drag draws the map once around where it began (with a wide pad) and
@@ -34,7 +37,8 @@
   };
   const endPanBase = () => { panBase = null; };
 
-  type Drag = { mode: 'point' | 'pan' | 'maybe-click' | 'idle'; startX: number; startY: number; lastX: number; lastY: number };
+  // `cluster`: the key of the school count badge the press began on — a click on it zooms in on the group.
+  type Drag = { mode: 'point' | 'pan' | 'maybe-click' | 'idle'; startX: number; startY: number; lastX: number; lastY: number; cluster?: string };
   let drag: Drag | null = null;
   let pinch = new Map<number, { x: number; y: number }>();
   let pinchDist = 0;
@@ -57,7 +61,8 @@
       return;
     }
     const onPoint = (e.target as Element).closest('[data-point-handle]') !== null;
-    drag = { mode: onPoint && mapState.pointEditable ? 'point' : 'maybe-click', startX: e.clientX, startY: e.clientY, lastX: e.clientX, lastY: e.clientY };
+    const cluster = (e.target as Element).closest('[data-school-cluster]')?.getAttribute('data-school-cluster') ?? undefined;
+    drag = { mode: onPoint && mapState.pointEditable ? 'point' : 'maybe-click', startX: e.clientX, startY: e.clientY, lastX: e.clientX, lastY: e.clientY, cluster };
     svg.setPointerCapture(e.pointerId);
   }
 
@@ -101,7 +106,10 @@
       if (drag.mode === 'pan') startPanBase();
       return;
     }
-    if (drag?.mode === 'maybe-click' && mapState.pointEditable) {
+    const target = drag?.mode === 'maybe-click' && drag.cluster ? clusterTargetByKey(ctx, drag.cluster, FLAT_MAX_ZOOM) : null;
+    if (target) {
+      mapState.setFlatView(target.center, target.zoom);
+    } else if (drag?.mode === 'maybe-click' && mapState.pointEditable) {
       const ll = ctx.invert(toView(e.clientX, e.clientY));
       if (ll) mapState.userSetPoint(ll, 'map');
     }

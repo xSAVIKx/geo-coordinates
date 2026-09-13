@@ -5,17 +5,19 @@
   import { edgeTicks } from '../edgeTicks';
   import type { ViewCtx } from '../geometry';
   import { gridUsesMinutes, resolveGridStep } from '../gridStep';
-  import { createLabelMemory, overlaps, pointBox, rotateBoxAround, selectStablePlacements, textBox, type LabelBox } from '../labelLayout';
+  import { createLabelMemory, overlaps, pointBox, preferClear, rotateBoxAround, selectStablePlacements, textBox, type LabelBox } from '../labelLayout';
   import { lineLabelPoint, lineLabelSpecs } from '../lineLabels';
   import { mapState } from '../mapState.svelte';
   import { MAP_LABELS, PLACES, tierVisible } from '../places';
+  import { SCHOOL_BADGE_H, schoolBadgeWidth, type SchoolCluster } from '../schools';
   import { LABELLED_RIVERS, REGION_DETAIL_ZOOM, regionActive, riverLabelPoints } from '../world';
-  let { ctx }: { ctx: ViewCtx } = $props();
+  let { ctx, schoolClusters = [] }: { ctx: ViewCtx; schoolClusters?: SchoolCluster[] } = $props();
 
   // Which place labels were visible the *previous* time this ran, for the hysteresis bonus in
   // `visibleIds` — per scene: a new scene (MapState.sceneVersion) starts without any bonus. Plain,
   // non-reactive memory, so remembering the result cannot itself re-trigger the derived.
   const labelMemory = createLabelMemory();
+  const schoolLabelMemory = createLabelMemory();
 
   // `ctx.zoom` is flat-map zoom (the globe reports its flat equivalent): non-featured names from
   // Europe-sized views, and places of the `region`/`local` tiers only once zoomed in that far.
@@ -118,18 +120,26 @@
   // showing keeps its priority bonus over one that wasn't (so a tiny pan/zoom doesn't flicker
   // labels in and out), and distance-to-centre (bucketed, so small shifts don't reorder ties) is
   // only the final tiebreaker among places at the same tier.
+  // With the schools layer on, a name first tries the sides that leave school squares and count
+  // badges uncovered; it still takes a side over one when nothing else is free (places come first).
+  const schoolMarks = $derived(schoolClusters.map((c): LabelBox => {
+    const halfW = (c.members.length === 1 ? 6 : schoolBadgeWidth(c.members.length) / 2 + 1) * ctx.px;
+    const halfH = (c.members.length === 1 ? 6 : SCHOOL_BADGE_H / 2 + 1) * ctx.px;
+    return { left: c.x - halfW, right: c.x + halfW, top: c.y - halfH, bottom: c.y + halfH };
+  }));
   const placements = $derived.by<Map<string, Side>>(() => {
     const previousVisible = labelMemory.previous(mapState.sceneVersion);
+    const orders = new Map(candidates.map((c) => [c.id, preferClear(c.boxes, schoolMarks)]));
     const chosen = selectStablePlacements(
       candidates,
-      (c) => c.boxes,
+      (c) => orders.get(c.id)!.map((k) => c.boxes[k]!),
       (c) => c.featured,
       (c) => c.distance,
       (c) => previousVisible.has(c.id),
       [...lineObstacles, ...continentObstacles, ...edgeObstacles, ...pointObstacles],
     );
     const out = new Map<string, Side>();
-    candidates.forEach((c, i) => { if (chosen[i]! >= 0) out.set(c.id, SIDES[chosen[i]!]!); });
+    candidates.forEach((c, i) => { if (chosen[i]! >= 0) out.set(c.id, SIDES[orders.get(c.id)![chosen[i]!]!]!); });
     labelMemory.remember(new Set(out.keys()));
     return out;
   });
@@ -161,6 +171,58 @@
     }
     return out;
   });
+
+  // Names of Maple Bear schools that stand alone (no count badge), from Europe-sized views on and
+  // only where they fit: after place names, river names and every other label, clear of the school
+  // squares and badges. Same sides as place names, a little further out: the square is wider than a
+  // dot, and a school chosen from the list has the point (snapped to a minute) right on top of it.
+  const SCHOOL_FONT = 11.5;
+  // A long school name that cannot go centred above or below may still fit starting or ending there.
+  type SchoolSide = Side | 'above-right' | 'above-left' | 'below-right' | 'below-left';
+  const SCHOOL_SIDES: readonly SchoolSide[] = ['right', 'left', 'above', 'below', 'above-right', 'above-left', 'below-right', 'below-left'];
+  const schoolSideAnchor = (x: number, y: number, side: SchoolSide, px: number): { x: number; y: number; anchor: 'start' | 'end' | 'middle' } => {
+    const dy = side.startsWith('above') ? -19 : side.startsWith('below') ? 26 : 4;
+    if (side === 'right') return { x: x + 9 * px, y: y + dy * px, anchor: 'start' };
+    if (side === 'left') return { x: x - 9 * px, y: y + dy * px, anchor: 'end' };
+    if (side.endsWith('right')) return { x: x - 6 * px, y: y + dy * px, anchor: 'start' };
+    if (side.endsWith('left')) return { x: x + 6 * px, y: y + dy * px, anchor: 'end' };
+    return { x, y: y + dy * px, anchor: 'middle' };
+  };
+  const schoolLabels = $derived.by(() => {
+    if (!schoolClusters.length || ctx.zoom < 3 || !roomy) return [];
+    const singles = schoolClusters.filter((c) => c.members.length === 1 && c.x >= 0 && c.x <= ctx.width && c.y >= 0 && c.y <= ctx.height);
+    if (!singles.length) return [];
+    const placed: LabelBox[] = [
+      ...lineObstacles, ...continentObstacles, ...edgeObstacles, ...pointObstacles, ...schoolMarks,
+      ...candidates.flatMap((c) => {
+        const side = placements.get(c.id);
+        return side ? [c.boxes[SIDES.indexOf(side)]!] : [];
+      }),
+      ...riverLabels.map((r) => textBox(r.x, r.y, labelWidth(t(`river.${r.id}`), RIVER_FONT, ctx.px), RIVER_FONT * ctx.px, 'start')),
+    ];
+    const items = singles.map((c) => {
+      const school = c.members[0]!;
+      const width = labelWidth(school.name, SCHOOL_FONT, ctx.px);
+      const boxes = SCHOOL_SIDES.map((side) => {
+        const a = schoolSideAnchor(c.x, c.y, side, ctx.px);
+        return textBox(a.x, a.y, width, SCHOOL_FONT * ctx.px, a.anchor);
+      });
+      return { c, school, boxes };
+    });
+    const previousVisible = schoolLabelMemory.previous(mapState.sceneVersion);
+    const chosen = selectStablePlacements(
+      items,
+      (i) => i.boxes,
+      () => false,
+      (i) => Math.hypot(i.c.x - ctx.width / 2, i.c.y - ctx.height / 2) / ctx.px,
+      (i) => previousVisible.has(i.school.id),
+      placed,
+      40,
+    );
+    const out = items.flatMap((item, k) => (chosen[k]! >= 0 ? [{ id: item.school.id, name: item.school.name, ...schoolSideAnchor(item.c.x, item.c.y, SCHOOL_SIDES[chosen[k]!]!, ctx.px) }] : []));
+    schoolLabelMemory.remember(new Set(out.map((l) => l.id)));
+    return out;
+  });
 </script>
 
 {#if mapState.layers.places}
@@ -188,11 +250,15 @@
     <text class="halo river-name" data-river={r.id} x={r.x} y={r.y} font-size={RIVER_FONT * ctx.px}>{t(`river.${r.id}`)}</text>
   {/each}
 {/if}
+{#each schoolLabels as l (l.id)}
+  <text class="halo school-name" data-school={l.id} x={l.x} y={l.y} text-anchor={l.anchor} font-size={SCHOOL_FONT * ctx.px}>{l.name}</text>
+{/each}
 
 <style>
   .place { fill: var(--text); stroke: var(--halo); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
   .place.minor { fill: var(--map-label); fill-opacity: 0.55; stroke-width: 1; }
   .place-name { fill: var(--text); }
+  .school-name { fill: var(--school-text); font-weight: 650; }
   .river-name { fill: var(--river-label); font-style: italic; font-weight: 650; letter-spacing: 0.02em; }
   .map-label { fill: var(--map-label); font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
   .map-label.ocean { fill: var(--ocean-label); font-style: italic; font-weight: 500; letter-spacing: 0.04em; text-transform: none; }

@@ -4,16 +4,21 @@
   import { settings } from '../app/settings.svelte';
   import { makeGlobeCtx } from './geometry';
   import Layers from './layers/Layers.svelte';
-  import { mapState } from './mapState.svelte';
+  import { GLOBE_MAX_ZOOM, mapState } from './mapState.svelte';
+  import { clusterTargetByKey } from './schools';
 
   const SIZE = 500;
   const uid = `globe-${Math.random().toString(36).slice(2, 8)}`;
   let svg: SVGSVGElement;
   let clientWidth = $state(SIZE);
   const uiScale = $derived(settings.largeText ? 1.25 : 1);
-  const ctx = $derived(makeGlobeCtx(SIZE, mapState.rotate, (SIZE / Math.max(1, clientWidth)) * uiScale, mapState.globeZoom));
+  const px = $derived((SIZE / Math.max(1, clientWidth)) * uiScale);
+  const ctx = $derived(makeGlobeCtx(SIZE, mapState.rotate, px, mapState.globeZoom));
+  // For choosing a school from the list: how close to zoom in depends on how big the globe is drawn.
+  $effect(() => { mapState.viewPx.globe = px; });
 
-  type Drag = { mode: 'point' | 'rotate' | 'maybe-click'; startX: number; startY: number; lastX: number; lastY: number };
+  // `cluster`: the key of the school count badge the press began on — a click on it zooms in on the group.
+  type Drag = { mode: 'point' | 'rotate' | 'maybe-click'; startX: number; startY: number; lastX: number; lastY: number; cluster?: string };
   let drag: Drag | null = null;
   let frame = 0;
   let pinch = new Map<number, { x: number; y: number }>();
@@ -44,7 +49,8 @@
       return;
     }
     const onPoint = (e.target as Element).closest('[data-point-handle]') !== null;
-    drag = { mode: onPoint && mapState.pointEditable ? 'point' : 'maybe-click', startX: e.clientX, startY: e.clientY, lastX: e.clientX, lastY: e.clientY };
+    const cluster = (e.target as Element).closest('[data-school-cluster]')?.getAttribute('data-school-cluster') ?? undefined;
+    drag = { mode: onPoint && mapState.pointEditable ? 'point' : 'maybe-click', startX: e.clientX, startY: e.clientY, lastX: e.clientX, lastY: e.clientY, cluster };
     svg.setPointerCapture(e.pointerId);
   }
 
@@ -84,7 +90,11 @@
       drag = { mode: 'rotate', startX: pos.x, startY: pos.y, lastX: pos.x, lastY: pos.y };
       return;
     }
-    if (drag?.mode === 'maybe-click' && mapState.pointEditable) {
+    const target = drag?.mode === 'maybe-click' && drag.cluster ? clusterTargetByKey(ctx, drag.cluster, GLOBE_MAX_ZOOM) : null;
+    if (target) {
+      mapState.centerGlobeOn(target.center);
+      mapState.setGlobeZoom(target.zoom);
+    } else if (drag?.mode === 'maybe-click' && mapState.pointEditable) {
       const ll = ctx.invert(toView(e.clientX, e.clientY));
       if (ll) mapState.userSetPoint(ll, 'map');
     }

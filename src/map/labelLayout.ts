@@ -110,6 +110,17 @@ export function selectStablePlacements<T>(
   return selectLabelPlacements(items, boxes, rank, obstacles);
 }
 
+/**
+ * The order in which to try an item's `boxes`: the ones clear of every `soft` box first, then the
+ * rest (each group in its original order) — for things a label should rather not cover but may.
+ */
+export function preferClear(boxes: readonly LabelBox[], soft: readonly LabelBox[]): number[] {
+  const indices = boxes.map((_, i) => i);
+  if (soft.length === 0) return indices;
+  const clear = boxes.map((b) => !soft.some((s) => overlaps(b, s)));
+  return [...indices.filter((i) => clear[i]), ...indices.filter((i) => !clear[i])];
+}
+
 /** The area the movable point's ring (and its halo) covers, so no name is written under it. */
 export function pointBox(x: number, y: number, px: number): LabelBox {
   const r = 13 * px;
