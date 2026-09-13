@@ -213,7 +213,7 @@ describe('difference and distance', () => {
         // The solution bracket matches the asked axis and joins the two markers.
         expect(q.solution).toEqual([{ kind: axis === 'lat' ? 'lat-diff' : 'lon-diff', a: A, b: B }]);
         // A 180° crossing needs the globe; everything else fits a flat view.
-        if (crosses180) expect(q.scene.views[0]).toBe('globe');
+        if (crosses180) { expect(q.scene.views[0]).toBe('globe'); expect(q.scene.phoneView).toBe('globe'); }
         else expect(q.scene.flatView).toBeDefined();
       }
       if (d === 'hard') expect(over180).toBeGreaterThan(SEEDS / 5);

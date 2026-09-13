@@ -179,4 +179,20 @@ describe('MapState', () => {
     s.applyScene({ views: ['flat'] });
     expect(s.sunDate()).toBeNull();
   });
+  test('applyScene honours phoneView when that view is shown, else flat first', () => {
+    const s = new MapState();
+    s.applyScene({ views: ['globe', 'flat'], phoneView: 'globe' });
+    expect(s.phoneView).toBe('globe');
+    s.applyScene({ views: ['globe', 'flat'] });
+    expect(s.phoneView).toBe('flat');
+    s.applyScene({ views: ['flat'], phoneView: 'globe' });
+    expect(s.phoneView).toBe('flat');
+    s.applyScene({ views: ['globe', 'cross-section'] });
+    expect(s.phoneView).toBe('globe');
+  });
+  test('setSunNow keeps 31 December of a leap year', () => {
+    const s = new MapState();
+    s.setSunNow(new Date('2028-12-31T08:00:00Z'));
+    expect(s.sun).toEqual({ utcMinutes: 480, dayOfYear: 366, year: 2028 });
+  });
 });

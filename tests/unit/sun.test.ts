@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { antisolarPoint, dateFromDayAndMinutes, dayLightMinutes, dayOfYear, elevationFrom, meanSunPoint, solarElevationDeg, subsolarPoint } from '../../src/geo/sun';
+import { antisolarPoint, dateFromDayAndMinutes, dayLightMinutes, dayOfYear, daysInYear, elevationFrom, meanSunPoint, solarElevationDeg, subsolarPoint } from '../../src/geo/sun';
 
 const close = (a: number, b: number, tol: number) => expect(Math.abs(a - b)).toBeLessThanOrEqual(tol);
 
@@ -39,6 +39,7 @@ describe('derived', () => {
     expect(dayOfYear(new Date('2024-01-01T00:00:00Z'))).toBe(1);
     expect(dayOfYear(new Date('2024-12-31T23:59:00Z'))).toBe(366);
     expect(dateFromDayAndMinutes(2024, 32, 90).toISOString()).toBe('2024-02-01T01:30:00.000Z');
+    expect([2024, 2026, 2100, 2000].map(daysInYear)).toEqual([366, 365, 365, 366]);
   });
 });
 

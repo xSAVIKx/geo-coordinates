@@ -24,10 +24,11 @@ export function lonDifferenceForMinutes(minutes: number): number {
   return minutes / MINUTES_PER_DEGREE;
 }
 
-/** Minutes after midnight for a typed time: `H:MM`, `HH:MM`, `HH.MM` (also a comma or space), or `HMM`/`HHMM` from a phone keypad. */
+/** Minutes after midnight for a typed time: `H:MM`, `HH:MM`, `HH.MM` (also a comma or space), or `HMM`/`HHMM` from a phone keypad. `24:00` means 00:00. */
 export function parseClock(text: string): number | null {
   const m = /^\s*(?:(\d{1,2})\s*[:.,\s]\s*(\d{2})|(\d{1,2})(\d{2}))\s*$/.exec(text);
   if (!m) return null;
   const h = Number(m[1] ?? m[3]), min = Number(m[2] ?? m[4]);
+  if (h === 24 && min === 0) return 0; // 24:00 is midnight
   return h <= 23 && min <= 59 ? h * 60 + min : null;
 }

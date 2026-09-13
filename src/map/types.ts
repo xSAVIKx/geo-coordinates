@@ -25,6 +25,7 @@ export type Overlay =
 export type LabControl = 'sun-time' | 'sun-date' | 'clocks' | 'now';
 export interface SceneSpec {
   views: ViewId[];                       // views shown, in order
+  phoneView?: ViewId;                    // the view a phone opens with (must be in `views`); default: flat if shown, else the first
   layers?: Partial<LayerFlags>;
   point?: LatLon | null;                 // null hides the movable point
   pointEditable?: boolean;

@@ -42,6 +42,17 @@ const duration = (min: number): Text => {
   return { key: 'q.time.duration', params: { h, m } };
 };
 
+/**
+ * How the calendar date at B differs from A's (−1, 0 or +1) in the lesson's solar-time model, where local time is
+ * UTC + longitude × 4 min with longitude in (−180°, 180°]. Both times come from the same UTC instant, so crossing
+ * midnight changes the date, while crossing the 180° meridian shifts it back by one day going east (forward going west).
+ */
+export function dayShift(minutesA: number, lonA: number, lonB: number): number {
+  const utc = minutesA - normalizeLon(lonA) * MINUTES_PER_DEGREE;
+  const dayOf = (lon: number) => Math.floor((utc + normalizeLon(lon) * MINUTES_PER_DEGREE) / 1440);
+  return dayOf(lonB) - dayOf(lonA);
+}
+
 /** Why one meridian is further east than the other — the same rules as topic 2, plus the 180° crossing. */
 export function eastRule(lonA: number, lonB: number): Text {
   switch (lonDifferenceMethod(lonA, lonB)) {
@@ -67,7 +78,7 @@ function sceneFor(A: LatLon, B: LatLon, daylight: { utcMinutes: number } | null)
     const east = A.lon > 0 ? A.lon : B.lon;
     const mid = normalizeLon(east + lonDifference(A.lon, B.lon) / 2);
     const midLat = Math.round((A.lat + B.lat) / 2);
-    return { ...base, views: ['globe', 'flat'], rotate: [-mid, -Math.max(-40, Math.min(40, midLat))] };
+    return { ...base, views: ['globe', 'flat'], phoneView: 'globe', rotate: [-mid, -Math.max(-40, Math.min(40, midLat))] };
   }
   return { ...base, views: ['flat'], flatView: fitFlatView([A, B], 'top') };
 }
@@ -127,9 +138,9 @@ export const time: QuestionModule = {
     } else {
       minutesA = rng.int(0, 95) * 15;
     }
-    const raw = minutesA + offset;
-    const minutesB = wrapDayMinutes(raw);
-    const day = raw >= 1440 ? 'NextDay' : raw < 0 ? 'PrevDay' : '';
+    const minutesB = wrapDayMinutes(minutesA + offset);
+    const shift = dayShift(minutesA, lonA, lonB);
+    const day = shift > 0 ? 'NextDay' : shift < 0 ? 'PrevDay' : '';
     const times = { timeA: formatClock(minutesA), timeB: formatClock(minutesB), min };
     return {
       ...base,
@@ -165,7 +176,8 @@ export const time: QuestionModule = {
     if (q.answer.kind !== 'clock' || r.kind !== 'clock') return { correct: false };
     if (r.minutes === q.answer.minutes) return { correct: true };
     const offset = solarOffsetMinutes(m.lonA, m.lonB);
-    if (r.minutes === wrapDayMinutes(m.minutesA - offset)) return { correct: false, mistake: { key: 'q.time.mistake.direction' } };
+    // Across 180° the long way round (forgetting 360° − sum) lands on the same clock as the wrong direction, so name both.
+    if (r.minutes === wrapDayMinutes(m.minutesA - offset)) return { correct: false, mistake: { key: lonDifferenceMethod(m.lonA, m.lonB) === 'opposite-over-180' ? 'q.time.mistake.over180' : 'q.time.mistake.direction' } };
     const deg = lonDifference(m.lonA, m.lonB);
     if (r.minutes === wrapDayMinutes(m.minutesA + deg) || r.minutes === wrapDayMinutes(m.minutesA - deg)) return { correct: false, mistake: { key: 'q.time.mistake.perDegree' } };
     return { correct: false };

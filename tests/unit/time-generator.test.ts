@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { renderText } from '../../src/i18n/text';
-import { time } from '../../src/quiz/generators/time';
+import { dayShift, time } from '../../src/quiz/generators/time';
 import { createRng } from '../../src/quiz/rng';
 import type { Difficulty, Question } from '../../src/quiz/types';
 
@@ -16,7 +16,9 @@ test('clock answers follow "east is later" and wrap around midnight', () => {
       const expected = ((m.minutesA + (((m.lonB - m.lonA + 540) % 360) - 180) * 4) % 1440 + 1440) % 1440;
       expect(q.answer.minutes).toBe(expected);
       const wrongWay = ((m.minutesA - (((m.lonB - m.lonA + 540) % 360) - 180) * 4) % 1440 + 1440) % 1440;
-      if (wrongWay !== expected) expect(time.check(q, { kind: 'clock', minutes: wrongWay }).mistake?.key).toBe('q.time.mistake.direction');
+      // Across 180° the same wrong clock also comes from forgetting 360° − sum, so that hint names both causes.
+      const across = Math.sign(m.lonA) * Math.sign(m.lonB) === -1 && Math.abs(m.lonA) + Math.abs(m.lonB) > 180;
+      if (wrongWay !== expected) expect(time.check(q, { kind: 'clock', minutes: wrongWay }).mistake?.key).toBe(across ? 'q.time.mistake.over180' : 'q.time.mistake.direction');
     }
   }
 });
@@ -41,10 +43,22 @@ function ruleKey(a: number, b: number): string {
   return Math.abs(a) + Math.abs(b) > 180 ? `q.time.rule.across180.${eastward(a, b) > 0 ? 'east' : 'west'}` : 'q.rule.mixed.lon';
 }
 
+describe('date changes in the solar-time model', () => {
+  test('midnight changes the date, the 180° meridian shifts it the other way', () => {
+    expect(dayShift(23 * 60, 10, 30)).toBe(1);            // 23:00 + 80 min = 00:20 the next day
+    expect(dayShift(30, 30, 10)).toBe(-1);                // 00:30 − 80 min = 23:10 the day before
+    expect(dayShift(12 * 60, 10, 30)).toBe(0);
+    expect(dayShift(23 * 60 + 45, 157, -134)).toBe(0);    // east across 180°: 23:45 + 276 min = 04:21, same date
+    expect(dayShift(2 * 60, 170, -170)).toBe(-1);         // east across 180°: 02:00 + 80 min = 03:20, still the day before
+    expect(dayShift(23 * 60, -170, 170)).toBe(1);         // west across 180°: 23:00 − 80 min = 21:40, already the next day
+    expect(dayShift(3 * 60, -134, 157)).toBe(0);          // west across 180°: 03:00 − 276 min = 22:24, same date
+  });
+});
+
 describe('time questions (property tests)', () => {
   for (const d of DIFFS) {
     test(`${d}: answers, explanations, hints and difficulty all follow the two meridians`, () => {
-      const variants = { later: 0, clock: 0, degrees: 0, midnight: 0, primeCrossing: 0 };
+      const variants = { later: 0, clock: 0, degrees: 0, midnight: 0, primeCrossing: 0, dateLineBack: 0, dateLineForward: 0, dateLineSameDay: 0 };
       for (let s = 0; s < SEEDS; s++) {
         const q = time.generate(createRng(`time-prop:${d}:${s}`), d, 8);
         expect(q.type).toBe('time');
@@ -97,6 +111,7 @@ describe('time questions (property tests)', () => {
         expect(q.solution).toEqual([{ kind: 'lon-diff', a: A!.p, b: B!.p }]);
         // The flat map cannot wrap across 180°, so those questions put the globe first.
         expect(q.scene.views[0]).toBe(across180 ? 'globe' : 'flat');
+        expect(q.scene.phoneView).toBe(across180 ? 'globe' : undefined); // phones open on the globe too
         const allKeys = keysIn(q.explanation);
         expect(allKeys, `seed ${s}`).toContain(ruleKey(a, b));
 
@@ -116,18 +131,28 @@ describe('time questions (property tests)', () => {
         const answer = wrap(minutesA + east * min);
         expect(q.answer).toEqual({ kind: 'clock', minutes: answer });
         expect(renderText(q.prompt, 'en')).toContain(`it is ${hhmm(minutesA)} local solar time`);
-        const crossesMidnight = minutesA + east * min >= 1440 || minutesA + east * min < 0;
-        if (crossesMidnight) variants.midnight++;
-        if (d === 'easy') { expect(crossesMidnight, `seed ${s}`).toBe(false); expect(minutesA % 60).toBe(0); }
+        // The date at B in the solar-time model: both clocks read the same UTC instant, local = UTC + lon × 4 (lon in (−180, 180]).
+        // Plain midnight crossings change the date; crossing the 180° meridian shifts it the other way.
+        const rawB = minutesA + (b - a) * 4;
+        const nextDay = rawB >= 1440, dayBefore = rawB < 0;
+        if (nextDay || dayBefore) variants.midnight++;
+        if (across180) {
+          if (east > 0 && dayBefore) variants.dateLineBack++;
+          else if (east < 0 && nextDay) variants.dateLineForward++;
+          else if (!nextDay && !dayBefore && (minutesA + east * min >= 1440 || minutesA + east * min < 0)) variants.dateLineSameDay++;
+        }
+        if (d === 'easy') { expect(nextDay || dayBefore, `seed ${s}`).toBe(false); expect(minutesA % 60).toBe(0); }
         else expect(minutesA % 15).toBe(0);
-        // The explanation shows the degrees, the minutes and the addition or subtraction, and says when the day changes.
+        // The explanation shows the degrees, the minutes and the addition or subtraction, and says when the date changes.
         expect(en, `seed ${s}`).toContain(`${deg}°.`);
         expect(en).toContain(`${deg} × 4 = ${min} min`);
         if (min >= 60) expect(en).toContain(`${min} min = ${Math.floor(min / 60)} h`);
         expect(en).toContain(east > 0 ? `${hhmm(minutesA)} + ${min} min = ${hhmm(answer)}` : `${hhmm(minutesA)} − ${min} min = ${hhmm(answer)}`);
         expect(en).toContain(east > 0 ? 'B is further east, so its time is later' : 'B is further west, so its time is earlier');
-        expect(en.includes('the next day')).toBe(east > 0 && crossesMidnight);
-        expect(en.includes('the day before')).toBe(east < 0 && crossesMidnight);
+        expect(en.includes('the next day'), `seed ${s}`).toBe(nextDay);
+        expect(en.includes('the day before'), `seed ${s}`).toBe(dayBefore);
+        expect(en.includes('the date goes back one day')).toBe(across180 && dayBefore);
+        expect(en.includes('the date moves forward one day')).toBe(across180 && nextDay);
         // The map shows day and night as they are at that moment: the Sun gives A exactly the asked time.
         expect(q.scene.layers?.daylight).toBe(true);
         expect(wrap(q.scene.sun!.utcMinutes + a * 4)).toBe(minutesA);
@@ -139,7 +164,7 @@ describe('time questions (property tests)', () => {
           if (c === answer) continue;
           const res = time.check(q, { kind: 'clock', minutes: c });
           expect(res.correct).toBe(false);
-          const want = c === wrongWay ? 'q.time.mistake.direction' : perDegree.includes(c) ? 'q.time.mistake.perDegree' : undefined;
+          const want = c === wrongWay ? (across180 ? 'q.time.mistake.over180' : 'q.time.mistake.direction') : perDegree.includes(c) ? 'q.time.mistake.perDegree' : undefined;
           expect(res.mistake?.key, `seed ${s} candidate ${hhmm(c)}`).toBe(want);
         }
       }
@@ -148,6 +173,7 @@ describe('time questions (property tests)', () => {
       if (d === 'easy') expect(variants.degrees).toBe(0);
       else { expect(variants.degrees).toBeGreaterThan(SEEDS / 10); expect(variants.midnight).toBeGreaterThan(SEEDS / 50); }
       if (d === 'medium') expect(variants.primeCrossing).toBeGreaterThan(SEEDS / 5);
+      if (d === 'hard') { expect(variants.dateLineBack).toBeGreaterThan(0); expect(variants.dateLineForward).toBeGreaterThan(0); expect(variants.dateLineSameDay).toBeGreaterThan(0); }
     });
   }
 

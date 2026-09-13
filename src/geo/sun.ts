@@ -69,6 +69,10 @@ export function dayOfYear(date: Date): number {
   return Math.floor((date.getTime() - start) / 86_400_000) + 1;
 }
 
+export function daysInYear(year: number): number {
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0 ? 366 : 365;
+}
+
 export function dateFromDayAndMinutes(year: number, day: number, utcMinutes: number): Date {
   return new Date(Date.UTC(year, 0, 1) + (day - 1) * 86_400_000 + utcMinutes * 60_000);
 }

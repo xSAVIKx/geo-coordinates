@@ -36,8 +36,11 @@ describe('parseClock', () => {
     expect(parseClock('905')).toBe(545);
     expect(parseClock('0:00')).toBe(0);
     expect(parseClock('23:59')).toBe(1439);
+    expect(parseClock('24:00')).toBe(0);
+    expect(parseClock('24.00')).toBe(0);
+    expect(parseClock('2400')).toBe(0);
   });
   test('rejects anything that is not a time of day', () => {
-    for (const bad of ['', '13', '24:00', '12:60', '12:5', '1:2:3', 'abc', '12345', '-1:00', '7']) expect(parseClock(bad), bad).toBeNull();
+    for (const bad of ['', '13', '24:01', '25:00', '12:60', '12:5', '1:2:3', 'abc', '12345', '-1:00', '7']) expect(parseClock(bad), bad).toBeNull();
   });
 });

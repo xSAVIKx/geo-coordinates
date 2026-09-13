@@ -95,7 +95,7 @@ export const difference: QuestionModule = {
       const east = va > 0 ? va : vb;
       const midLon = normalizeLon(east + result / 2);
       const midLat = Math.round((A.lat + B.lat) / 2);
-      scene = { views: ['globe', 'flat'], point: null, flatProjection: 'grid', rotate: [-midLon, -Math.max(-40, Math.min(40, midLat))], layers: { specialLines: true, places: false }, overlays: [...markers] };
+      scene = { views: ['globe', 'flat'], phoneView: 'globe', point: null, flatProjection: 'grid', rotate: [-midLon, -Math.max(-40, Math.min(40, midLat))], layers: { specialLines: true, places: false }, overlays: [...markers] };
     } else {
       const flatView = fitFlatView([A, B], axis === 'lat' ? 'side' : 'top');
       scene = { views: ['flat'], point: null, flatView, flatProjection: 'grid', layers: { specialLines: true, places: false, graticuleStep: gridStepFor(flatView.zoom) }, overlays: [...markers] };

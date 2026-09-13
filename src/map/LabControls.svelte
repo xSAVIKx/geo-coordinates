@@ -1,7 +1,7 @@
 <script lang="ts">
   import { motionReduced } from '../app/settings.svelte';
   import { formatLon } from '../geo/format';
-  import { dayLightMinutes, dayOfYear, elevationFrom, meanSunPoint } from '../geo/sun';
+  import { dayLightMinutes, dayOfYear, daysInYear, elevationFrom, meanSunPoint } from '../geo/sun';
   import { formatClock, localSolarMinutes } from '../geo/time';
   import { i18n, t } from '../i18n/i18n.svelte';
   import { mapState } from './mapState.svelte';
@@ -64,6 +64,7 @@
   });
 
   const year = $derived(mapState.sun?.year ?? new Date().getUTCFullYear());
+  const lastDay = $derived(daysInYear(year));
   const keyDates = $derived(([['march', 2, 20], ['june', 5, 21], ['september', 8, 23], ['december', 11, 21]] as const).map(([id, month, day]) => {
     const d = new Date(Date.UTC(year, month, day));
     return { id, day: dayOfYear(d), label: new Intl.DateTimeFormat(i18n.lang, { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(d) };
@@ -121,7 +122,7 @@
           onchange={(v) => mapState.sun && (mapState.sun = { ...mapState.sun, utcMinutes: Math.round(v) })} />
       {/if}
       {#if has('sun-date')}
-        <Slider label={t('lab.date')} min={1} max={365} step={1} bigStep={30} value={mapState.sun.dayOfYear}
+        <Slider label={t('lab.date')} min={1} max={lastDay} step={1} bigStep={30} value={Math.min(lastDay, mapState.sun.dayOfYear)}
           display={dateLabel} valueText={dateLabel}
           onchange={(v) => mapState.sun && (mapState.sun = { ...mapState.sun, dayOfYear: Math.round(v) })} />
         <div class="key-dates" role="group" aria-label={t('lab.keyDates')}>

@@ -1,6 +1,6 @@
 import { readString, writeString } from '../app/storage';
 import { clampLat, normalizeLon, roundTo } from '../geo/format';
-import { dateFromDayAndMinutes, dayOfYear } from '../geo/sun';
+import { dateFromDayAndMinutes, dayOfYear, daysInYear } from '../geo/sun';
 import type { LatLon, Precision } from '../geo/types';
 import type { FlatPreset, FlatProjection, LabControl, LayerFlags, Overlay, SceneSpec, ViewId } from './types';
 
@@ -72,12 +72,13 @@ export class MapState {
     this.overlays = [...(scene.overlays ?? [])];
     this.sun = scene.sun ? { ...scene.sun, year: new Date().getUTCFullYear() } : null;
     this.labControls = [...(scene.labControls ?? [])];
-    this.phoneView = scene.views.includes('flat') ? 'flat' : (scene.views[0] ?? 'flat');
+    this.phoneView = scene.phoneView && scene.views.includes(scene.phoneView) ? scene.phoneView : scene.views.includes('flat') ? 'flat' : (scene.views[0] ?? 'flat');
     this.lastChange = 'program';
   }
 
   setSunNow(now: Date = new Date()): void {
-    this.sun = { utcMinutes: now.getUTCHours() * 60 + now.getUTCMinutes(), dayOfYear: dayOfYear(now), year: now.getUTCFullYear() };
+    const year = now.getUTCFullYear();
+    this.sun = { utcMinutes: now.getUTCHours() * 60 + now.getUTCMinutes(), dayOfYear: Math.min(daysInYear(year), dayOfYear(now)), year };
   }
 
   sunDate(): Date | null {
