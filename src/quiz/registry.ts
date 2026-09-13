@@ -7,11 +7,12 @@ import { nameLine } from './generators/nameLine';
 import { placePoint } from './generators/placePoint';
 import { readCoords } from './generators/readCoords';
 import { relativeLine } from './generators/relativeLine';
+import { time } from './generators/time';
 import { whichPlace } from './generators/whichPlace';
 import { createRng } from './rng';
 import type { Answer, CheckResult, Difficulty, Question, QuestionModule, QuestionTypeId } from './types';
 
-export const MODULES: QuestionModule[] = [nameLine, further, relativeLine, readCoords, placePoint, whichPlace, difference, distance];
+export const MODULES: QuestionModule[] = [nameLine, further, relativeLine, readCoords, placePoint, whichPlace, difference, distance, time];
 
 export function getModule(type: QuestionTypeId): QuestionModule {
   const m = MODULES.find((x) => x.type === type);

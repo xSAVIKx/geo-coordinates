@@ -1,5 +1,6 @@
 import { readString, writeString } from '../app/storage';
 import { clampLat, normalizeLon, roundTo } from '../geo/format';
+import { dateFromDayAndMinutes, dayOfYear } from '../geo/sun';
 import type { LatLon, Precision } from '../geo/types';
 import type { FlatPreset, FlatProjection, LabControl, LayerFlags, Overlay, SceneSpec, ViewId } from './types';
 
@@ -73,6 +74,14 @@ export class MapState {
     this.labControls = [...(scene.labControls ?? [])];
     this.phoneView = scene.views.includes('flat') ? 'flat' : (scene.views[0] ?? 'flat');
     this.lastChange = 'program';
+  }
+
+  setSunNow(now: Date = new Date()): void {
+    this.sun = { utcMinutes: now.getUTCHours() * 60 + now.getUTCMinutes(), dayOfYear: dayOfYear(now), year: now.getUTCFullYear() };
+  }
+
+  sunDate(): Date | null {
+    return this.sun ? dateFromDayAndMinutes(this.sun.year, this.sun.dayOfYear, this.sun.utcMinutes) : null;
   }
 
   setPoint(p: LatLon, source: ChangeSource = 'program'): void {

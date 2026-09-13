@@ -167,4 +167,16 @@ describe('MapState', () => {
     s.addOverlays(b);
     expect(s.overlays).toEqual([...a, ...b]);
   });
+  test('setSunNow and sunDate', () => {
+    const s = new MapState();
+    s.layers.daylight = true;
+    s.setSunNow(new Date('2026-09-23T10:30:00Z'));
+    expect(s.sun).toEqual({ utcMinutes: 630, dayOfYear: 266, year: 2026 });
+    expect(s.sunDate()!.toISOString()).toBe('2026-09-23T10:30:00.000Z');
+  });
+  test('sunDate is null without a sun', () => {
+    const s = new MapState();
+    s.applyScene({ views: ['flat'] });
+    expect(s.sunDate()).toBeNull();
+  });
 });

@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { ViewCtx } from '../geometry';
+  import Daylight from './Daylight.svelte';
   import { sphere } from '../world';
   import EdgeLabels from './EdgeLabels.svelte';
   import Graticule from './Graticule.svelte';
@@ -28,6 +29,8 @@
 {/if}
 <Hemispheres {ctx} {idPrefix} />
 <Graticule {ctx} />
+<!-- Night shading dims land and the grid but not the equator/meridian lines and their names, nor places and overlays. -->
+<Daylight {ctx} />
 <SpecialLines {ctx} />
 <Places {ctx} />
 <Overlays {ctx} />

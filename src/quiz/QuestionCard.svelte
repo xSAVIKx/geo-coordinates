@@ -3,6 +3,7 @@
   import { renderText } from '../i18n/text';
   import Feedback from './Feedback.svelte';
   import ChoiceInput from './inputs/ChoiceInput.svelte';
+  import ClockInput from './inputs/ClockInput.svelte';
   import CoordsInput from './inputs/CoordsInput.svelte';
   import NumberInput from './inputs/NumberInput.svelte';
   import type { Answer, CheckResult, Question } from './types';
@@ -13,19 +14,19 @@
   // `question.id` would leave a stale selection/typed answer/feedback on screen when, say, the
   // difficulty changes while staying on question 1.
   //
-  // `value` and the two `*Draft` props are `$bindable`, owned by Practice rather than local
+  // `value` and the `*Draft` props are `$bindable`, owned by Practice rather than local
   // `$state` here. The phone/desktop layout switch (see MapStage's `midContent`) moves this
   // component to a different place in the DOM, which destroys and recreates it — a purely local
   // answer would be lost on every resize across the breakpoint. Because Practice holds the real
   // state, a fresh instance picks the in-progress answer back up from its initial prop values.
   let {
     question, number, total, result, onsubmit, onnext, nextLabel, roundKey,
-    value = $bindable(null), coordsDraft = $bindable({ lat: '', lon: '' }), numberDraft = $bindable(''),
+    value = $bindable(null), coordsDraft = $bindable({ lat: '', lon: '' }), numberDraft = $bindable(''), clockDraft = $bindable(''),
     showFeedback = true, big = false,
   }: {
     question: Question; number: number; total: number; result: CheckResult | null;
     onsubmit: (a: Answer) => void; onnext: () => void; nextLabel: string; roundKey: string;
-    value?: Answer | null; coordsDraft?: { lat: string; lon: string }; numberDraft?: string;
+    value?: Answer | null; coordsDraft?: { lat: string; lon: string }; numberDraft?: string; clockDraft?: string;
     showFeedback?: boolean; big?: boolean;
   } = $props();
 
@@ -104,6 +105,8 @@
       <CoordsInput spec={question.input} bind:value bind:draft={coordsDraft} disabled={answered} {invalid} describedBy="{uid}-prompt" />
     {:else if question.input.kind === 'number'}
       <NumberInput unit={question.input.unit} bind:value bind:draft={numberDraft} disabled={answered} {invalid} describedBy="{uid}-prompt" />
+    {:else if question.input.kind === 'clock'}
+      <ClockInput bind:value bind:draft={clockDraft} disabled={answered} {invalid} describedBy="{uid}-prompt" />
     {/if}
   {/key}
 

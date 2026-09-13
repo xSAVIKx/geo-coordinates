@@ -27,7 +27,7 @@ test('longitude wraps across 180° with the plus button', async ({ page }) => {
 
 test('place list moves the point', async ({ page }) => {
   await openPage(page, 'pl/lab');
-  await page.getByText('Miejsca').click();
+  await page.getByText('Miejsca', { exact: true }).click();
   await page.getByRole('button', { name: 'Przenieś punkt do: Kijów' }).click();
   await expect(page.locator('output')).toHaveText('50°N, 31°E');
   await expectNoAxeViolations(page, 'places open');

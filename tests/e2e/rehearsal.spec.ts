@@ -12,7 +12,10 @@ test('rehearsal runs 15 questions without feedback and reviews mistakes', async 
     const textboxes = page.getByRole('textbox');
     const boxes = await textboxes.count();
     if (await radios.count() > 0) await radios.first().check();
-    else if (boxes === 1) await textboxes.first().fill('1');                       // number or clock input
+    else if (boxes === 1) {
+      const clock = await page.getByLabel('Time (hours:minutes)').count() > 0;
+      await textboxes.first().fill(clock ? '12:00' : '1');                         // clock or number input
+    }
     else if (boxes === 2) { await textboxes.nth(0).fill('1N'); await textboxes.nth(1).fill('1E'); } // coordinates
     // boxes === 0: map-pick question; the current point is a valid (probably wrong) answer
     await page.getByRole('button', { name: 'Check' }).click();

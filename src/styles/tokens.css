@@ -94,8 +94,12 @@
   --marker-answer: #17753a;
   --marker-wrong: #b42318;
   --night: rgb(8 16 40 / 0.55);
-  --twilight: rgb(8 16 40 / 0.28);
+  --twilight: rgb(8 16 40 / 0.2);
+  --daylit: rgb(255 236 170 / 0.14);
   --sun: #f59e0b;
+  --sun-stroke: #b45309;
+  --moon: #4f5bb5;
+  --noon: #d97706;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -114,6 +118,7 @@
     --hemi-a: rgb(130 177 255 / 0.14); --hemi-b: rgb(251 146 60 / 0.14);
     --marker-a: #82b1ff; --marker-b: #fb923c; --marker-c: #c4b5fd; --marker-d: #5eead4;
     --marker-answer: #6fdd8b; --marker-wrong: #ff8a80;
+    --night: rgb(0 3 12 / 0.66); --twilight: rgb(0 3 12 / 0.28); --daylit: rgb(255 222 140 / 0.16); --sun: #fbbf24; --sun-stroke: #fde68a; --moon: #b4bdf5; --noon: #fbbf24;
   }
 }
 :root[data-theme="dark"] {
@@ -131,5 +136,6 @@
   --hemi-a: rgb(130 177 255 / 0.14); --hemi-b: rgb(251 146 60 / 0.14);
   --marker-a: #82b1ff; --marker-b: #fb923c; --marker-c: #c4b5fd; --marker-d: #5eead4;
   --marker-answer: #6fdd8b; --marker-wrong: #ff8a80;
+  --night: rgb(0 3 12 / 0.66); --twilight: rgb(0 3 12 / 0.28); --daylit: rgb(255 222 140 / 0.16); --sun: #fbbf24; --sun-stroke: #fde68a; --moon: #b4bdf5; --noon: #fbbf24;
 }
 :root[data-large-text="true"] { --fs-scale: 1.25; }

@@ -7,13 +7,15 @@
   import CrossSection from './CrossSection.svelte';
   import FlatMap from './FlatMap.svelte';
   import Globe from './Globe.svelte';
+  import LabControls from './LabControls.svelte';
   import { mapState } from './mapState.svelte';
   import PlaceList from './PlaceList.svelte';
 
   // `midContent`, when given, renders right after the map view(s) and before the coordinate
   // sliders / place list — used by Practice on narrow screens so the question stays visible
   // next to the map instead of being pushed below all of the map's own controls.
-  let { showPlaces = false, label, midContent }: { showPlaces?: boolean; label?: string; midContent?: Snippet } = $props();
+  // `showLab = false` leaves the day/night controls to the page (the lab page puts them in a side panel on wide screens).
+  let { showPlaces = false, label, midContent, showLab = true }: { showPlaces?: boolean; label?: string; midContent?: Snippet; showLab?: boolean } = $props();
   let width = $state(1024);
   const wide = $derived(width >= 640);
   const shown = $derived(wide ? mapState.views : mapState.views.filter((v) => v === mapState.phoneView));
@@ -47,6 +49,7 @@
   </div>
   {#if midContent}{@render midContent()}{/if}
   {#if mapState.point}<CoordinateControls />{/if}
+  {#if showLab && mapState.labControls.length}<LabControls />{/if}
   {#if showPlaces && mapState.pointEditable}<PlaceList />{/if}
 </section>
 

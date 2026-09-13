@@ -42,7 +42,23 @@ export function antisolarPoint(date: Date): LatLon {
 }
 
 export function solarElevationDeg(date: Date, p: LatLon): number {
-  const s = subsolarPoint(date);
+  return elevationFrom(subsolarPoint(date), p);
+}
+
+/**
+ * The Sun as the lesson's clocks see it: the real declination, but standing over the meridian where
+ * local solar time (UTC + longitude × 4 min) is 12:00. It differs from the real subsolar point only by the
+ * equation of time (at most about 4°), and keeps the night shading, the Sun symbol, the noon meridian and
+ * the clocks telling one consistent story.
+ */
+export function meanSunPoint(date: Date): LatLon {
+  const utcHours = date.getUTCHours() + date.getUTCMinutes() / 60 + date.getUTCSeconds() / 3600;
+  return { lat: sunParams(date).declination, lon: normalizeLon(-15 * (utcHours - 12)) };
+}
+
+/** Elevation of the Sun (degrees) seen from `p` when it stands overhead at `sun`. */
+export function elevationFrom(sun: LatLon, p: LatLon): number {
+  const s = sun;
   const v = Math.sin(p.lat * RAD) * Math.sin(s.lat * RAD)
     + Math.cos(p.lat * RAD) * Math.cos(s.lat * RAD) * Math.cos((p.lon - s.lon) * RAD);
   return Math.asin(Math.max(-1, Math.min(1, v))) * DEG;
@@ -55,4 +71,12 @@ export function dayOfYear(date: Date): number {
 
 export function dateFromDayAndMinutes(year: number, day: number, utcMinutes: number): Date {
   return new Date(Date.UTC(year, 0, 1) + (day - 1) * 86_400_000 + utcMinutes * 60_000);
+}
+
+/** Minutes of daylight (Sun above the horizon) in a day at latitude `lat` when the Sun's declination is `declination`. */
+export function dayLightMinutes(lat: number, declination: number): number {
+  const c = -Math.tan(lat * RAD) * Math.tan(declination * RAD);
+  if (c <= -1) return 1440;
+  if (c >= 1) return 0;
+  return ((2 * Math.acos(c) * DEG) / 15) * 60;
 }

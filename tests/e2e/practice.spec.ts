@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { expectNoAxeViolations, openPage, pageErrors } from './helpers';
 
-type Practice = { question: { type: string; input: { kind: string; precision?: 'degree' | 'minute' }; answer: { kind: string; index?: number; value?: { lat: number; lon: number } | number } } };
+type Practice = { question: { type: string; input: { kind: string; precision?: 'degree' | 'minute' }; answer: { kind: string; index?: number; value?: { lat: number; lon: number } | number; minutes?: number } } };
 const current = (page: Page) => page.evaluate(() => (window as unknown as { __practice: Practice }).__practice);
 
 // The question lives inside the QuestionCard <form class="card">; the Difficulty fieldset
@@ -17,6 +17,9 @@ async function answerCorrectlyWithKeyboard(page: Page) {
     await radios.nth(0).focus();
     for (let i = 0; i < a.index!; i++) await page.keyboard.press('ArrowDown');
     if (a.index === 0) await page.keyboard.press('Space');
+  } else if (a.kind === 'clock') {
+    const m = a.minutes!;
+    await card(page).getByRole('textbox').first().fill(`${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`);
   } else if (a.kind === 'number') {
     await card(page).getByRole('textbox').focus();
     await page.keyboard.type(String(a.value));
@@ -61,7 +64,7 @@ async function answerCorrectlyWithKeyboard(page: Page) {
   await page.keyboard.press('Enter');
 }
 
-for (const topic of [1, 2, 3, 4, 5, 6, 7]) {
+for (const topic of [1, 2, 3, 4, 5, 6, 7, 8]) {
   test(`topic ${topic}: a full keyboard-only round scores 10/10`, async ({ page }) => {
     test.setTimeout(120_000);
     await openPage(page, `en/topic-${topic}/practice`, '?test');
@@ -154,4 +157,32 @@ test('the best score updates live and is still shown after starting a new round 
   await expect(page.getByRole('heading', { name: 'Round complete' })).toBeFocused();
   await page.getByRole('button', { name: 'New round' }).click();
   await expect(page.getByText('Your best: 10 out of 10')).toBeVisible();
+});
+
+test('topic 8: a clock answer the wrong way round gets the direction hint, and the typed time survives a layout switch', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await openPage(page, 'en/topic-8/practice', '?test');
+  type Q = { input: { kind: string }; answer: { minutes: number }; meta: { lonA: number; lonB: number; minutesA: number } };
+  let q = await page.evaluate(() => (window as unknown as { __practice: { question: Q } }).__practice.question);
+  // Easy rounds mix "later" choices and clocks; move on until a clock question comes up.
+  for (let i = 0; i < 9 && q.input.kind !== 'clock'; i++) {
+    await answerCorrectlyWithKeyboard(page);
+    await page.keyboard.press('Enter');
+    q = await page.evaluate(() => (window as unknown as { __practice: { question: Q } }).__practice.question);
+  }
+  expect(q.input.kind).toBe('clock');
+  const offset = ((((q.meta.lonB - q.meta.lonA + 540) % 360) - 180) * 4);
+  const wrong = (((q.meta.minutesA - offset) % 1440) + 1440) % 1440;
+  const typed = `${Math.floor(wrong / 60)}.${String(wrong % 60).padStart(2, '0')}`; // a dot works too
+  await card(page).getByRole('textbox').fill(typed);
+  await page.setViewportSize({ width: 600, height: 900 });
+  await expect(card(page).getByRole('textbox')).toHaveValue(typed);
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await expect(card(page).getByRole('textbox')).toHaveValue(typed);
+  await page.getByRole('button', { name: 'Check' }).click();
+  await expect(card(page).getByText(/^Wrong direction!/)).toBeVisible();
+  const m = q.answer.minutes;
+  await expect(card(page).getByText(`Correct answer: ${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`)).toBeVisible();
+  await expect(page.locator('.diff text.total').first()).toHaveText(new RegExp(`^${Math.abs(offset) / 4}°$`));
+  expect(pageErrors(page)).toEqual([]);
 });

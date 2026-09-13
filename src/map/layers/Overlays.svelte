@@ -3,6 +3,7 @@
   import { formatNumber } from '../../i18n/text';
   import { bracketModel, labelWidth, type BracketUnit } from '../brackets';
   import { hemisphere, meridianLine, parallelLine, type ViewCtx } from '../geometry';
+  import { meanSunPoint } from '../../geo/sun';
   import { mapState } from '../mapState.svelte';
   import { labelPlaces, localizeLabel } from '../markerLabel';
   import type { MarkerTone } from '../types';
@@ -38,6 +39,19 @@
     {@const d = ctx.path(o.axis === 'lat' ? parallelLine(o.value) : meridianLine(o.value)) ?? ''}
     <path class="hl-casing" {d} />
     <path class="hl-line" {d} />
+  {:else if o.kind === 'noon-meridian'}
+    {@const date = mapState.sunDate()}
+    {#if date}
+      {@const lon = meanSunPoint(date).lon}
+      {@const d = ctx.path(meridianLine(lon)) ?? ''}
+      <path class="noon-casing" {d} />
+      <path class="noon" {d} />
+      {@const xy = [35, 15, 55, 0, -20].map((lat) => ctx.project({ lat, lon })).find((p) => p && p[1] > 24 * ctx.px && p[1] < ctx.height - 12 * ctx.px)}
+      {#if xy}
+        {@const flip = xy[0] > ctx.width - 110 * ctx.px}
+        <text class="halo noon-t" x={xy[0] + (flip ? -8 : 8) * ctx.px} y={xy[1]} text-anchor={flip ? 'end' : 'start'} font-size={15 * ctx.px}>{t('lab.noon')} 12:00</text>
+      {/if}
+    {/if}
   {:else if o.kind === 'marker'}
     {@const xy = ctx.project(o.p)}
     {#if xy}
@@ -62,6 +76,9 @@
 <style>
   .hl-region { fill: var(--accent); fill-opacity: 0.16; stroke: var(--accent); stroke-width: 2; vector-effect: non-scaling-stroke; }
   .hl-casing { fill: none; stroke: var(--halo); stroke-width: 9; stroke-opacity: 0.6; vector-effect: non-scaling-stroke; }
+  .noon-casing { fill: none; stroke: var(--halo); stroke-width: 8; stroke-opacity: 0.7; vector-effect: non-scaling-stroke; pointer-events: none; }
+  .noon { fill: none; stroke: var(--noon); stroke-width: 4; stroke-dasharray: 10 6; stroke-linecap: round; vector-effect: non-scaling-stroke; pointer-events: none; }
+  .noon-t { fill: var(--text); font-weight: 800; }
   .hl-line { fill: none; stroke: var(--accent); stroke-width: 5; stroke-opacity: 0.9; stroke-linecap: round; vector-effect: non-scaling-stroke; }
   .marker path { stroke-width: 3; vector-effect: non-scaling-stroke; stroke: var(--halo); paint-order: stroke; stroke-linejoin: round; }
   .marker text { fill: var(--text); font-weight: 750; }

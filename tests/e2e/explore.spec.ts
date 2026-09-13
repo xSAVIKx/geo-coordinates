@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { expectNoAxeViolations, openPage, pageErrors } from './helpers';
 
 for (const lang of ['en', 'pl', 'uk'] as const) {
-  for (const topic of [1, 2, 3, 4, 5, 6, 7]) {
+  for (const topic of [1, 2, 3, 4, 5, 6, 7, 8]) {
     test(`topic ${topic} explore in ${lang}: every step renders without axe violations`, async ({ page }) => {
       await openPage(page, `${lang}/topic-${topic}/explore`);
       const total = await page.locator('.dots li').count();

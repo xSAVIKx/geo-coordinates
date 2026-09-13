@@ -1,9 +1,11 @@
 <script lang="ts">
   import { t } from '../i18n/i18n.svelte';
 
-  let { label, min, max, value, step, bigStep, valueText, display, onchange, wrap = false }: {
+  // `track`, when given, is a CSS background painted on the track instead of the plain rail and accent fill
+  // (the day/night lab paints the sky over the day on its time slider).
+  let { label, min, max, value, step, bigStep, valueText, display, onchange, wrap = false, track: trackBackground }: {
     label: string; min: number; max: number; value: number; step: number; bigStep: number;
-    valueText: string; display: string; onchange: (v: number) => void; wrap?: boolean;
+    valueText: string; display: string; onchange: (v: number) => void; wrap?: boolean; track?: string;
   } = $props();
 
   let track: HTMLDivElement;
@@ -39,7 +41,7 @@
   <div class="row">
     <button type="button" class="btn icon step" aria-label={t('controls.decrease', { name: label })} onclick={() => set(value - step)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12" /></svg></button>
     <!-- svelte-ignore a11y_no_static_element_interactions -- pointer drag on the track moves the thumb; the thumb itself carries role=slider and full keyboard support -->
-    <div class="track" bind:this={track}
+    <div class="track" class:painted={trackBackground !== undefined} style:--track-bg={trackBackground} bind:this={track}
       onpointerdown={(e) => { dragging = true; track.setPointerCapture(e.pointerId); fromPointer(e); }}
       onpointermove={(e) => dragging && fromPointer(e)}
       onpointerup={() => (dragging = false)} onpointercancel={() => (dragging = false)}>
@@ -62,6 +64,8 @@
   .step svg { fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; }
   .track { position: relative; flex: 1; height: var(--tap); touch-action: none; cursor: pointer; margin-inline: var(--space-2); }
   .track::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 8px; margin-top: -4px; border-radius: 4px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--border-strong); }
+  .painted::before { height: 14px; margin-top: -7px; border-radius: 7px; background: var(--track-bg); }
+  .painted .fill { display: none; }
   .fill { position: absolute; left: 0; top: 50%; height: 8px; margin-top: -4px; border-radius: 4px; background: var(--accent); }
   .thumb { position: absolute; top: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; background: var(--surface); border: 3px solid var(--accent); box-shadow: var(--shadow-2); transition: transform var(--dur) var(--ease); }
   .thumb::after { content: ''; position: absolute; inset: 6px; border-radius: 50%; background: var(--accent); }
