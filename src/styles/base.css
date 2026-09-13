@@ -1,8 +1,10 @@
 *, *::before, *::after { box-sizing: border-box; }
 html { font-family: var(--font); font-size: calc(100% * var(--fs-scale)); color: var(--text); background: var(--bg); -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 /* body paints its own ground and text colour: a host page that wraps the lesson may style body
- * (e.g. a light reset background), which would otherwise show through behind themed text. */
-body { margin: 0; min-height: 100dvh; background: var(--bg); color: var(--text); line-height: var(--lh-body); font-size: var(--step-0); -webkit-font-smoothing: antialiased; }
+ * (e.g. a light reset background), which would otherwise show through behind themed text.
+ * :root body (0,1,1) outranks a plain body reset wherever the host's stylesheet sits. */
+body { margin: 0; min-height: 100dvh; line-height: var(--lh-body); font-size: var(--step-0); -webkit-font-smoothing: antialiased; }
+:root body { background: var(--bg); color: var(--text); }
 #app { min-height: 100dvh; display: flex; flex-direction: column; }
 button, input, select { font: inherit; color: inherit; }
 button { min-height: var(--tap); min-width: var(--tap); cursor: pointer; }

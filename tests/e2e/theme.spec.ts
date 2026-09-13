@@ -8,19 +8,20 @@ import { openPage, pageErrors } from './helpers';
 
 const HOST_RESET = ':root{color-scheme:light}body{margin:0;font:14px system-ui,sans-serif;background:#faf9f5}';
 
-/** Runs before any page script: stamps <html data-theme> and puts a host-style reset first in <head>. */
-async function emulateHost(page: Page, stamp: 'dark' | 'light', hostGround = '#faf9f5'): Promise<void> {
+/**
+ * Emulates a host wrapper. The stamp goes on <html> before any page script runs; the host reset is
+ * appended to <head> AFTER the app's own styles (at DOMContentLoaded), so the page must win on
+ * specificity rather than on stylesheet order.
+ */
+async function emulateHost(page: Page, stamp: 'dark' | 'light' | null, hostGround = '#faf9f5'): Promise<void> {
   await page.addInitScript(({ stamp, css }) => {
-    let stamped = false; let styled = false;
-    const run = (): boolean => {
-      const root = document.documentElement;
-      if (root && !stamped) { root.setAttribute('data-theme', stamp); stamped = true; }
-      if (document.head && !styled) {
-        const s = document.createElement('style'); s.textContent = css; document.head.prepend(s); styled = true;
-      }
-      return stamped && styled;
-    };
-    if (!run()) new MutationObserver((_, o) => { if (run()) o.disconnect(); }).observe(document, { childList: true, subtree: true });
+    if (stamp) {
+      const mark = (): boolean => { const root = document.documentElement; if (root) root.setAttribute('data-theme', stamp); return !!root; };
+      if (!mark()) new MutationObserver((_, o) => { if (mark()) o.disconnect(); }).observe(document, { childList: true });
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      const s = document.createElement('style'); s.textContent = css; document.head.append(s);
+    });
   }, { stamp, css: HOST_RESET.replace('#faf9f5', hostGround) });
 }
 
@@ -57,15 +58,18 @@ async function contrast(page: Page, selector: string): Promise<Pair> {
   }, selector);
 }
 
-async function expectReadableDark(page: Page): Promise<void> {
+async function expectReadable(page: Page, theme: 'dark' | 'light'): Promise<void> {
   // A theme switch starts colour transitions (even 0.01 ms ones); sample only once they settle.
   await page.evaluate(() => Promise.all(document.getAnimations().filter((a) => a instanceof CSSTransition).map((a) => a.finished.catch(() => undefined))));
+  // The host reset (if any) must already be in place.
+  await page.waitForLoadState('domcontentloaded');
   // h1 and the step text sit straight on the page ground; the buttons have their own surface.
   const h1 = await contrast(page, 'main h1');
   const pairs = [h1, await contrast(page, 'main p'), await contrast(page, 'main .btn.primary'), await contrast(page, 'main .btn:not(.primary)')];
   for (const p of pairs) expect(p.ratio, p.what).toBeGreaterThanOrEqual(4.5);
-  // Dark theme really applied: the h1 ground is dark.
-  expect(parseInt(h1.bg.slice(1, 3), 16), h1.what).toBeLessThan(0x40);
+  // The expected theme really applied: the h1 ground is dark or light.
+  const red = parseInt(h1.bg.slice(1, 3), 16);
+  if (theme === 'dark') expect(red, h1.what).toBeLessThan(0x40); else expect(red, h1.what).toBeGreaterThan(0xc0);
 }
 
 const ROUTE = 'en/topic-1/explore/2';
@@ -74,18 +78,15 @@ test('dark OS preference without a stamp is readable', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' });
   await openPage(page, ROUTE);
   await expect(page.locator('html')).not.toHaveAttribute('data-theme', /./);
-  await expectReadableDark(page);
+  await expectReadable(page, 'dark');
   expect(pageErrors(page)).toEqual([]);
 });
 
 test('dark OS preference inside a light-ground host without a stamp is readable', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' });
-  await page.addInitScript((css) => {
-    const add = (): boolean => { if (!document.head) return false; const s = document.createElement('style'); s.textContent = css; document.head.prepend(s); return true; };
-    if (!add()) new MutationObserver((_, o) => { if (add()) o.disconnect(); }).observe(document, { childList: true, subtree: true });
-  }, HOST_RESET);
+  await emulateHost(page, null);
   await openPage(page, ROUTE);
-  await expectReadableDark(page);
+  await expectReadable(page, 'dark');
 });
 
 test('an external data-theme="dark" stamp is honoured with a light OS', async ({ page }) => {
@@ -93,7 +94,7 @@ test('an external data-theme="dark" stamp is honoured with a light OS', async ({
   await emulateHost(page, 'dark', '#262624');
   await openPage(page, ROUTE);
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  await expectReadableDark(page);
+  await expectReadable(page, 'dark');
   expect(pageErrors(page)).toEqual([]);
 });
 
@@ -117,6 +118,28 @@ test('the in-app Dark setting is readable', async ({ page }) => {
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toBeHidden();
-  await expectReadableDark(page);
+  await expectReadable(page, 'dark');
+  expect(pageErrors(page)).toEqual([]);
+});
+
+test('an external data-theme="light" stamp is honoured and readable with a dark OS', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' });
+  // A dark host ground makes the check discriminating: light-palette text only passes on the page's own ground.
+  await emulateHost(page, 'light', '#262624');
+  await openPage(page, ROUTE);
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await expectReadable(page, 'light');
+  expect(pageErrors(page)).toEqual([]);
+});
+
+test('the in-app Light setting is readable with a dark OS', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' });
+  await openPage(page, ROUTE);
+  await page.getByRole('button', { name: 'Settings' }).click();
+  await page.getByLabel('Light').check();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toBeHidden();
+  await expectReadable(page, 'light');
   expect(pageErrors(page)).toEqual([]);
 });
