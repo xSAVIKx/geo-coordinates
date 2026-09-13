@@ -25,9 +25,9 @@
       <span class="letter" aria-hidden="true">{letters[i]}</span>
       <span class="text">{renderText(option)}</span>
       {#if isCorrect}
-        <span class="badge ok" aria-hidden="true">✓</span><span class="visually-hidden">– {t('input.correctOption')}</span>
+        <span class="badge ok" aria-hidden="true">✓</span><span class="visually-hidden">({t('practice.resultCorrect')})</span>
       {:else if isWrongChosen}
-        <span class="badge bad" aria-hidden="true">✗</span>
+        <span class="badge bad" aria-hidden="true">✗</span><span class="visually-hidden">({t('practice.resultWrong')})</span>
       {:else}
         <svg class="tick" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
       {/if}

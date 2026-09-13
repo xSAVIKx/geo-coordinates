@@ -124,9 +124,10 @@ test('a wrong choice answer marks the correct option with a check and the chosen
   await page.getByRole('button', { name: 'Check' }).click();
   await expect(options.nth(correct)).toHaveClass(/correct/);
   await expect(options.nth(correct).locator('.badge.ok')).toHaveText('✓');
-  await expect(options.nth(correct).getByText('correct answer')).toBeAttached();
+  await expect(options.nth(correct).getByText('(correct)')).toBeAttached();
   await expect(options.nth(wrong)).toHaveClass(/wrong/);
   await expect(options.nth(wrong).locator('.badge.bad')).toHaveText('✗');
+  await expect(options.nth(wrong).getByText('(wrong)')).toBeAttached();
   await expectNoAxeViolations(page, 'choice wrong answer badges');
 });
 

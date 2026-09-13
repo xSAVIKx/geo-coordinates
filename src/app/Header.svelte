@@ -22,7 +22,9 @@
         <circle cx="27" cy="11.5" r="3.6" class="logo-pt" />
       </svg>
       <span class="title full">{t('app.title')}</span>
-      <span class="title short">{t('app.shortTitle')}</span>
+      <!-- Decorative below 480px: the (visually-hidden, not aria-hidden) full title above already
+           gives the brand link its accessible name, so this must not add a second name to it. -->
+      <span class="title short" aria-hidden="true">{t('app.shortTitle')}</span>
     </a>
     <div class="actions">
       <div class="langs seg" role="group" aria-label={t('header.language')}>

@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { overlaps, selectVisibleLabels, textBox } from '../../src/map/labelLayout';
+import { overlaps, rotateBoxAround, selectStableLabels, selectVisibleLabels, textBox } from '../../src/map/labelLayout';
 
 test('overlaps', () => {
   expect(overlaps({ left: 0, right: 10, top: 0, bottom: 10 }, { left: 5, right: 15, top: 5, bottom: 15 })).toBe(true);
@@ -50,4 +50,50 @@ test('selectVisibleLabels: non-overlapping candidates around an obstacle all sta
   const boxes = [textBox(0, 0, 20, 10), textBox(200, 0, 20, 10)];
   const visible = selectVisibleLabels(boxes, (b) => b, () => 0, [obstacle]);
   expect(visible).toEqual([true, true]);
+});
+
+test('rotateBoxAround: a 90°-rotated box swaps width and height around the pivot', () => {
+  // A wide, short box (width 20, height 4) anchored with its top-left corner at the pivot.
+  const box = textBox(0, 0, 20, 4, 'start'); // left=0, right=20, top=-3.2, bottom=1
+  const rotated = rotateBoxAround(box, 0, 0, -90);
+  // Rotating -90° about the origin: what was horizontal extent becomes vertical extent and vice
+  // versa, so the rotated box is tall and narrow instead of wide and short.
+  expect(rotated.right - rotated.left).toBeCloseTo(box.bottom - box.top, 6);
+  expect(rotated.bottom - rotated.top).toBeCloseTo(box.right - box.left, 6);
+});
+
+test('rotateBoxAround: an unrotated (0°) box is unchanged', () => {
+  const box = textBox(10, 20, 30, 12, 'middle');
+  expect(rotateBoxAround(box, 10, 20, 0)).toEqual(box);
+});
+
+test('selectStableLabels: hysteresis keeps a previously visible label through small centre-distance jitter', () => {
+  // Two overlapping candidates, neither featured; simulate a sequence of small centre shifts
+  // (jittering the two distances a little each step) after 'a' first wins the tie.
+  const boxAt = (x: number) => textBox(x, 0, 20, 10);
+  const items = [{ id: 'a', x: 0 }, { id: 'b', x: 10 }] as const;
+  let visible = new Set<string>();
+  const distanceSteps: Array<Record<'a' | 'b', number>> = [
+    { a: 5, b: 4.9 }, { a: 5.2, b: 4.8 }, { a: 4.8, b: 5.1 }, { a: 5.1, b: 4.85 }, { a: 4.95, b: 5.05 },
+  ];
+  for (const d of distanceSteps) {
+    const result = selectStableLabels(
+      items,
+      (i) => boxAt(i.x),
+      () => false,
+      (i) => d[i.id],
+      (i) => visible.has(i.id),
+    );
+    const shown = items.filter((_, idx) => result[idx]).map((i) => i.id);
+    expect(shown).toEqual(['a']); // never toggles to 'b', even though raw distance jitters around a tie
+    visible = new Set(shown);
+  }
+});
+
+test('selectStableLabels: a newly-relevant featured label still wins over a previously visible one', () => {
+  const boxAt = (x: number) => textBox(x, 0, 20, 10);
+  const items = [{ id: 'a', x: 0, featured: false }, { id: 'b', x: 10, featured: true }];
+  const wasVisible = (i: (typeof items)[number]) => i.id === 'a';
+  const result = selectStableLabels(items, (i) => boxAt(i.x), (i) => i.featured, () => 0, wasVisible);
+  expect(result).toEqual([false, true]); // b (featured) beats a's hysteresis bonus
 });

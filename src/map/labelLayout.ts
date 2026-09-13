@@ -36,3 +36,48 @@ export function selectVisibleLabels<T>(
   }
   return visible;
 }
+
+/**
+ * The axis-aligned bounding box of `box` after rotating it by `degrees` around `(cx, cy)`
+ * (matching SVG's `rotate(<degrees> <cx> <cy>)` transform) — for a label drawn rotated in place,
+ * such as the vertical prime-meridian / antimeridian line labels.
+ */
+export function rotateBoxAround(box: LabelBox, cx: number, cy: number, degrees: number): LabelBox {
+  const rad = (degrees * Math.PI) / 180;
+  const cos = Math.cos(rad), sin = Math.sin(rad);
+  const corners: [number, number][] = [
+    [box.left, box.top], [box.right, box.top], [box.right, box.bottom], [box.left, box.bottom],
+  ];
+  const rotated = corners.map(([x, y]): [number, number] => [
+    cx + (x - cx) * cos - (y - cy) * sin,
+    cy + (x - cx) * sin + (y - cy) * cos,
+  ]);
+  const xs = rotated.map((p) => p[0]);
+  const ys = rotated.map((p) => p[1]);
+  return { left: Math.min(...xs), right: Math.max(...xs), top: Math.min(...ys), bottom: Math.max(...ys) };
+}
+
+/**
+ * Like `selectVisibleLabels`, but stable across small view changes (panning/zooming a few CSS px
+ * should not toggle which labels show): items rank in three tiers — `featured` first, then items
+ * that were visible in the *previous* call (`wasVisible`, e.g. the caller's own last result),
+ * then everything else — and within a tier, `distance` (typically distance to the view centre) is
+ * bucketed by `bucketSize` so a tiny shift in distance can't reorder same-tier items. A tier-1
+ * (previously visible, non-featured) item still loses to a tier-0 (featured) item it now collides
+ * with — hysteresis only protects an item from losing to an equally-unfeatured newcomer.
+ */
+export function selectStableLabels<T>(
+  items: readonly T[],
+  box: (item: T) => LabelBox,
+  featured: (item: T) => boolean,
+  distance: (item: T) => number,
+  wasVisible: (item: T) => boolean,
+  obstacles: readonly LabelBox[] = [],
+  bucketSize = 8,
+): boolean[] {
+  const rank = (item: T): number => {
+    const tier = featured(item) ? 0 : wasVisible(item) ? 1 : 2;
+    return tier * 1_000_000 + Math.floor(distance(item) / bucketSize);
+  };
+  return selectVisibleLabels(items, box, rank, obstacles);
+}

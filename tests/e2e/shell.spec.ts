@@ -58,6 +58,9 @@ test('the short app title replaces the full title below 480px', async ({ page })
   // box instead of asserting it's "hidden" (Playwright treats a 1×1px box as visible).
   const box = await full.boundingBox();
   expect(box?.width ?? 0).toBeLessThanOrEqual(1);
+  // The visible short title is decorative (aria-hidden): the brand link's accessible name must
+  // stay exactly the full title, not "Coordinates on the globe Coordinates" or similar.
+  await expect(page.getByRole('link', { name: 'Coordinates on the globe', exact: true })).toHaveCount(1);
   await expectNoAxeViolations(page, '375px header');
 });
 

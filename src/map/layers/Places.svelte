@@ -2,11 +2,18 @@
   import { i18n, t } from '../../i18n/i18n.svelte';
   import { labelWidth } from '../brackets';
   import type { ViewCtx } from '../geometry';
-  import { type LabelBox, selectVisibleLabels, textBox } from '../labelLayout';
+  import { rotateBoxAround, selectStableLabels, textBox, type LabelBox } from '../labelLayout';
   import { lineLabelPoint, lineLabelSpecs } from '../lineLabels';
   import { mapState } from '../mapState.svelte';
   import { MAP_LABELS, PLACES, type Place } from '../places';
   let { ctx }: { ctx: ViewCtx } = $props();
+
+  // Which place labels were visible the *previous* time this ran — read (for the hysteresis bonus
+  // in `candidates`' rank) and written (from `visibleIds`) below. A plain, non-reactive variable:
+  // Svelte doesn't track reads/writes of it, so updating it as a side effect of computing
+  // `visibleIds` cannot itself re-trigger that (or any other) derived — it's simply the value
+  // `candidates` will see the *next* time something else invalidates it.
+  let previousVisible = new Set<string>();
 
   const showAllNames = $derived(ctx.kind === 'flat' && mapState.flat.zoom >= 2.5);
   const places = $derived(mapState.layers.places ? PLACES.filter((p) => p.kind === 'city') : []);
@@ -18,17 +25,23 @@
 
   // Special-line labels (equator, tropics…) are drawn by a sibling layer, but their exact
   // position is shared via lineLabels.ts so they can act as fixed obstacles here: a place name
-  // never covers one. Vertical (rotated) labels — prime meridian, antimeridian — are left out of
-  // the obstacle set; they sit far south of the crowded areas and a precise rotated box isn't
-  // worth the complexity.
+  // never covers one. The vertical (rotated) prime-meridian / antimeridian labels need their
+  // rotated bounding box — SpecialLines.svelte draws them with `rotate(-90 lx ly)` around the same
+  // (lx, ly) anchor computed here, so the unrotated box is rotated the same way before use.
   const lineObstacles = $derived.by<LabelBox[]>(() => {
     const out: LabelBox[] = [];
     for (const spec of lineLabelSpecs(mapState.layers)) {
-      if (spec.vertical) continue;
       const xy = ctx.project(lineLabelPoint(spec, ctx.kind, ctx.projection.rotate()[0]));
       if (!xy) continue;
       const size = 12 * ctx.px;
-      out.push(textBox(xy[0] + 4 * ctx.px, xy[1] - 5 * ctx.px, labelWidth(t(spec.labelKey), 12, ctx.px), size, 'start'));
+      const width = labelWidth(t(spec.labelKey), 12, ctx.px);
+      if (!spec.vertical) {
+        out.push(textBox(xy[0] + 4 * ctx.px, xy[1] - 5 * ctx.px, width, size, 'start'));
+        continue;
+      }
+      const lx = xy[0] + (spec.cls === 'prime' ? 15 : -5) * ctx.px;
+      const ly = xy[1] - 5 * ctx.px;
+      out.push(rotateBoxAround(textBox(lx, ly, width, size, 'start'), lx, ly, -90));
     }
     return out;
   });
@@ -46,7 +59,7 @@
 
   // Every named place (dot always stays visible; only the text label is at risk), with the box
   // it would occupy and how far it sits from what the view is currently centred on.
-  interface Candidate { place: Place; xy: [number, number]; box: LabelBox; rank: number }
+  interface Candidate { place: Place; xy: [number, number]; box: LabelBox; distance: number }
   const centre = $derived(ctx.kind === 'flat' ? mapState.flat.center : { lat: -mapState.rotate[1], lon: -mapState.rotate[0] });
   const candidates = $derived.by<Candidate[]>(() => {
     const size = roomy ? 12 : 10.5;
@@ -57,16 +70,25 @@
       const box = textBox(xy[0] + 6 * ctx.px, xy[1] + 4 * ctx.px, labelWidth(t(`place.${p.id}`), size, ctx.px), size * ctx.px, 'start');
       const dLat = p.lat - centre.lat, dLon = ((p.lon - centre.lon + 540) % 360) - 180;
       const distance = Math.hypot(dLat, dLon);
-      return [{ place: p, xy, box, rank: (p.featured ? 0 : 1e6) + distance }];
+      return [{ place: p, xy, box, distance }];
     });
   });
-  // Non-featured labels are dropped before featured ones (rank offsets them by 1e6), and within
-  // the same tier the ones farther from the view centre go first — a crowded map keeps the names
-  // most relevant to what's currently on screen.
+  // Featured places always outrank non-featured ones; among non-featured places, one already
+  // showing keeps its priority bonus over one that wasn't (so a tiny pan/zoom doesn't flicker
+  // labels in and out), and distance-to-centre (bucketed, so small shifts don't reorder ties) is
+  // only the final tiebreaker among places at the same tier.
   const visibleIds = $derived.by<Set<string>>(() => {
-    const visible = selectVisibleLabels(candidates, (c) => c.box, (c) => c.rank, [...lineObstacles, ...continentObstacles]);
+    const visible = selectStableLabels(
+      candidates,
+      (c) => c.box,
+      (c) => c.place.featured,
+      (c) => c.distance,
+      (c) => previousVisible.has(c.place.id),
+      [...lineObstacles, ...continentObstacles],
+    );
     const ids = new Set<string>();
     candidates.forEach((c, i) => { if (visible[i]) ids.add(c.place.id); });
+    previousVisible = ids;
     return ids;
   });
 </script>
