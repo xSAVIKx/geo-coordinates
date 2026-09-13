@@ -1,0 +1,64 @@
+:root {
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", Ubuntu, sans-serif;
+  --fs-base: 1rem;
+  --fs-scale: 1;
+  --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; --space-6: 1.5rem; --space-8: 2rem;
+  --radius: 0.75rem;
+  --tap: 44px;
+
+  --bg: #f7f5ef;
+  --surface: #ffffff;
+  --surface-2: #eef2f6;
+  --text: #1b2430;
+  --text-muted: #4a5666;
+  --border: #c9d1db;
+  --focus: #0b57d0;
+  --accent: #0b57d0;
+  --accent-contrast: #ffffff;
+  --ok: #1a7f37;
+  --bad: #b3261e;
+
+  --ocean: #d8e9f5;
+  --land: #e9dfc7;
+  --land-stroke: #9a8b6a;
+  --grid: #7d93a8;
+  --equator: #c2410c;
+  --prime: #6d28d9;
+  --antimeridian: #0f766e;
+  --tropics: #a16207;
+  --hemi-a: rgb(11 87 208 / 0.14);
+  --hemi-b: rgb(194 65 12 / 0.14);
+  --marker-a: #0b57d0;
+  --marker-b: #c2410c;
+  --marker-c: #6d28d9;
+  --marker-d: #0f766e;
+  --marker-answer: #1a7f37;
+  --marker-wrong: #b3261e;
+  --night: rgb(8 16 40 / 0.55);
+  --twilight: rgb(8 16 40 / 0.28);
+  --sun: #f59e0b;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #10151c; --surface: #18202a; --surface-2: #222c38; --text: #eef2f6; --text-muted: #b6c2d0;
+    --border: #3a4756; --focus: #8ab4f8; --accent: #8ab4f8; --accent-contrast: #0b1320;
+    --ok: #6fdd8b; --bad: #ff8a80;
+    --ocean: #16324a; --land: #3b3a2e; --land-stroke: #a59d7c; --grid: #8aa2b8;
+    --equator: #fb923c; --prime: #c4b5fd; --antimeridian: #5eead4; --tropics: #facc15;
+    --hemi-a: rgb(138 180 248 / 0.18); --hemi-b: rgb(251 146 60 / 0.18);
+    --marker-a: #8ab4f8; --marker-b: #fb923c; --marker-c: #c4b5fd; --marker-d: #5eead4;
+    --marker-answer: #6fdd8b; --marker-wrong: #ff8a80;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #10151c; --surface: #18202a; --surface-2: #222c38; --text: #eef2f6; --text-muted: #b6c2d0;
+  --border: #3a4756; --focus: #8ab4f8; --accent: #8ab4f8; --accent-contrast: #0b1320;
+  --ok: #6fdd8b; --bad: #ff8a80;
+  --ocean: #16324a; --land: #3b3a2e; --land-stroke: #a59d7c; --grid: #8aa2b8;
+  --equator: #fb923c; --prime: #c4b5fd; --antimeridian: #5eead4; --tropics: #facc15;
+  --hemi-a: rgb(138 180 248 / 0.18); --hemi-b: rgb(251 146 60 / 0.18);
+  --marker-a: #8ab4f8; --marker-b: #fb923c; --marker-c: #c4b5fd; --marker-d: #5eead4;
+  --marker-answer: #6fdd8b; --marker-wrong: #ff8a80;
+}
+:root[data-large-text="true"] { --fs-scale: 1.25; }
