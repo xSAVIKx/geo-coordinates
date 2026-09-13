@@ -1,0 +1,82 @@
+import { expect, test, type Page } from '@playwright/test';
+import { expectNoAxeViolations, openPage, pageErrors } from './helpers';
+
+type Practice = { question: { type: string; input: { kind: string }; answer: { kind: string; index?: number; value?: { lat: number; lon: number } } } };
+const current = (page: Page) => page.evaluate(() => (window as unknown as { __practice: Practice }).__practice);
+
+// The question lives inside the QuestionCard <form class="card">; the Difficulty fieldset
+// above it also renders <input type="radio"> elements, so a page-wide getByRole('radio')
+// would pick those up instead of the question's own choices. Scope to the card.
+const card = (page: Page) => page.locator('form.card');
+
+async function answerCorrectlyWithKeyboard(page: Page) {
+  const { question } = await current(page);
+  const a = question.answer;
+  if (a.kind === 'choice') {
+    const radios = card(page).getByRole('radio');
+    await radios.nth(0).focus();
+    for (let i = 0; i < a.index!; i++) await page.keyboard.press('ArrowDown');
+    if (a.index === 0) await page.keyboard.press('Space');
+  } else if (a.kind === 'coords' && question.input.kind === 'coords') {
+    const v = a.value!;
+    const text = (n: number, pos: string, neg: string) => (n === 0 || Math.abs(n) === 180 ? `${Math.abs(n)}` : `${Math.abs(n)}${n > 0 ? pos : neg}`);
+    const inputs = card(page).getByRole('textbox');
+    if (await inputs.count() > 0) {
+      await inputs.nth(0).focus();
+      await page.keyboard.type(text(v.lat, 'N', 'S'));
+      await page.keyboard.press('Tab');
+      await page.keyboard.type(text(v.lon, 'E', 'W'));
+    } else {
+      const lat = page.getByRole('slider', { name: 'Latitude' });
+      const lon = page.getByRole('slider', { name: 'Longitude' });
+      const now = await current(page);
+      void now;
+      const readPoint = () => page.evaluate(() => (window as unknown as { __mapState: { point: { lat: number; lon: number } } }).__mapState.point);
+      let p = await readPoint();
+      await lat.focus();
+      while (Math.round(p.lat) !== v.lat) { await page.keyboard.press(p.lat < v.lat ? 'ArrowUp' : 'ArrowDown'); p = await readPoint(); }
+      await lon.focus();
+      while (Math.round(p.lon) !== v.lon) { await page.keyboard.press(p.lon < v.lon ? 'ArrowRight' : 'ArrowLeft'); p = await readPoint(); }
+    }
+  }
+  await page.keyboard.press('Enter');
+}
+
+for (const topic of [1, 2, 3, 4]) {
+  test(`topic ${topic}: a full keyboard-only round scores 10/10`, async ({ page }) => {
+    test.setTimeout(120_000);
+    await openPage(page, `en/topic-${topic}/practice`, '?test');
+    for (let i = 0; i < 10; i++) {
+      await answerCorrectlyWithKeyboard(page);
+      // "Correct!" also appears in the assertive live region announcement; scope to the
+      // card's own feedback so the assertion targets the visible verdict, not the announcement.
+      await expect(card(page).getByText('Correct!', { exact: true })).toBeVisible();
+      if (i === 0) await expectNoAxeViolations(page, `topic ${topic} feedback`);
+      await page.keyboard.press('Enter');
+    }
+    await expect(page.getByRole('heading', { name: 'Round complete' })).toBeFocused();
+    await expect(page.getByText('You got 10 out of 10')).toBeVisible();
+    expect(pageErrors(page)).toEqual([]);
+  });
+}
+
+test('a wrong answer shows the mistake and the correct answer', async ({ page }) => {
+  await openPage(page, 'en/topic-3/practice', '?test');
+  const { question } = await current(page);
+  const v = question.answer.value!;
+  const inputs = card(page).getByRole('textbox');
+  await inputs.nth(0).fill(`${Math.abs(v.lat)}${v.lat > 0 ? 'S' : 'N'}`);
+  await inputs.nth(1).fill(`${Math.abs(v.lon)}${v.lon > 0 ? 'E' : 'W'}`);
+  await page.getByRole('button', { name: 'Check' }).click();
+  // "Not quite" (and the mistake/answer text) is also announced via the live region, so
+  // scope to the card's own feedback to avoid a strict-mode double match.
+  await expect(card(page).getByText('Not quite')).toBeVisible();
+  await expect(card(page).getByText(/Check the letter: N means north/)).toBeVisible();
+  await expect(card(page).getByText(/^Correct answer:/)).toBeVisible();
+});
+
+test('submitting without an answer asks for one', async ({ page }) => {
+  await openPage(page, 'pl/topic-2/practice', '?test');
+  await page.getByRole('button', { name: 'Sprawdź' }).click();
+  await expect(page.getByRole('alert')).toHaveText('Najpierw wybierz lub wpisz odpowiedź.');
+});

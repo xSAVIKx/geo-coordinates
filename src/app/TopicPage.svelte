@@ -4,6 +4,7 @@
   import { i18n, t } from '../i18n/i18n.svelte';
   import { getTopic } from '../topics';
   import Explore from './Explore.svelte';
+  import Practice from '../quiz/Practice.svelte';
   import { formatRoute } from './router';
 
   let { topic, tab, step }: { topic: TopicId; tab: 'explore' | 'practice'; step: number } = $props();
@@ -23,7 +24,7 @@
 {:else if tab === 'explore'}
   <Explore topic={def} {step} />
 {:else}
-  <p>{t('topic.soon')}</p>
+  <Practice topic={def} />
 {/if}
 
 <nav class="pager" aria-label={t('home.topics')}>

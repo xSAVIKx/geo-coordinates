@@ -22,7 +22,7 @@
   {:else if o.kind === 'highlight-line'}
     <path class="hl-line" d={ctx.path(o.axis === 'lat' ? parallelLine(o.value) : meridianLine(o.value)) ?? ''} />
   {:else if o.kind === 'marker'}
-    {@const xy = ctx.project(o.p)}
+    {@const xy = o.p ? ctx.project(o.p) : null}
     {#if xy}
       <g transform="translate({xy[0]} {xy[1]})" class="marker tone-{o.tone}">
         <path d={shape(o.tone, 8 * ctx.px)} />
