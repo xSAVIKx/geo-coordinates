@@ -11,7 +11,10 @@ test('class quiz: same code gives same questions; keyboard reveals and navigates
   await expect(page.getByText(/^Answer:/)).toBeVisible();
   await expectNoAxeViolations(page, 'class quiz revealed');
   await page.locator('body').press('ArrowRight');
-  await expect(page.getByText('Question 2 of 10')).toBeVisible();
+  // "Question 2 of 10" is also announced via the live region on a question change, so scope to
+  // the visible progress line to avoid a strict-mode double match.
+  await expect(page.locator('p.progress')).toHaveText('Question 2 of 10');
+  await expect(page.locator('#cq-prompt')).toBeFocused();
   await expect(page.getByText(/^Answer:/)).toHaveCount(0);
   await page.locator('body').press('Escape');
 

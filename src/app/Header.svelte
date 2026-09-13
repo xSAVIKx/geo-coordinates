@@ -21,7 +21,8 @@
         <circle cx="20" cy="20" r="17" class="logo-rim" />
         <circle cx="27" cy="11.5" r="3.6" class="logo-pt" />
       </svg>
-      <span class="title">{t('app.title')}</span>
+      <span class="title full">{t('app.title')}</span>
+      <span class="title short">{t('app.shortTitle')}</span>
     </a>
     <div class="actions">
       <div class="langs seg" role="group" aria-label={t('header.language')}>
@@ -45,6 +46,7 @@
   .inner { display: flex; gap: var(--space-2) var(--space-4); align-items: center; justify-content: space-between; min-height: var(--header-h); padding: var(--space-2) var(--space-6); max-width: var(--page-max); margin-inline: auto; }
   .brand { display: inline-flex; gap: var(--space-3); align-items: center; color: var(--text); text-decoration: none; font-weight: var(--weight-heavy); font-size: var(--step-1); letter-spacing: var(--tracking-tight); min-height: var(--tap); min-width: 0; border-radius: var(--radius-sm); }
   .title { line-height: 1.15; }
+  .title.short { display: none; }
   .logo { flex: none; width: 2.5rem; height: 2.5rem; transition: transform 400ms var(--ease); }
   .brand:hover .logo { transform: rotate(-12deg); }
   .logo-sea { fill: var(--accent); }
@@ -64,6 +66,7 @@
     .logo { width: 2.25rem; height: 2.25rem; }
   }
   @media (max-width: 479px) {
-    .title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .title.full { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .title.short { display: inline; }
   }
 </style>

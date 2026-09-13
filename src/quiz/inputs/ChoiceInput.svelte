@@ -3,8 +3,12 @@
   import { renderText, type Text } from '../../i18n/text';
   import type { Answer } from '../types';
 
-  let { options, value = $bindable(null), disabled = false, invalid = false, describedBy, big = false }: {
+  let { options, value = $bindable(null), disabled = false, invalid = false, describedBy, big = false, correctIndex }: {
     options: Text[]; value?: Answer | null; disabled?: boolean; invalid?: boolean; describedBy?: string; big?: boolean;
+    // The correct option's index — only ever passed once the question has been answered *and*
+    // feedback is being shown (Practice's ChoiceInput call site enforces both); passing it earlier
+    // would leak the answer while the question is still live.
+    correctIndex?: number;
   } = $props();
   const name = `choice-${Math.random().toString(36).slice(2, 8)}`;
   const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
@@ -14,11 +18,19 @@
 <fieldset class="choices" class:big role="radiogroup" aria-invalid={invalid} aria-describedby={describedBy}>
   <legend class="visually-hidden">{t('input.chooseOne')}</legend>
   {#each options as option, i (i)}
-    <label class="choice" class:checked={selected === i}>
+    {@const isCorrect = correctIndex === i}
+    {@const isWrongChosen = disabled && selected === i && correctIndex !== undefined && !isCorrect}
+    <label class="choice" class:checked={selected === i} class:correct={isCorrect} class:wrong={isWrongChosen}>
       <input type="radio" {name} value={i} checked={selected === i} {disabled} onchange={() => (value = { kind: 'choice', index: i })} />
       <span class="letter" aria-hidden="true">{letters[i]}</span>
       <span class="text">{renderText(option)}</span>
-      <svg class="tick" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+      {#if isCorrect}
+        <span class="badge ok" aria-hidden="true">✓</span><span class="visually-hidden">– {t('input.correctOption')}</span>
+      {:else if isWrongChosen}
+        <span class="badge bad" aria-hidden="true">✗</span>
+      {:else}
+        <svg class="tick" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+      {/if}
     </label>
   {/each}
 </fieldset>
@@ -43,4 +55,13 @@
   .choice:has(input:disabled):not(.checked) { opacity: 0.7; box-shadow: none; }
   .choice:has(input:disabled):hover { border-color: var(--border); }
   .choice.checked:has(input:disabled):hover { border-color: var(--accent); }
+  /* Once answered, the correct option is always highlighted (even if it wasn't picked) and the
+     chosen wrong one gets its own colour, on top of the .checked/dimmed rules above. */
+  .choice.correct:has(input:disabled) { opacity: 1; border-color: var(--ok); background: var(--ok-soft); box-shadow: none; }
+  .choice.correct .letter { background: var(--ok); color: var(--surface); border-color: var(--ok); }
+  .choice.wrong:has(input:disabled) { opacity: 1; border-color: var(--bad); background: var(--bad-soft); box-shadow: none; }
+  .choice.wrong .letter { background: var(--bad); color: var(--surface); border-color: var(--bad); }
+  .badge { flex: none; display: grid; place-items: center; width: 1.5rem; height: 1.5rem; border-radius: 50%; font-weight: var(--weight-heavy); font-size: 0.85em; line-height: 1; }
+  .badge.ok { background: var(--ok); color: var(--surface); }
+  .badge.bad { background: var(--bad); color: var(--surface); }
 </style>

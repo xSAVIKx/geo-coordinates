@@ -100,7 +100,11 @@
 
   {#key roundKey}
     {#if question.input.kind === 'choice'}
-      <ChoiceInput options={question.input.options} bind:value disabled={answered} {invalid} describedBy="{uid}-prompt" {big} />
+      <!-- The correct index is only ever handed to ChoiceInput once the question is answered *and*
+           feedback is being shown for it (Rehearsal runs with showFeedback=false so it never leaks
+           the answer while the test is still in progress). -->
+      <ChoiceInput options={question.input.options} bind:value disabled={answered} {invalid} describedBy="{uid}-prompt" {big}
+        correctIndex={answered && showFeedback && question.answer.kind === 'choice' ? question.answer.index : undefined} />
     {:else if question.input.kind === 'coords'}
       <CoordsInput spec={question.input} bind:value bind:draft={coordsDraft} disabled={answered} {invalid} describedBy="{uid}-prompt" />
     {:else if question.input.kind === 'number'}

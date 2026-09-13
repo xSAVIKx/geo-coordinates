@@ -14,7 +14,7 @@ export interface LayerFlags {
   pointGuides: boolean;       // dashed parallel + meridian through the point
 }
 export type MarkerTone = 'a' | 'b' | 'c' | 'd' | 'answer' | 'wrong';
-export type Overlay =
+export type OverlayKind =
   | { kind: 'marker'; p: LatLon; tone: MarkerTone; label?: string }
   | { kind: 'highlight-line'; axis: Axis; value: number }
   | { kind: 'highlight-region'; region: 'N' | 'S' | 'E' | 'W' }
@@ -22,6 +22,9 @@ export type Overlay =
   | { kind: 'lon-diff'; a: LatLon; b: LatLon }
   | { kind: 'distance'; a: LatLon; b: LatLon }
   | { kind: 'noon-meridian' };
+// `animate` is set only by `MapState.addOverlays(o, { animate: true })` (never by scene authors) to
+// mark overlays that should draw/scale/fade in — see Overlays.svelte.
+export type Overlay = OverlayKind & { animate?: boolean };
 export type LabControl = 'sun-time' | 'sun-date' | 'clocks' | 'now';
 export interface SceneSpec {
   views: ViewId[];                       // views shown, in order

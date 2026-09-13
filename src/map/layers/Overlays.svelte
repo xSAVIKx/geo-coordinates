@@ -37,8 +37,8 @@
     <path class="hl-region" d={ctx.path(hemisphere(o.region)) ?? ''} />
   {:else if o.kind === 'highlight-line'}
     {@const d = ctx.path(o.axis === 'lat' ? parallelLine(o.value) : meridianLine(o.value)) ?? ''}
-    <path class="hl-casing" {d} />
-    <path class="hl-line" {d} />
+    <path class="hl-casing" class:draw={o.animate} {d} pathLength={o.animate ? 100 : undefined} />
+    <path class="hl-line" class:draw={o.animate} {d} pathLength={o.animate ? 100 : undefined} />
   {:else if o.kind === 'noon-meridian'}
     {@const date = mapState.sunDate()}
     {#if date}
@@ -56,16 +56,18 @@
     {@const xy = ctx.project(o.p)}
     {#if xy}
       <g transform="translate({xy[0]} {xy[1]})" class="marker tone-{o.tone}">
-        <path d={shape(o.tone, 8 * ctx.px)} />
-        {#if o.label}<text class="halo" x={(places[i]!.endsWith('right') ? 12 : -12) * ctx.px} y={(places[i]!.startsWith('down') ? 8 + MARKER_LABEL * 0.8 : -10) * ctx.px} text-anchor={places[i]!.endsWith('right') ? 'start' : 'end'} font-size={MARKER_LABEL * ctx.px}>{localizeLabel(o.label, i18n.lang)}</text>{/if}
+        <g class:reveal={o.animate}>
+          <path d={shape(o.tone, 8 * ctx.px)} />
+          {#if o.label}<text class="halo" x={(places[i]!.endsWith('right') ? 12 : -12) * ctx.px} y={(places[i]!.startsWith('down') ? 8 + MARKER_LABEL * 0.8 : -10) * ctx.px} text-anchor={places[i]!.endsWith('right') ? 'start' : 'end'} font-size={MARKER_LABEL * ctx.px}>{localizeLabel(o.label, i18n.lang)}</text>{/if}
+        </g>
       </g>
     {/if}
   {:else if o.kind === 'lat-diff' || o.kind === 'lon-diff' || o.kind === 'distance'}
     {@const m = bracketModel(o, ctx, fmt, labelRoom)}
     {#if m}
-      <g class="diff">
-        {#each m.paths as d, j (j)}<path class="bracket-casing" {d} />{/each}
-        {#each m.paths as d, j (j)}<path class="bracket" {d} />{/each}
+      <g class="diff" class:reveal={o.animate}>
+        {#each m.paths as d, j (j)}<path class="bracket-casing" class:draw={o.animate} {d} pathLength={o.animate ? 100 : undefined} />{/each}
+        {#each m.paths as d, j (j)}<path class="bracket" class:draw={o.animate} {d} pathLength={o.animate ? 100 : undefined} />{/each}
         {#each m.splits as [cx, cy], j (j)}<circle {cx} {cy} r={5 * ctx.px} class="split" />{/each}
         {#each m.labels as l, j (j)}<text class="halo {l.role}" x={l.x} y={l.y} text-anchor={l.anchor} font-size={l.size * ctx.px}>{l.text}</text>{/each}
       </g>
@@ -92,4 +94,15 @@
   .diff .total { fill: var(--marker-c); font-weight: 800; }
   .diff .part, .diff .sub { fill: var(--text); font-weight: 700; }
   .tone-wrong path { fill: none; stroke: var(--marker-wrong); stroke-width: 4; stroke-linecap: round; }
+
+  /* Reveal animation for overlays added with `addOverlays(o, { animate: true })` (a class-quiz
+     reveal or a Practice solution): markers scale/fade in, lines and brackets draw in via
+     stroke-dashoffset. `MapState.addOverlays` never sets `animate` when reduced motion is on, so
+     these classes are simply absent then — nothing here needs its own reduced-motion check. */
+  .marker .reveal { transform-origin: 0 0; animation: marker-in 500ms var(--ease) both; }
+  @keyframes marker-in { from { opacity: 0; transform: scale(0.35); } to { opacity: 1; transform: none; } }
+  path.draw { stroke-dasharray: 100; animation: line-draw 500ms var(--ease) both; }
+  @keyframes line-draw { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+  .diff.reveal .split, .diff.reveal text { animation: fade-in 500ms var(--ease) both; }
+  @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 </style>

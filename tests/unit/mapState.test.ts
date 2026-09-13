@@ -167,6 +167,14 @@ describe('MapState', () => {
     s.addOverlays(b);
     expect(s.overlays).toEqual([...a, ...b]);
   });
+  test('addOverlays({ animate: true }) tags the added overlays without touching earlier ones', () => {
+    const s = new MapState();
+    const a: Overlay[] = [{ kind: 'noon-meridian' }];
+    const b: Overlay[] = [{ kind: 'marker', p: { lat: 1, lon: 2 }, tone: 'a' }];
+    s.addOverlays(a);
+    s.addOverlays(b, { animate: true });
+    expect(s.overlays).toEqual([{ kind: 'noon-meridian' }, { kind: 'marker', p: { lat: 1, lon: 2 }, tone: 'a', animate: true }]);
+  });
   test('setSunNow and sunDate', () => {
     const s = new MapState();
     s.layers.daylight = true;

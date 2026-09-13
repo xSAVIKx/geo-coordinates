@@ -1,5 +1,6 @@
 <script lang="ts">
   import { untrack } from 'svelte';
+  import { announce } from '../app/announcer.svelte';
   import { TOPIC_IDS, type TopicId } from '../app/ids';
   import { navigate } from '../app/router.svelte';
   import { i18n, t } from '../i18n/i18n.svelte';
@@ -30,16 +31,27 @@
   const questions = $derived(phase === 'run' ? generateSet(seed, chosen, difficulty, count) : []);
   const question = $derived(questions[index]);
   const letters = ['A', 'B', 'C', 'D'];
+  let prompt = $state<HTMLHeadingElement>();
 
   // Questions with `pointEditable` (place-point) show read-only in class mode until reveal, which
   // adds the answer marker via `question.solution`; read-coords questions hide the readout until
   // reveal is set below.
+  let lastIndex = -1;
   $effect(() => {
     if (phase !== 'run' || !question) return;
     void index;
     mapState.applyScene({ ...question.scene, pointEditable: false });
     revealed = false;
     timeUp = false;
+    // The first question of a run gets focus from the normal flow (the Start button click, or the
+    // page's own route-change focus handling); only a later navigation needs to move focus and
+    // announce the new position explicitly.
+    const first = lastIndex === -1;
+    lastIndex = index;
+    if (!first) {
+      queueMicrotask(() => prompt?.focus());
+      announce(t('practice.progress', { n: index + 1, total: questions.length }), 'polite');
+    }
   });
 
   function start(e: SubmitEvent) {
@@ -50,6 +62,7 @@
     seed = clean;
     navigate({ name: 'class-quiz', lang: i18n.lang, seed: clean }, { replace: true });
     index = 0;
+    lastIndex = -1;
     phase = 'run';
   }
 
@@ -57,7 +70,7 @@
     if (!question || revealed) return;
     revealed = true;
     mapState.showReadout = true;
-    mapState.addOverlays(question.solution);
+    mapState.addOverlays(question.solution, { animate: true });
   }
 
   function go(delta: number) {
@@ -113,7 +126,7 @@
       <p class="progress eyebrow">{t('practice.progress', { n: index + 1, total: questions.length })}</p>
       {#if timer > 0}{#key index}<Countdown seconds={timer} running={!revealed} ondone={() => (timeUp = true)} />{/key}{/if}
     </div>
-    <h2 id="cq-prompt" class="prompt">{renderText(question.prompt)}</h2>
+    <h2 id="cq-prompt" class="prompt" tabindex="-1" bind:this={prompt}>{renderText(question.prompt)}</h2>
     {#if timeUp && !revealed}<p class="timeup">{t('classQuiz.timeUp')}</p>{/if}
     <div class="body">
       <div class="map"><MapStage /></div>
@@ -158,6 +171,8 @@
   .top { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); }
   .progress { margin: 0; font-size: clamp(1rem, 1.5vw, 1.6rem); }
   .prompt { font-size: clamp(1.6rem, 1rem + 3vw, 4.5rem); line-height: 1.15; margin: 0; font-weight: var(--weight-heavy); }
+  .prompt:focus { outline: none; }
+  .prompt:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; border-radius: 4px; }
   .timeup { color: var(--bad); font-weight: var(--weight-heavy); font-size: clamp(1.2rem, 2vw, 2.4rem); margin: 0; }
   .body { display: grid; gap: var(--space-4); grid-template-columns: 1fr; }
   @media (min-width: 1024px) { .body { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: start; } }

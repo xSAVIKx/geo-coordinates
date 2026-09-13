@@ -145,8 +145,8 @@
     </svg>
   </div>
   <p id="{uid}-hint" class="visually-hidden">{t('map.flat.hint')}</p>
-  <div class="toolbar" role="toolbar" aria-label={t('map.view.flat')}>
-    <div class="btn-group">
+  <div class="toolbar">
+    <div class="btn-group" role="group" aria-label={t('map.zoomGroup')}>
       <button type="button" class="btn icon" onclick={() => mapState.zoomFlat(1.5)} aria-label={t('map.zoomIn')} title={t('map.zoomIn')}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
       </button>
@@ -154,7 +154,7 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" /></svg>
       </button>
     </div>
-    <div class="btn-group">
+    <div class="btn-group" role="group" aria-label={t('map.presetGroup')}>
       {#each PRESETS as p (p)}
         <button type="button" class="btn" onclick={() => mapState.setFlatPreset(p)}>{t(`map.preset.${p}`)}</button>
       {/each}

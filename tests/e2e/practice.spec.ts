@@ -97,6 +97,39 @@ test('a wrong answer shows the mistake and the correct answer', async ({ page })
   await expect(card(page).getByText(/^Correct answer:/)).toBeVisible();
 });
 
+test('reduced motion: the solution overlays render without the reveal animation classes', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openPage(page, 'en/topic-3/practice', '?test');
+  const { question } = await current(page);
+  const v = question.answer.value as { lat: number; lon: number };
+  const inputs = card(page).getByRole('textbox');
+  await inputs.nth(0).fill(`${Math.abs(v.lat)}${v.lat > 0 ? 'S' : 'N'}`);
+  await inputs.nth(1).fill(`${Math.abs(v.lon)}${v.lon > 0 ? 'E' : 'W'}`);
+  await page.getByRole('button', { name: 'Check' }).click();
+  await expect(card(page).getByText(/^Correct answer:/)).toBeVisible();
+  // The correct-answer marker and the wrong-guess marker both land on the map.
+  await expect(page.locator('.marker')).toHaveCount(2);
+  await expect(page.locator('.marker .reveal')).toHaveCount(0);
+  await expect(page.locator('path[pathLength]')).toHaveCount(0);
+});
+
+test('a wrong choice answer marks the correct option with a check and the chosen one with a cross', async ({ page }) => {
+  await openPage(page, 'en/topic-1/practice', '?test');
+  const { question } = await current(page);
+  expect(question.answer.kind).toBe('choice');
+  const correct = question.answer.index!;
+  const options = card(page).locator('label.choice');
+  const wrong = (correct + 1) % (await options.count());
+  await card(page).getByRole('radio').nth(wrong).check();
+  await page.getByRole('button', { name: 'Check' }).click();
+  await expect(options.nth(correct)).toHaveClass(/correct/);
+  await expect(options.nth(correct).locator('.badge.ok')).toHaveText('✓');
+  await expect(options.nth(correct).getByText('correct answer')).toBeAttached();
+  await expect(options.nth(wrong)).toHaveClass(/wrong/);
+  await expect(options.nth(wrong).locator('.badge.bad')).toHaveText('✗');
+  await expectNoAxeViolations(page, 'choice wrong answer badges');
+});
+
 test('topic 6: adding on the same side gets the "you added" hint and the bracket shows the difference', async ({ page }) => {
   await openPage(page, 'en/topic-6/practice', '?test');
   const q = await page.evaluate(() => (window as unknown as { __practice: { question: { answer: { value: number }; meta: { method: string; x: number; y: number } } } }).__practice.question);

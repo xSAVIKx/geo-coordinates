@@ -151,8 +151,8 @@
     </svg>
   </div>
   <p id="{uid}-hint" class="visually-hidden">{t('map.globe.hint')}</p>
-  <div class="toolbar" role="toolbar" aria-label={t('map.view.globe')}>
-    <div class="btn-group">
+  <div class="toolbar">
+    <div class="btn-group" role="group" aria-label={t('map.turnGroup')}>
       <button type="button" class="btn icon" onclick={() => rotateBy(15, 0)} aria-label={t('map.turnWest')} title={t('map.turnWest')}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6" /></svg></button>
       <button type="button" class="btn icon" onclick={() => rotateBy(-15, 0)} aria-label={t('map.turnEast')} title={t('map.turnEast')}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></button>
       <button type="button" class="btn icon" onclick={() => rotateBy(0, -15)} aria-label={t('map.turnNorth')} title={t('map.turnNorth')}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" /></svg></button>

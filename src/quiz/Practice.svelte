@@ -82,7 +82,7 @@
     results[index] = res;
     mapState.pointEditable = false;
     const extra: Overlay[] = !res.correct && answer.kind === 'coords' ? [{ kind: 'marker', p: answer.value, tone: 'wrong' }] : [];
-    mapState.addOverlays([...question.solution, ...extra]);
+    mapState.addOverlays([...question.solution, ...extra], { animate: true });
     announce(res.correct ? t('practice.correct') : t('practice.incorrect'), 'assertive');
   }
 

@@ -1,29 +1,18 @@
 <script lang="ts">
   import { i18n, t } from '../../i18n/i18n.svelte';
   import { POLAR, TROPIC, meridianLine, parallelLine, type ViewCtx } from '../geometry';
+  import { lineLabelPoint, lineLabelSpecs, type LineLabelSpec } from '../lineLabels';
   import { mapState } from '../mapState.svelte';
   let { ctx }: { ctx: ViewCtx } = $props();
 
-  interface Line { id: string; geo: GeoJSON.LineString; cls: string; labelKey: string; labelAt: { lat: number; lon: number } }
+  interface Line extends LineLabelSpec { geo: GeoJSON.LineString }
+  const GEO: Record<string, () => GeoJSON.LineString> = {
+    eq: () => parallelLine(0), pm: () => meridianLine(0), am: () => meridianLine(180),
+    tc: () => parallelLine(TROPIC), tk: () => parallelLine(-TROPIC), ac: () => parallelLine(POLAR), aa: () => parallelLine(-POLAR),
+  };
   const lines = $derived.by<Line[]>(() => {
     void i18n.lang;
-    const out: Line[] = [];
-    if (mapState.layers.specialLines) {
-      out.push(
-        { id: 'eq', geo: parallelLine(0), cls: 'equator', labelKey: 'line.equator', labelAt: { lat: 0, lon: -150 } },
-        { id: 'pm', geo: meridianLine(0), cls: 'prime', labelKey: 'line.prime', labelAt: { lat: -50, lon: 0 } },
-        { id: 'am', geo: meridianLine(180), cls: 'antimeridian', labelKey: 'line.antimeridian', labelAt: { lat: -50, lon: 180 } },
-      );
-    }
-    if (mapState.layers.tropics) {
-      out.push(
-        { id: 'tc', geo: parallelLine(TROPIC), cls: 'tropic', labelKey: 'line.tropicCancer', labelAt: { lat: TROPIC, lon: -150 } },
-        { id: 'tk', geo: parallelLine(-TROPIC), cls: 'tropic', labelKey: 'line.tropicCapricorn', labelAt: { lat: -TROPIC, lon: -150 } },
-        { id: 'ac', geo: parallelLine(POLAR), cls: 'polar', labelKey: 'line.arcticCircle', labelAt: { lat: POLAR, lon: -150 } },
-        { id: 'aa', geo: parallelLine(-POLAR), cls: 'polar', labelKey: 'line.antarcticCircle', labelAt: { lat: -POLAR, lon: -150 } },
-      );
-    }
-    return out;
+    return lineLabelSpecs(mapState.layers).map((spec) => ({ ...spec, geo: GEO[spec.id]!() }));
   });
 </script>
 
@@ -33,14 +22,12 @@
   <path class="line {line.cls}" {d} />
 {/each}
 {#each lines as line (line.id)}
-  {@const xy = ctx.kind === 'globe'
-    ? ctx.project({ lat: line.labelAt.lat, lon: line.cls === 'prime' || line.cls === 'antimeridian' ? line.labelAt.lon : -ctx.projection.rotate()[0] - 35 })
-    : ctx.project(line.labelAt)}
+  {@const xy = ctx.project(lineLabelPoint(line, ctx.kind, ctx.projection.rotate()[0]))}
   {#if xy}
     <!-- Vertical labels run up the meridian beside it, not across it: rotate(-90) turns the glyphs'
          height to the left of the anchor, so the prime meridian's label anchors to the right of the
          line and the 180° label (often at the flat map's right edge) sits to its left. -->
-    {@const vertical = line.cls === 'prime' || line.cls === 'antimeridian'}
+    {@const vertical = line.vertical}
     {@const lx = vertical ? xy[0] + (line.cls === 'prime' ? 15 : -5) * ctx.px : xy[0] + 4 * ctx.px}
     {@const ly = xy[1] - 5 * ctx.px}
     <text class="label halo {line.cls}" x={lx} y={ly} font-size={12 * ctx.px}

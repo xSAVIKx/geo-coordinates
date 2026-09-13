@@ -44,6 +44,23 @@ test('settings dialog switches theme and is keyboard operable', async ({ page })
   await expect(page.getByRole('dialog')).toBeHidden();
 });
 
+test('the short app title replaces the full title below 480px', async ({ page }) => {
+  await openPage(page, 'en/');
+  const brand = page.getByRole('banner').getByRole('link');
+  const full = brand.getByText('Coordinates on the globe');
+  const short = brand.getByText('Coordinates', { exact: true });
+  await expect(full).toBeVisible();
+  await expect(short).toBeHidden(); // display: none above 480px
+  await page.setViewportSize({ width: 375, height: 667 });
+  await expect(short).toBeVisible();
+  // Below 480px the full title switches to the same visually-hidden (clip) technique used
+  // elsewhere on the page — still present for screen readers, so check it collapses to a 1px
+  // box instead of asserting it's "hidden" (Playwright treats a 1×1px box as visible).
+  const box = await full.boundingBox();
+  expect(box?.width ?? 0).toBeLessThanOrEqual(1);
+  await expectNoAxeViolations(page, '375px header');
+});
+
 test('no horizontal scroll at 320px', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 640 });
   await openPage(page, 'uk/');

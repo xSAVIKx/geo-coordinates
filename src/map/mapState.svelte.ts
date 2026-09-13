@@ -1,3 +1,4 @@
+import { motionReduced } from '../app/settings.svelte';
 import { readString, writeString } from '../app/storage';
 import { clampLat, normalizeLon, roundTo } from '../geo/format';
 import { dateFromDayAndMinutes, dayOfYear, daysInYear } from '../geo/sun';
@@ -106,8 +107,14 @@ export class MapState {
     return this.userSetPoint({ lat: cur.lat + dLat, lon: cur.lon + dLon }, source);
   }
 
-  addOverlays(o: Overlay[]): void {
-    this.overlays = [...this.overlays, ...o];
+  /**
+   * `{ animate: true }` marks the added overlays to draw/scale/fade in (see Overlays.svelte) — used
+   * for a class-quiz reveal or a Practice solution, so the answer doesn't just snap onto the map.
+   * Silently skipped when reduced motion is on, so callers never need their own check.
+   */
+  addOverlays(o: Overlay[], opts?: { animate?: boolean }): void {
+    const items = opts?.animate && !motionReduced() ? o.map((ov) => ({ ...ov, animate: true })) : o;
+    this.overlays = [...this.overlays, ...items];
   }
 
   centerGlobeOn(p: LatLon): void {
