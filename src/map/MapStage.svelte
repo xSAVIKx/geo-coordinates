@@ -32,9 +32,9 @@
 
 <section class="stage" bind:clientWidth={width} aria-label={label ?? t('map.stage')}>
   {#if !wide && mapState.views.length > 1}
-    <div class="switch" role="group" aria-label={t('map.chooseView')}>
+    <div class="switch seg" role="group" aria-label={t('map.chooseView')}>
       {#each mapState.views as v (v)}
-        <button type="button" aria-pressed={mapState.phoneView === v} onclick={() => (mapState.phoneView = v)}>{t(`map.view.${v}`)}</button>
+        <button type="button" class="btn" aria-pressed={mapState.phoneView === v} onclick={() => (mapState.phoneView = v)}>{t(`map.view.${v}`)}</button>
       {/each}
     </div>
   {/if}
@@ -52,10 +52,8 @@
 
 <style>
   .stage { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
-  .switch { display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; align-self: flex-start; }
-  .switch button { border: 0; background: var(--surface); padding: 0 var(--space-4); font-weight: 600; }
-  .switch button[aria-pressed='true'] { background: var(--accent); color: var(--accent-contrast); }
-  .views { display: grid; gap: var(--space-4); grid-template-columns: 1fr; align-items: start; }
+  .switch { align-self: flex-start; }
+  .views { display: grid; gap: var(--space-4) var(--space-5); grid-template-columns: minmax(0, 1fr); align-items: start; }
   .views.wide:has(.view-globe):has(.view-flat) { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
   .views.wide:has(.view-cross-section):not(:has(.view-flat)) { grid-template-columns: repeat(var(--count), minmax(0, 1fr)); }
 </style>

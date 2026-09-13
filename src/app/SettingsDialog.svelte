@@ -22,14 +22,19 @@
   </fieldset>
   <label class="row"><input type="checkbox" bind:checked={settings.largeText} /> {t('settings.largeText')}</label>
   <label class="row"><input type="checkbox" bind:checked={settings.reducedMotion} /> {t('settings.reducedMotion')}</label>
-  <form method="dialog"><button class="primary">{t('settings.close')}</button></form>
+  <form method="dialog"><button class="btn primary">{t('settings.close')}</button></form>
 </dialog>
 
 <style>
-  dialog { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); padding: var(--space-6); width: min(26rem, calc(100vw - 2rem)); }
-  dialog::backdrop { background: rgb(0 0 0 / 0.45); }
-  fieldset { border: 1px solid var(--border); border-radius: var(--radius); margin: 0 0 var(--space-4); }
-  .row { display: flex; gap: var(--space-3); align-items: center; min-height: var(--tap); }
-  .row input { width: 1.25rem; height: 1.25rem; }
-  .primary { margin-top: var(--space-4); background: var(--accent); color: var(--accent-contrast); border: 0; border-radius: var(--radius); padding: 0 var(--space-6); font-weight: 600; }
+  dialog { border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); color: var(--text); padding: var(--space-6); width: min(26rem, calc(100vw - 2rem)); box-shadow: var(--shadow-3); }
+  dialog[open] { animation: pop 180ms var(--ease) both; }
+  @keyframes pop { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: none; } }
+  dialog::backdrop { background: rgb(10 16 24 / 0.5); backdrop-filter: blur(2px); }
+  h2 { margin: 0 0 var(--space-4); font-size: var(--step-2); }
+  fieldset { border: 1px solid var(--border); border-radius: var(--radius); margin: 0 0 var(--space-3); padding: var(--space-2) var(--space-4) var(--space-2); }
+  legend { font-weight: var(--weight-strong); padding: 0 var(--space-1); }
+  .row { display: flex; gap: var(--space-3); align-items: center; min-height: var(--tap); cursor: pointer; }
+  .row input { width: 1.25rem; height: 1.25rem; margin: 0; accent-color: var(--accent); }
+  form { display: flex; justify-content: flex-end; }
+  .primary { margin-top: var(--space-4); padding: 0 var(--space-6); }
 </style>

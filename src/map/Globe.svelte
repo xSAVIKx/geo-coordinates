@@ -152,14 +152,21 @@
   </div>
   <p id="{uid}-hint" class="visually-hidden">{t('map.globe.hint')}</p>
   <div class="toolbar" role="toolbar" aria-label={t('map.view.globe')}>
-    <button type="button" onclick={() => rotateBy(15, 0)} aria-label={t('map.turnWest')} title={t('map.turnWest')}>←</button>
-    <button type="button" onclick={() => rotateBy(-15, 0)} aria-label={t('map.turnEast')} title={t('map.turnEast')}>→</button>
-    <button type="button" onclick={() => rotateBy(0, -15)} aria-label={t('map.turnNorth')} title={t('map.turnNorth')}>↑</button>
-    <button type="button" onclick={() => rotateBy(0, 15)} aria-label={t('map.turnSouth')} title={t('map.turnSouth')}>↓</button>
-    <button type="button" onclick={() => mapState.zoomGlobe(1.5)} aria-label={t('map.globeZoomIn')} title={t('map.globeZoomIn')}>＋</button>
-    <button type="button" onclick={() => mapState.zoomGlobe(1 / 1.5)} aria-label={t('map.globeZoomOut')} title={t('map.globeZoomOut')}>−</button>
+    <div class="btn-group">
+      <button type="button" class="btn icon" onclick={() => rotateBy(15, 0)} aria-label={t('map.turnWest')} title={t('map.turnWest')}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6" /></svg></button>
+      <button type="button" class="btn icon" onclick={() => rotateBy(-15, 0)} aria-label={t('map.turnEast')} title={t('map.turnEast')}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></button>
+      <button type="button" class="btn icon" onclick={() => rotateBy(0, -15)} aria-label={t('map.turnNorth')} title={t('map.turnNorth')}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" /></svg></button>
+      <button type="button" class="btn icon" onclick={() => rotateBy(0, 15)} aria-label={t('map.turnSouth')} title={t('map.turnSouth')}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6" /></svg></button>
+    </div>
+    <div class="btn-group">
+      <button type="button" class="btn icon" onclick={() => mapState.zoomGlobe(1.5)} aria-label={t('map.globeZoomIn')} title={t('map.globeZoomIn')}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg></button>
+      <button type="button" class="btn icon" onclick={() => mapState.zoomGlobe(1 / 1.5)} aria-label={t('map.globeZoomOut')} title={t('map.globeZoomOut')}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" /></svg></button>
+    </div>
     {#if mapState.point}
-      <button type="button" onclick={() => mapState.point && mapState.centerGlobeOn(mapState.point)}>{t('map.showPoint')}</button>
+      <button type="button" class="btn show-point" onclick={() => mapState.point && mapState.centerGlobeOn(mapState.point)}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6.5" /><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3" /></svg>
+        {t('map.showPoint')}
+      </button>
     {/if}
   </div>
 </figure>
@@ -167,9 +174,11 @@
 <style>
   .globe { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
   .frame { max-width: min(100%, 70vh); margin-inline: auto; width: 100%; }
-  svg { display: block; width: 100%; height: auto; touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; }
+  svg { display: block; width: 100%; height: auto; touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; overflow: visible; }
   svg:active { cursor: grabbing; }
   svg:focus-visible { outline: 3px solid var(--focus); border-radius: 50%; }
   .toolbar { display: flex; flex-wrap: wrap; gap: var(--space-2); justify-content: center; }
-  .toolbar button { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0 var(--space-3); font-weight: 600; min-width: 44px; min-height: 44px; }
+  .toolbar .btn { padding: 0 var(--space-3); font-size: var(--step--1); }
+  .toolbar .btn.icon { padding: 0; }
+  .toolbar svg { width: 1.25rem; height: 1.25rem; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 </style>

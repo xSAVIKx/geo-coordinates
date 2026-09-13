@@ -28,7 +28,9 @@
 {/if}
 
 <style>
-  .controls { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-3) var(--space-4); }
-  .readout { margin: 0 0 var(--space-2); font-size: clamp(1.4rem, 1rem + 2vw, 2.4rem); font-weight: 800; font-variant-numeric: tabular-nums; text-align: center; }
-  .sliders { display: grid; gap: var(--space-3) var(--space-6); grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); }
+  .controls { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-1); padding: var(--space-3) var(--space-5) var(--space-4); }
+  .readout { margin: 0 0 var(--space-2); font-size: var(--step-4); font-weight: var(--weight-heavy); letter-spacing: -0.01em; line-height: 1.15; font-variant-numeric: tabular-nums; text-align: center; }
+  .readout:last-child { margin: 0; }
+  .sliders { display: grid; gap: var(--space-3) var(--space-8); grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); }
+  @media (max-width: 599px) { .controls { padding: var(--space-3) var(--space-4); } .readout { font-size: var(--step-3); } }
 </style>

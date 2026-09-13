@@ -37,7 +37,7 @@
 <div class="slider">
   <div class="head"><span class="name" aria-hidden="true">{label}</span><span class="value" aria-hidden="true">{display}</span></div>
   <div class="row">
-    <button type="button" class="step" aria-label={t('controls.decrease', { name: label })} onclick={() => set(value - step)}>−</button>
+    <button type="button" class="btn icon step" aria-label={t('controls.decrease', { name: label })} onclick={() => set(value - step)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12" /></svg></button>
     <!-- svelte-ignore a11y_no_static_element_interactions -- pointer drag on the track moves the thumb; the thumb itself carries role=slider and full keyboard support -->
     <div class="track" bind:this={track}
       onpointerdown={(e) => { dragging = true; track.setPointerCapture(e.pointerId); fromPointer(e); }}
@@ -48,19 +48,23 @@
         aria-valuemin={min} aria-valuemax={max} aria-valuenow={Math.round(value * 100) / 100} aria-valuetext={valueText}
         {onkeydown}></div>
     </div>
-    <button type="button" class="step" aria-label={t('controls.increase', { name: label })} onclick={() => set(value + step)}>+</button>
+    <button type="button" class="btn icon step" aria-label={t('controls.increase', { name: label })} onclick={() => set(value + step)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v12M6 12h12" /></svg></button>
   </div>
 </div>
 
 <style>
   .slider { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
-  .head { display: flex; justify-content: space-between; gap: var(--space-2); font-weight: 600; }
-  .value { font-variant-numeric: tabular-nums; }
+  .head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-2); }
+  .name { font-weight: var(--weight-strong); color: var(--text-muted); }
+  .value { font-variant-numeric: tabular-nums; font-weight: var(--weight-heavy); }
   .row { display: flex; align-items: center; gap: var(--space-2); }
-  .step { background: var(--surface); border: 1px solid var(--border); border-radius: 50%; font-size: 1.3rem; font-weight: 700; flex: none; }
-  .track { position: relative; flex: 1; height: var(--tap); touch-action: none; cursor: pointer; }
-  .track::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 6px; margin-top: -3px; border-radius: 3px; background: var(--surface-2); border: 1px solid var(--border); }
-  .fill { position: absolute; left: 0; top: 50%; height: 6px; margin-top: -3px; border-radius: 3px; background: var(--accent); }
-  .thumb { position: absolute; top: 50%; width: 28px; height: 28px; margin: -14px 0 0 -14px; border-radius: 50%; background: var(--accent); border: 3px solid var(--surface); box-shadow: 0 0 0 1px var(--accent); }
+  .step { border-radius: 50%; flex: none; }
+  .step svg { fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; }
+  .track { position: relative; flex: 1; height: var(--tap); touch-action: none; cursor: pointer; margin-inline: var(--space-2); }
+  .track::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 8px; margin-top: -4px; border-radius: 4px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--border-strong); }
+  .fill { position: absolute; left: 0; top: 50%; height: 8px; margin-top: -4px; border-radius: 4px; background: var(--accent); }
+  .thumb { position: absolute; top: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; background: var(--surface); border: 3px solid var(--accent); box-shadow: var(--shadow-2); transition: transform var(--dur) var(--ease); }
+  .thumb::after { content: ''; position: absolute; inset: 6px; border-radius: 50%; background: var(--accent); }
+  .track:hover .thumb, .thumb:focus-visible { transform: scale(1.08); }
   .thumb:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
 </style>

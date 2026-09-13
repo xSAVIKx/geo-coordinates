@@ -146,16 +146,25 @@
   </div>
   <p id="{uid}-hint" class="visually-hidden">{t('map.flat.hint')}</p>
   <div class="toolbar" role="toolbar" aria-label={t('map.view.flat')}>
-    <button type="button" onclick={() => mapState.zoomFlat(1.5)} aria-label={t('map.zoomIn')} title={t('map.zoomIn')}>＋</button>
-    <button type="button" onclick={() => mapState.zoomFlat(1 / 1.5)} aria-label={t('map.zoomOut')} title={t('map.zoomOut')}>−</button>
-    {#each PRESETS as p (p)}
-      <button type="button" onclick={() => mapState.setFlatPreset(p)}>{t(`map.preset.${p}`)}</button>
-    {/each}
+    <div class="btn-group">
+      <button type="button" class="btn icon" onclick={() => mapState.zoomFlat(1.5)} aria-label={t('map.zoomIn')} title={t('map.zoomIn')}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+      </button>
+      <button type="button" class="btn icon" onclick={() => mapState.zoomFlat(1 / 1.5)} aria-label={t('map.zoomOut')} title={t('map.zoomOut')}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" /></svg>
+      </button>
+    </div>
+    <div class="btn-group">
+      {#each PRESETS as p (p)}
+        <button type="button" class="btn" onclick={() => mapState.setFlatPreset(p)}>{t(`map.preset.${p}`)}</button>
+      {/each}
+    </div>
     {#if mapState.projectionOverride === null}
-      <div class="projection-group" role="group" aria-label={t('map.projection')} aria-describedby="{uid}-projection-hint">
+      <div class="projection-group seg" role="group" aria-label={t('map.projection')} aria-describedby="{uid}-projection-hint">
         {#each PROJECTIONS as proj (proj)}
           <button
             type="button"
+            class="btn"
             aria-pressed={mapState.flatProjection === proj}
             title={t('map.projection.hint')}
             onclick={() => mapState.setProjectionPreference(proj)}
@@ -169,11 +178,13 @@
 
 <style>
   .flat { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
-  .frame { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--ocean); }
+  .frame { border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; background: var(--ocean); box-shadow: var(--shadow-2); }
   svg { display: block; width: 100%; height: auto; user-select: none; -webkit-user-select: none; }
   svg:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
   .toolbar { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
-  .toolbar button { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0 var(--space-3); font-weight: 600; }
-  .projection-group { display: flex; gap: 1px; }
-  .projection-group button[aria-pressed='true'] { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); }
+  .toolbar .btn { padding: 0 var(--space-3); font-size: var(--step--1); }
+  .toolbar .btn.icon { padding: 0; }
+  .toolbar svg { fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
+  .projection-group { margin-left: auto; }
+  @media (max-width: 599px) { .projection-group { margin-left: 0; } }
 </style>

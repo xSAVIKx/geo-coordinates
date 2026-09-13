@@ -9,7 +9,7 @@
 
 <div class="feedback" class:ok={result.correct} class:bad={!result.correct}>
   <p class="verdict">
-    <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
+    <svg class="icon" viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
       {#if result.correct}<path d="M4 12.5l5 5L20 6.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
       {:else}<path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" />{/if}
     </svg>
@@ -22,11 +22,16 @@
 </div>
 
 <style>
-  .feedback { border-radius: var(--radius); padding: var(--space-3) var(--space-4); border: 2px solid; margin-top: var(--space-4); }
-  .ok { border-color: var(--ok); } .bad { border-color: var(--bad); }
-  .verdict { display: flex; gap: var(--space-2); align-items: center; font-size: 1.4rem; font-weight: 800; margin: 0 0 var(--space-2); }
+  .feedback { border-radius: var(--radius); padding: var(--space-4) var(--space-5); border: 1px solid; border-left-width: 6px; animation: appear 240ms var(--ease) both; }
+  @keyframes appear { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .ok { border-color: var(--ok); background: var(--ok-soft); }
+  .bad { border-color: var(--bad); background: var(--bad-soft); }
+  .verdict { display: flex; gap: var(--space-3); align-items: center; font-size: var(--step-2); font-weight: var(--weight-heavy); letter-spacing: var(--tracking-tight); margin: 0 0 var(--space-2); }
+  .icon { flex: none; width: 2.25rem; height: 2.25rem; padding: 0.35rem; border-radius: 50%; color: var(--surface); }
   .ok .verdict { color: var(--ok); } .bad .verdict { color: var(--bad); }
-  .mistake { font-weight: 600; }
-  .answer { font-weight: 700; }
+  .ok .icon { background: var(--ok); } .bad .icon { background: var(--bad); }
+  .mistake { font-weight: var(--weight-strong); }
+  .answer { font-weight: var(--weight-heavy); }
   p { margin: var(--space-1) 0; }
+  .why { color: var(--text); margin-top: var(--space-2); }
 </style>

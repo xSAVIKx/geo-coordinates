@@ -76,7 +76,12 @@
 </script>
 
 <form class="card" class:big onsubmit={submit} novalidate>
-  <p class="progress">{t('practice.progress', { n: number, total })}</p>
+  <div class="top">
+    <p class="progress eyebrow">{t('practice.progress', { n: number, total })}</p>
+    <ol class="steps" aria-hidden="true">
+      {#each { length: total } as _, i (i)}<li class:past={i < number - 1} class:now={i === number - 1}></li>{/each}
+    </ol>
+  </div>
   <h2 tabindex="-1" bind:this={heading} id="{uid}-prompt">{renderText(question.prompt)}</h2>
 
   {#key roundKey}
@@ -92,7 +97,7 @@
   {#if invalid}<p class="need" role="alert">{t('practice.needAnswer')}</p>{/if}
 
   {#if !answered}
-    <button type="submit" class="primary">{t('practice.check')}</button>
+    <button type="submit" class="btn primary lg">{t('practice.check')}</button>
   {:else}
     {#if showFeedback && result}
       <!-- Focused programmatically after answering (for screen-reader users to hear the
@@ -104,17 +109,24 @@
         <Feedback {question} {result} />
       </div>
     {/if}
-    <button type="submit" class="primary" bind:this={nextButton}>{nextLabel}</button>
+    <button type="submit" class="btn primary lg" bind:this={nextButton}>{nextLabel} <span aria-hidden="true">→</span></button>
   {/if}
 </form>
 
 <style>
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-4) var(--space-6); display: flex; flex-direction: column; gap: var(--space-3); }
-  .progress { margin: 0; color: var(--text-muted); font-weight: 600; }
-  h2 { margin: 0; font-size: clamp(1.2rem, 1rem + 1vw, 1.8rem); line-height: 1.3; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-2); padding: var(--space-5) var(--space-6) var(--space-6); display: flex; flex-direction: column; gap: var(--space-4); }
+  .top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-4); }
+  .steps { display: flex; gap: 3px; list-style: none; margin: 0; padding: 0; flex: 1 1 8rem; max-width: 14rem; }
+  .steps li { flex: 1; height: 6px; border-radius: 3px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--border); transition: background-color 300ms var(--ease); }
+  .steps li.past { background: color-mix(in srgb, var(--accent) 45%, var(--surface-2)); box-shadow: none; }
+  .steps li.now { background: var(--accent); box-shadow: none; }
+  h2 { margin: 0; font-size: var(--step-2); font-weight: var(--weight-heavy); line-height: 1.25; }
+  h2:focus { outline: none; }
+  h2:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; border-radius: 4px; }
   .big h2 { font-size: clamp(1.6rem, 1rem + 3vw, 4rem); }
-  .primary { align-self: flex-start; background: var(--accent); color: var(--accent-contrast); border: 0; border-radius: var(--radius); padding: 0 var(--space-6); font-weight: 700; font-size: 1.1rem; }
-  .need { color: var(--bad); font-weight: 600; margin: 0; }
+  .primary { align-self: flex-start; }
+  .need { color: var(--bad); font-weight: var(--weight-strong); margin: 0; }
   .fb:focus { outline: none; }
-  .fb:focus-visible { outline: 3px solid var(--focus); border-radius: var(--radius); }
+  .fb:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: var(--radius); }
+  @media (max-width: 599px) { .card { padding: var(--space-4); gap: var(--space-3); } .primary { align-self: stretch; } }
 </style>
