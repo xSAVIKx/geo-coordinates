@@ -157,7 +157,7 @@
           <button
             type="button"
             aria-pressed={mapState.flatProjection === proj}
-            title={t(`map.projection.${proj}`)}
+            title={t('map.projection.hint')}
             onclick={() => mapState.setProjectionPreference(proj)}
           >{t(`map.projection.${proj}`)}</button>
         {/each}
