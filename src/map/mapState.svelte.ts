@@ -25,9 +25,11 @@ export const FLAT_PRESETS: Record<FlatPreset, { center: LatLon; zoom: number }> 
 };
 
 const MIN_ZOOM = 1;
-const MAX_ZOOM = 12;
+/** Deep enough to see a town's streets-scale grid of minutes (the view spans 4.5° × 2.25°). */
+export const FLAT_MAX_ZOOM = 80;
+const MAX_ZOOM = FLAT_MAX_ZOOM;
 export const GLOBE_MIN_ZOOM = 1;
-export const GLOBE_MAX_ZOOM = 8;
+export const GLOBE_MAX_ZOOM = 60;
 
 export class MapState {
   views = $state<ViewId[]>(['globe', 'flat']);

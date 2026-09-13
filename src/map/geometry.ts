@@ -2,6 +2,8 @@ import { geoCircle, geoDistance, geoEqualEarth, geoEquirectangular, geoOrthograp
 import type { LatLon } from '../geo/types';
 import type { FlatProjection } from './types';
 
+const RAD = Math.PI / 180;
+
 export interface ViewCtx {
   kind: 'flat' | 'globe';
   width: number;
@@ -11,16 +13,30 @@ export interface ViewCtx {
   px: number;
   /** Map scale as a flat-map zoom factor (1 = whole world across the width); the globe reports its flat equivalent. */
   zoom: number;
+  /** The geographic point at the middle of the view. */
+  center: LatLon;
+  /**
+   * A lon/lat box that contains everything visible (conservative). `west`/`east` may run past ±180
+   * on the globe; `east - west >= 360` means every longitude is visible.
+   */
+  bounds: GeoBounds;
   isVisible(p: LatLon): boolean;
   project(p: LatLon): [number, number] | null;
   invert(xy: [number, number]): LatLon | null;
 }
 
+export interface GeoBounds { west: number; south: number; east: number; north: number }
+export const WORLD_BOUNDS: GeoBounds = { west: -180, south: -90, east: 180, north: 90 };
+
+/** Extra room around the view that paths are still generated for (so clipped stroke ends stay out of sight). */
+const CLIP_PAD = 24;
+
 export const TROPIC = 23.44;
 export const POLAR = 66.56;
-const RAD = Math.PI / 180;
 
-export function parallelLine(lat: number, step = 2): GeoJSON.LineString {
+// d3 draws every segment as a great-circle arc; a parallel is not one, so long segments bow towards
+// the pole. 1° keeps that bow under a quarter of a map unit even at zoom 80.
+export function parallelLine(lat: number, step = 1): GeoJSON.LineString {
   const coordinates: [number, number][] = [];
   for (let lon = -180; lon <= 180; lon += step) coordinates.push([lon, lat]);
   return { type: 'LineString', coordinates };
@@ -49,37 +65,67 @@ function inRange(ll: [number, number] | null | undefined): LatLon | null {
 const SPHERE = { type: 'Sphere' } as const;
 
 export function makeFlatCtx(width: number, height: number, center: LatLon, zoom: number, px: number, projectionKind: FlatProjection = 'grid'): ViewCtx {
-  const projection =
+  const base =
     projectionKind === 'equal-earth'
-      ? geoEqualEarth()
-          .scale(geoEqualEarth().fitWidth(width, SPHERE).scale() * zoom)
-          .translate([width / 2, height / 2])
-          .center([center.lon, center.lat])
-          .precision(0.5)
-      : geoEquirectangular()
-          .scale((width / (2 * Math.PI)) * zoom)
-          .translate([width / 2, height / 2])
-          .center([center.lon, center.lat])
-          .precision(0.5);
+      ? geoEqualEarth().scale(geoEqualEarth().fitWidth(width, SPHERE).scale() * zoom)
+      : geoEquirectangular().scale((width / (2 * Math.PI)) * zoom);
+  const projection = base
+    .translate([width / 2, height / 2])
+    .center([center.lon, center.lat])
+    .precision(0.5)
+    // Only what can be seen is turned into SVG path data — at zoom 80 the world is 77 000 px wide.
+    .clipExtent([[-CLIP_PAD, -CLIP_PAD], [width + CLIP_PAD, height + CLIP_PAD]]);
   const path = geoPath(projection);
+  const invert = (xy: [number, number]): LatLon | null => {
+    if (xy[0] < 0 || xy[0] > width || xy[1] < 0 || xy[1] > height) return null;
+    return inRange(projection.invert?.(xy));
+  };
   return {
-    kind: 'flat', width, height, projection, path, px, zoom,
+    kind: 'flat', width, height, projection, path, px, zoom, center,
+    bounds: projectionKind === 'grid' ? gridBounds(center, zoom) : sampledBounds(invert, width, height),
     isVisible: () => true,
     project: (p) => projection([p.lon, p.lat]) as [number, number],
-    invert: (xy) => {
-      if (xy[0] < 0 || xy[0] > width || xy[1] < 0 || xy[1] > height) return null;
-      return inRange(projection.invert?.(xy));
-    },
+    invert,
+  };
+}
+
+function gridBounds(center: LatLon, zoom: number): GeoBounds {
+  const halfLat = 90 / zoom, halfLon = 180 / zoom;
+  return {
+    west: Math.max(-180, center.lon - halfLon), east: Math.min(180, center.lon + halfLon),
+    south: Math.max(-90, center.lat - halfLat), north: Math.min(90, center.lat + halfLat),
+  };
+}
+
+/** Bounds from inverting a grid of view points; any point off the map (outside the world outline) means the whole world. */
+function sampledBounds(invert: (xy: [number, number]) => LatLon | null, width: number, height: number): GeoBounds {
+  const N = 8;
+  const b = { west: Infinity, south: Infinity, east: -Infinity, north: -Infinity };
+  for (let i = 0; i <= N; i++) {
+    for (let j = 0; j <= N; j++) {
+      const ll = invert([(width * i) / N, (height * j) / N]);
+      if (!ll) return WORLD_BOUNDS;
+      b.west = Math.min(b.west, ll.lon); b.east = Math.max(b.east, ll.lon);
+      b.south = Math.min(b.south, ll.lat); b.north = Math.max(b.north, ll.lat);
+    }
+  }
+  // Meridians and parallels curve between the samples: pad by one sample cell.
+  const padLon = (b.east - b.west) / N, padLat = (b.north - b.south) / N;
+  return {
+    west: Math.max(-180, b.west - padLon), east: Math.min(180, b.east + padLon),
+    south: Math.max(-90, b.south - padLat), north: Math.min(90, b.north + padLat),
   };
 }
 
 export function makeGlobeCtx(size: number, rotate: [number, number], px: number, zoom = 1): ViewCtx {
+  const radius = (size / 2 - 6) * zoom;
   const projection = geoOrthographic()
-    .scale((size / 2 - 6) * zoom)
+    .scale(radius)
     .translate([size / 2, size / 2])
     .rotate(rotate)
     .clipAngle(90)
-    .precision(0.5);
+    .precision(0.5)
+    .clipExtent([[-CLIP_PAD, -CLIP_PAD], [size + CLIP_PAD, size + CLIP_PAD]]);
   const path = geoPath(projection);
   const centre: [number, number] = [-rotate[0], -rotate[1]];
   const isVisible = (p: LatLon) => geoDistance([p.lon, p.lat], centre) < Math.PI / 2 - 1e-6;
@@ -87,13 +133,33 @@ export function makeGlobeCtx(size: number, rotate: [number, number], px: number,
     kind: 'globe', width: size, height: size, projection, path, px, isVisible,
     // The whole globe disc spans 180° of longitude — about what a flat map shows at zoom 2.
     zoom: 2 * zoom,
+    center: { lat: centre[1], lon: centre[0] },
+    bounds: globeBounds({ lat: centre[1], lon: centre[0] }, radius, size),
     project: (p) => (isVisible(p) ? (projection([p.lon, p.lat]) as [number, number]) : null),
     invert: (xy) => {
       if (xy[0] < 0 || xy[0] > size || xy[1] < 0 || xy[1] > size) return null;
-      const r = (size / 2 - 6) * zoom;
-      if (Math.hypot(xy[0] - size / 2, xy[1] - size / 2) > r) return null;
+      if (Math.hypot(xy[0] - size / 2, xy[1] - size / 2) > radius) return null;
       return inRange(projection.invert?.(xy));
     },
   };
 }
+
+/** Everything within the angular radius that the view's half-diagonal reaches on the sphere. */
+function globeBounds(c: LatLon, radius: number, size: number): GeoBounds {
+  const halfDiagonal = (size / 2) * Math.SQRT2 + CLIP_PAD;
+  const rho = halfDiagonal >= radius ? 90 : Math.asin(halfDiagonal / radius) / RAD;
+  const south = c.lat - rho, north = c.lat + rho;
+  if (south <= -90 || north >= 90) return { west: -180, east: 180, south: Math.max(-90, south), north: Math.min(90, north) };
+  const s = Math.sin(rho * RAD) / Math.cos(c.lat * RAD);
+  const dLon = s >= 1 ? 180 : Math.asin(s) / RAD;
+  return { west: c.lon - dLon, east: c.lon + dLon, south, north };
+}
+
+/** Whether two boxes overlap, trying the ±360° copies of `a` so a globe view across the antimeridian still matches. */
+export function boundsIntersect(a: GeoBounds, b: GeoBounds): boolean {
+  if (a.south > b.north || b.south > a.north) return false;
+  if (a.east - a.west >= 360 || b.east - b.west >= 360) return true;
+  return [-360, 0, 360].some((k) => a.west + k <= b.east && b.west <= a.east + k);
+}
+
 export { RAD };

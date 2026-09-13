@@ -13,6 +13,6 @@ export const topic3: TopicDef = {
     { id: 'southwest', scene: { views: ['flat'], point: { lat: -30, lon: -60 }, showReadout: false, layers: { specialLines: true, places: false, hemispheres: 'none' } } },
     { id: 'globe', scene: { views: ['globe', 'flat'], point: { lat: -34, lon: 151 }, layers: { specialLines: true } } },
     { id: 'two-cities', scene: { views: ['flat'], point: null, layers: { specialLines: true, places: false }, overlays: [{ kind: 'marker', p: { lat: 41, lon: -74 }, tone: 'a', label: '41°N, 74°W' }, { kind: 'marker', p: { lat: 50, lon: 20 }, tone: 'b', label: '50°N, 20°E' }] } },
-    { id: 'play', scene: { views: ['globe', 'flat'], point: HOME, pointEditable: true, layers: { specialLines: true } } },
+    { id: 'play', scene: { views: ['globe', 'flat'], point: HOME, pointEditable: true, layers: { graticuleStep: 'auto', specialLines: true } } },
   ],
 };

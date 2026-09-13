@@ -11,15 +11,15 @@ export interface EdgeTicks {
 
 const MIN_GAP_PX = 34;
 
-/** Multiples of `step` within `[min, max]`, generated outward from 0 so 0 is always included when visible. */
-function candidateValues(step: number, min: number, max: number): number[] {
-  const limit = Math.max(Math.abs(min), Math.abs(max));
-  const out = new Set<number>();
-  for (let v = 0; v <= limit; v += step) {
-    if (v >= min && v <= max) out.add(v);
-    if (-v >= min && -v <= max) out.add(-v);
-  }
-  return [...out].sort((a, b) => a - b);
+/**
+ * Multiples of `step` within `[min, max]` (0 included when visible), counted as whole multiples so
+ * minute steps such as 1/60 don't pile up rounding error (50.25 stays 50.25, not 50.250000001).
+ */
+export function candidateValues(step: number, min: number, max: number): number[] {
+  const out: number[] = [];
+  const first = Math.ceil(min / step - 1e-9), last = Math.floor(max / step + 1e-9);
+  for (let k = first; k <= last; k++) out.push(Math.round(k * step * 1e9) / 1e9 + 0);
+  return out;
 }
 
 /**

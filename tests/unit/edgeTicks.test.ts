@@ -5,7 +5,7 @@ import { DEFAULT_LAYERS } from '../../src/map/mapState.svelte';
 import type { LatLon } from '../../src/geo/types';
 import type { FlatProjection } from '../../src/map/types';
 
-const STEP = DEFAULT_LAYERS.graticuleStep; // 10, matches the default flat map
+const STEP = DEFAULT_LAYERS.graticuleStep as number; // 10, matches the default flat map
 
 function pos(tick: LatTick | LonTick): number {
   return 'y' in tick ? tick.y : tick.x;

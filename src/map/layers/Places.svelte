@@ -1,7 +1,10 @@
 <script lang="ts">
+  import { formatLat } from '../../geo/format';
   import { i18n, t } from '../../i18n/i18n.svelte';
   import { labelWidth } from '../brackets';
+  import { edgeTicks } from '../edgeTicks';
   import type { ViewCtx } from '../geometry';
+  import { gridUsesMinutes, resolveGridStep } from '../gridStep';
   import { createLabelMemory, rotateBoxAround, selectStableLabels, textBox, type LabelBox } from '../labelLayout';
   import { lineLabelPoint, lineLabelSpecs } from '../lineLabels';
   import { mapState } from '../mapState.svelte';
@@ -57,6 +60,26 @@
     return out;
   });
 
+  // The flat map's degree numbers along the left and bottom edges (EdgeLabels.svelte) stay readable:
+  // a place name never covers a latitude label or the band of longitude labels at the bottom, and a
+  // name that would run off the map is left out rather than cut (the dot still shows).
+  const edgeObstacles = $derived.by<LabelBox[]>(() => {
+    if (ctx.kind !== 'flat') return [];
+    const step = resolveGridStep(mapState.layers.graticuleStep, ctx);
+    const precision = gridUsesMinutes(step) ? 'minute' : 'degree';
+    const far = 1e7;
+    const out: LabelBox[] = [
+      { left: 0, right: ctx.width, top: ctx.height - 18 * ctx.px, bottom: far },
+      { left: -far, right: 0, top: -far, bottom: far },
+      { left: ctx.width, right: far, top: -far, bottom: far },
+      { left: -far, right: far, top: -far, bottom: 0 },
+    ];
+    for (const lat of edgeTicks(ctx, mapState.flat.center, mapState.flat.zoom, step).lats) {
+      out.push(textBox(4 * ctx.px, lat.y + 4 * ctx.px, labelWidth(formatLat(lat.value, i18n.lang, precision), 11, ctx.px), 11 * ctx.px, 'start'));
+    }
+    return out;
+  });
+
   // Every named place (dot always stays visible; only the text label is at risk), with the box
   // it would occupy and how far it sits from what the view is currently centred on.
   interface Candidate { place: Place; xy: [number, number]; box: LabelBox; distance: number }
@@ -85,7 +108,7 @@
       (c) => c.place.featured,
       (c) => c.distance,
       (c) => previousVisible.has(c.place.id),
-      [...lineObstacles, ...continentObstacles],
+      [...lineObstacles, ...continentObstacles, ...edgeObstacles],
     );
     const ids = new Set<string>();
     candidates.forEach((c, i) => { if (visible[i]) ids.add(c.place.id); });

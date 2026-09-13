@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'vitest';
-import { DEFAULT_LAYERS, GLOBE_MAX_ZOOM, GLOBE_MIN_ZOOM, MapState } from '../../src/map/mapState.svelte';
+import { DEFAULT_LAYERS, FLAT_MAX_ZOOM, GLOBE_MAX_ZOOM, GLOBE_MIN_ZOOM, MapState } from '../../src/map/mapState.svelte';
 import type { Overlay } from '../../src/map/types';
 
 function makeLocalStorageStub(): Storage {
@@ -125,8 +125,9 @@ describe('MapState', () => {
   });
   test('flat zoom clamps and pan keeps the view inside the world', () => {
     const s = new MapState();
-    s.zoomFlat(100);
-    expect(s.flat.zoom).toBe(12);
+    s.zoomFlat(1000);
+    expect(s.flat.zoom).toBe(FLAT_MAX_ZOOM);
+    expect(FLAT_MAX_ZOOM).toBe(80);
     s.zoomFlat(0.001);
     expect(s.flat.zoom).toBe(1);
     expect(s.flat.center).toEqual({ lat: 0, lon: 0 });
@@ -150,10 +151,11 @@ describe('MapState', () => {
     s.centerGlobeOn({ lat: -85, lon: -40 });
     expect(s.rotate).toEqual([40, 60]);
   });
-  test('zoomGlobe clamps to [1, 8]', () => {
+  test('zoomGlobe clamps to [1, 60]', () => {
+    expect(GLOBE_MAX_ZOOM).toBe(60);
     const s = new MapState();
     expect(s.globeZoom).toBe(1);
-    s.zoomGlobe(100);
+    s.zoomGlobe(1000);
     expect(s.globeZoom).toBe(GLOBE_MAX_ZOOM);
     s.zoomGlobe(0.001);
     expect(s.globeZoom).toBe(GLOBE_MIN_ZOOM);

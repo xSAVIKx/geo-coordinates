@@ -3,16 +3,20 @@
   import { i18n } from '../../i18n/i18n.svelte';
   import { edgeTicks } from '../edgeTicks';
   import type { ViewCtx } from '../geometry';
+  import { gridUsesMinutes, resolveGridStep } from '../gridStep';
   import { mapState } from '../mapState.svelte';
   let { ctx }: { ctx: ViewCtx } = $props();
 
   const FONT = 11;
-  const ticks = $derived(edgeTicks(ctx, mapState.flat.center, mapState.flat.zoom, mapState.layers.graticuleStep));
+  const step = $derived(resolveGridStep(mapState.layers.graticuleStep, ctx));
+  // Below 1° the grid is in minutes, and so are its labels (in the current language's notation).
+  const precision = $derived(gridUsesMinutes(step) ? 'minute' : 'degree');
+  const ticks = $derived(edgeTicks(ctx, mapState.flat.center, mapState.flat.zoom, step));
   // edgeTicks keeps ticks ≥ 34 px apart, which suits "40°E" but not "140° зх. д.". Thin the bottom
   // row further to every k-th tick, counted from the one nearest 0° so the prime meridian keeps its
   // label and the gaps stay regular; k comes from the widest label (≈0.62 em per character).
   const lons = $derived.by(() => {
-    const items = ticks.lons.map((l) => ({ ...l, text: formatLon(l.value, i18n.lang) }));
+    const items = ticks.lons.map((l) => ({ ...l, text: formatLon(l.value, i18n.lang, precision) }));
     if (items.length < 2) return items;
     const widest = Math.max(...items.map((it) => (it.text.length * 0.62 + 1) * FONT * ctx.px));
     let spacing = Infinity;
@@ -41,7 +45,7 @@
 
 <g class="edge" aria-hidden="true">
   {#each ticks.lats.filter((l) => l.y < ctx.height - 18 * ctx.px) as lat (lat.value)}
-    <text class="halo" x={4 * ctx.px} y={lat.y + 4 * ctx.px} font-size={FONT * ctx.px}>{formatLat(lat.value, i18n.lang)}</text>
+    <text class="halo" x={4 * ctx.px} y={lat.y + 4 * ctx.px} font-size={FONT * ctx.px}>{formatLat(lat.value, i18n.lang, precision)}</text>
   {/each}
   {#each lons as lon (lon.value)}
     {@const atLeftEdge = lon.x <= 2 * ctx.px}

@@ -26,6 +26,9 @@
     return [pt.x, pt.y];
   }
 
+  // Turning steps shrink as the globe zooms in, so a press moves the view by the same share of what is visible.
+  const turnStep = (big: boolean) => (big ? 3 : 15) / mapState.globeZoom;
+
   function rotateBy(dLambda: number, dPhi: number) {
     const [l, p] = mapState.rotate;
     mapState.rotate = [((l + dLambda + 540) % 360) - 180, Math.max(-90, Math.min(90, p + dPhi))];
@@ -101,7 +104,7 @@
     if (delta) {
       e.preventDefault();
       if (mapState.pointEditable) mapState.nudge(delta[0], delta[1], 'map');
-      else rotateBy(-delta[1] * (e.shiftKey ? 3 : 15), -delta[0] * (e.shiftKey ? 3 : 15));
+      else rotateBy(-delta[1] * turnStep(e.shiftKey), -delta[0] * turnStep(e.shiftKey));
       return;
     }
     if (e.key === '+' || e.key === '=') { mapState.zoomGlobe(1.5); e.preventDefault(); }
@@ -153,10 +156,10 @@
   <p id="{uid}-hint" class="visually-hidden">{t('map.globe.hint')}</p>
   <div class="toolbar">
     <div class="btn-group" role="group" aria-label={t('map.turnGroup')}>
-      <button type="button" class="btn icon" onclick={() => rotateBy(15, 0)} aria-label={t('map.turnWest')} title={t('map.turnWest')}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6" /></svg></button>
-      <button type="button" class="btn icon" onclick={() => rotateBy(-15, 0)} aria-label={t('map.turnEast')} title={t('map.turnEast')}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></button>
-      <button type="button" class="btn icon" onclick={() => rotateBy(0, -15)} aria-label={t('map.turnNorth')} title={t('map.turnNorth')}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" /></svg></button>
-      <button type="button" class="btn icon" onclick={() => rotateBy(0, 15)} aria-label={t('map.turnSouth')} title={t('map.turnSouth')}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6" /></svg></button>
+      <button type="button" class="btn icon" onclick={() => rotateBy(turnStep(false), 0)} aria-label={t('map.turnWest')} title={t('map.turnWest')}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6" /></svg></button>
+      <button type="button" class="btn icon" onclick={() => rotateBy(-turnStep(false), 0)} aria-label={t('map.turnEast')} title={t('map.turnEast')}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></button>
+      <button type="button" class="btn icon" onclick={() => rotateBy(0, -turnStep(false))} aria-label={t('map.turnNorth')} title={t('map.turnNorth')}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" /></svg></button>
+      <button type="button" class="btn icon" onclick={() => rotateBy(0, turnStep(false))} aria-label={t('map.turnSouth')} title={t('map.turnSouth')}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6" /></svg></button>
       <button type="button" class="btn icon zoom-start" onclick={() => mapState.zoomGlobe(1.5)} aria-label={t('map.globeZoomIn')} title={t('map.globeZoomIn')}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg></button>
       <button type="button" class="btn icon" onclick={() => mapState.zoomGlobe(1 / 1.5)} aria-label={t('map.globeZoomOut')} title={t('map.globeZoomOut')}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" /></svg></button>
     </div>

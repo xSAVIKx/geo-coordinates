@@ -4,7 +4,7 @@ export type ViewId = 'globe' | 'flat' | 'cross-section';
 export type FlatPreset = 'world' | 'europe' | 'poland';
 export type FlatProjection = 'grid' | 'equal-earth';
 export interface LayerFlags {
-  graticuleStep: 1 | 5 | 10 | 15 | 30;
+  graticuleStep: 1 | 5 | 10 | 15 | 30 | 'auto'; // 'auto': adapts to the zoom (see gridStep.ts)
   specialLines: boolean;      // equator, prime meridian, 180°
   tropics: boolean;           // tropics + polar circles
   hemispheres: 'none' | 'ns' | 'ew';

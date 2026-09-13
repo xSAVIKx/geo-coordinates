@@ -1,0 +1,79 @@
+import { describe, expect, test } from 'vitest';
+import { candidateValues, edgeTicks } from '../../src/map/edgeTicks';
+import { makeFlatCtx, makeGlobeCtx } from '../../src/map/geometry';
+import { AUTO_GRID_STEPS, chooseGridStep, gridExtent, gridUsesMinutes, pxPerDegreeAtCenter, resolveGridStep } from '../../src/map/gridStep';
+import { formatLat, formatLon } from '../../src/geo/format';
+
+describe('chooseGridStep', () => {
+  test('lines land 40–120 CSS px apart whenever a listed step allows it', () => {
+    for (let ppd = 1; ppd < 20_000; ppd *= 1.07) {
+      const step = chooseGridStep(ppd);
+      expect(AUTO_GRID_STEPS).toContain(step);
+      const fits = AUTO_GRID_STEPS.some((s) => s * ppd >= 40 && s * ppd <= 120);
+      if (fits) {
+        expect(step * ppd).toBeGreaterThanOrEqual(40);
+        expect(step * ppd).toBeLessThanOrEqual(120);
+      }
+    }
+  });
+  test('typical maps', () => {
+    expect(chooseGridStep(573 / 360)).toBe(30);        // lab world map (573 CSS px wide)
+    expect(chooseGridStep((573 * 9) / 360)).toBe(5);   // Poland preset: 14.3 px/° → 5° = 72 px
+    expect(chooseGridStep((573 * 40) / 360)).toBe(1);  // 63.7 px/°
+    expect(chooseGridStep((573 * 80) / 360)).toBe(1 / 2); // 127 px/° → 30′ = 64 px
+    expect(chooseGridStep(300)).toBe(1 / 6);            // 10′ = 50 px
+    expect(chooseGridStep(3000)).toBe(1 / 60);          // 1′ = 50 px
+    expect(chooseGridStep(0.3)).toBe(30);               // tiny map: the coarsest step
+  });
+  test('the 5° → 1° gap picks the nearer one on a log scale', () => {
+    expect(chooseGridStep(30)).toBe(5);   // 1° = 30 px (too dense) vs 5° = 150 px
+    expect(chooseGridStep(36)).toBe(1);   // 1° = 36 px vs 5° = 180 px
+  });
+});
+
+describe('resolveGridStep', () => {
+  test('a scene’s fixed step is kept exactly', () => {
+    const ctx = makeFlatCtx(960, 480, { lat: 50, lon: 19 }, 80, 1);
+    for (const s of [1, 5, 10, 15, 30] as const) expect(resolveGridStep(s, ctx)).toBe(s);
+  });
+  test("'auto' follows the zoom (flat, css px = map units / px)", () => {
+    const px = 960 / 573;
+    expect(pxPerDegreeAtCenter(makeFlatCtx(960, 480, { lat: 0, lon: 0 }, 1, px))).toBeCloseTo(573 / 360, 6);
+    expect(resolveGridStep('auto', makeFlatCtx(960, 480, { lat: 0, lon: 0 }, 1, px))).toBe(30);
+    expect(resolveGridStep('auto', makeFlatCtx(960, 480, { lat: 50.26, lon: 19.02 }, 80, px))).toBe(1 / 2);
+    expect(gridUsesMinutes(1 / 2)).toBe(true);
+    expect(gridUsesMinutes(1)).toBe(false);
+  });
+  test("'auto' on the globe gets finer as it zooms", () => {
+    const px = 500 / 287;
+    const a = resolveGridStep('auto', makeGlobeCtx(500, [-19, -50], px, 1));
+    const b = resolveGridStep('auto', makeGlobeCtx(500, [-19, -50], px, 60));
+    expect(a).toBeGreaterThanOrEqual(15);
+    expect(b).toBeLessThan(1);
+  });
+});
+
+describe('grid extent and minute ticks', () => {
+  test('the whole world keeps the classic extent; a small view is snapped outward to whole steps', () => {
+    expect(gridExtent({ west: -180, south: -90, east: 180, north: 90 }, 10)).toEqual([[-180, -90], [180, 90.0001]]);
+    const [[w, s], [e, n]] = gridExtent({ west: 16.77, south: 49.135, east: 21.27, north: 51.385 }, 1 / 2);
+    expect(w).toBe(16.5); expect(s).toBe(49);
+    expect(e).toBeGreaterThanOrEqual(21.5); expect(n).toBeGreaterThanOrEqual(51.5);
+  });
+  test('candidate values are exact multiples of minute steps', () => {
+    const v = candidateValues(1 / 60, 50.2, 50.3);
+    expect(v[0]).toBe(50.2); // 50°12′
+    expect(v[3]).toBe(50.25); // 50°15′, not 50.250000001
+    expect(v).toHaveLength(7);
+    expect(candidateValues(10, -25, 25)).toEqual([-20, -10, 0, 10, 20]);
+  });
+  test('zoom 80 over Katowice: 30′ ticks with minute labels in every language', () => {
+    const ctx = makeFlatCtx(960, 480, { lat: 50.26, lon: 19.02 }, 80, 960 / 573);
+    const ticks = edgeTicks(ctx, { lat: 50.26, lon: 19.02 }, 80, 1 / 2);
+    expect(ticks.lats.map((t) => t.value)).toEqual([49.5, 50, 50.5, 51]);
+    expect(ticks.lons.map((t) => t.value)).toContain(19);
+    expect(formatLat(50.5, 'en', 'minute')).toBe('50°30′N');
+    expect(formatLat(50.5, 'uk', 'minute')).toBe('50°30′ пн. ш.');
+    expect(formatLon(19.5, 'pl', 'minute')).toBe('19°30′E');
+  });
+});

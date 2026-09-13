@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { hemisphere, makeFlatCtx, makeGlobeCtx, meridianLine, parallelLine } from '../../src/map/geometry';
+import { boundsIntersect, hemisphere, makeFlatCtx, makeGlobeCtx, meridianLine, parallelLine } from '../../src/map/geometry';
 
 describe('flat ctx', () => {
   const ctx = makeFlatCtx(960, 480, { lat: 0, lon: 0 }, 1, 1);
@@ -120,5 +120,63 @@ describe('lines', () => {
   });
   test('hemisphere polygons exist', () => {
     for (const r of ['N', 'S', 'E', 'W'] as const) expect(hemisphere(r).coordinates[0]!.length).toBeGreaterThan(10);
+  });
+});
+
+describe('deep zoom (Task 21)', () => {
+  const katowice = { lat: 50.26, lon: 19.02 };
+  test('flat zoom 80: centre, round trips to well under a pixel, and bounds of 4.5° × 2.25°', () => {
+    for (const projection of ['grid', 'equal-earth'] as const) {
+      const ctx = makeFlatCtx(960, 480, katowice, 80, 1, projection);
+      const [x, y] = ctx.project(katowice)!;
+      expect(x).toBeCloseTo(480, 6); expect(y).toBeCloseTo(240, 6);
+      for (const xy of [[10, 10], [950, 470], [480.5, 240.5]] as [number, number][]) {
+        const back = ctx.project(ctx.invert(xy)!)!;
+        expect(Math.hypot(back[0] - xy[0], back[1] - xy[1])).toBeLessThan(1e-6);
+      }
+      expect(ctx.zoom).toBe(80);
+      expect(ctx.bounds.west).toBeLessThanOrEqual(ctx.invert([0, 240])!.lon + 1e-9);
+      expect(ctx.bounds.east).toBeGreaterThanOrEqual(ctx.invert([960, 240])!.lon - 1e-9);
+    }
+    const grid = makeFlatCtx(960, 480, katowice, 80, 1);
+    expect(grid.bounds.east - grid.bounds.west).toBeCloseTo(4.5, 9);
+    expect(grid.bounds.north - grid.bounds.south).toBeCloseTo(2.25, 9);
+    // One arc minute is 3.6 map units: a click lands on the right minute.
+    const oneMinute = grid.project({ lat: katowice.lat, lon: katowice.lon + 1 / 60 })![0] - 480;
+    expect(oneMinute).toBeCloseTo(960 * 80 / 360 / 60, 6);
+  });
+  test('flat zoom 80: paths are clipped to the view, so a whole-world line stays short', () => {
+    const ctx = makeFlatCtx(960, 480, katowice, 80, 1);
+    const d = ctx.path(parallelLine(katowice.lat))!;
+    const xs = [...d.matchAll(/[ML]([-\d.]+),/g)].map((m) => Number(m[1]));
+    expect(Math.min(...xs)).toBeGreaterThanOrEqual(-24 - 1e-6);
+    expect(Math.max(...xs)).toBeLessThanOrEqual(984 + 1e-6);
+    // The parallel through the centre is drawn through the centre (no great-circle bow).
+    const mid = ctx.projection.invert!([480, 240])!;
+    expect(mid[1]).toBeCloseTo(katowice.lat, 6);
+  });
+  test('globe zoom 60: centre, invert near the centre, bounds a few degrees wide', () => {
+    const ctx = makeGlobeCtx(500, [-katowice.lon, -katowice.lat], 1, 60);
+    const [x, y] = ctx.project(katowice)!;
+    expect(x).toBeCloseTo(250, 6); expect(y).toBeCloseTo(250, 6);
+    const ll = ctx.invert([260, 240])!;
+    const back = ctx.project(ll)!;
+    expect(Math.hypot(back[0] - 260, back[1] - 240)).toBeLessThan(1e-6);
+    expect(ctx.zoom).toBe(120);
+    expect(ctx.bounds.north - ctx.bounds.south).toBeLessThan(4);
+    expect(ctx.bounds.south).toBeLessThan(ctx.invert([250, 499])!.lat);
+    expect(ctx.bounds.east).toBeGreaterThan(ctx.invert([499, 250])!.lon);
+  });
+  test('globe at zoom 1 sees a whole hemisphere (conservatively: every longitude once a pole is in view)', () => {
+    expect(makeGlobeCtx(500, [0, 0], 1, 1).bounds).toEqual({ west: -180, east: 180, south: -90, north: 90 });
+    const z3 = makeGlobeCtx(500, [0, 0], 1, 3).bounds;
+    expect(z3.east).toBeLessThan(90); expect(z3.west).toBeGreaterThan(-90);
+  });
+  test('boundsIntersect handles the antimeridian and full-world views', () => {
+    const region = { west: 8, south: 44, east: 32, north: 58 };
+    expect(boundsIntersect({ west: 350, south: 40, east: 370, north: 60 }, region)).toBe(true);
+    expect(boundsIntersect({ west: -10, south: 40, east: 5, north: 60 }, region)).toBe(false);
+    expect(boundsIntersect({ west: -180, south: 59, east: 180, north: 90 }, region)).toBe(false);
+    expect(boundsIntersect({ west: -200, south: 0, east: 200, north: 50 }, region)).toBe(true);
   });
 });
