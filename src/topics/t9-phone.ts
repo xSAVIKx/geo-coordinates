@@ -1,5 +1,4 @@
 import type { TopicDef } from './types';
-import { HOME } from '../map/places';
 import type { SceneSpec } from '../map/types';
 
 // Explore only: no question types, so Practise, the rehearsal and the class quiz leave this topic out.
@@ -28,8 +27,14 @@ export const topic9: TopicDef = {
     },
     { id: 'dms', scene: { views: ['flat'], ...MAP_APP, flatView: { center: KATOWICE, zoom: 40 }, point: KATOWICE, pointEditable: true, precision: 'minute', readout: 'both', layers: { graticuleStep: 'auto', specialLines: true } } },
     { id: 'find', illustration: 'map-pin', scene: { views: ['flat'], ...MAP_APP, flatView: { center: KATOWICE, zoom: 12 }, point: KATOWICE, precision: 'minute', readout: 'decimal', layers: { graticuleStep: 'auto' } } },
-    // At zoom 1 Mercator is as wide as the view; centred at 45.8°N it shows Africa's southern tip and Greenland up to about 80°N.
-    { id: 'mercator', scene: { views: ['globe', 'flat'], phoneView: 'flat', ...MAP_APP, flatView: { center: { lat: 45.8, lon: 0 }, zoom: 1 }, rotate: [15, -30], point: null, layers: { graticuleStep: 'auto', specialLines: true, borders: false } } },
+    // Zoom 0.84 centred at 53°N fits all of Greenland (to 83.6°N) and Africa's southern tip (34.8°S), with a little room at both edges.
+    {
+      id: 'mercator',
+      scene: {
+        views: ['globe', 'flat'], phoneView: 'flat', ...MAP_APP, flatView: { center: { lat: 53, lon: 0 }, zoom: 0.84 }, rotate: [15, -30], point: null,
+        layers: { graticuleStep: 'auto', specialLines: true, borders: false }, overlays: [{ kind: 'marker', p: { lat: 74, lon: -41 }, tone: 'c', labelKey: 'label.greenland' }],
+      },
+    },
     {
       id: 'swap',
       scene: {
@@ -37,6 +42,6 @@ export const topic9: TopicDef = {
         overlays: [{ kind: 'marker', p: KATOWICE, tone: 'a', label: '50.2649, 19.0238' }, { kind: 'marker', p: SWAPPED, tone: 'wrong', label: '19.0238, 50.2649' }],
       },
     },
-    { id: 'play', showPlaces: true, scene: { views: ['globe', 'flat'], ...MAP_APP, flatPreset: 'europe', point: HOME, pointEditable: true, precision: 'minute', readout: 'both', layers: { graticuleStep: 'auto', specialLines: true, tropics: true } } },
+    { id: 'play', showPlaces: true, scene: { views: ['globe', 'flat'], ...MAP_APP, flatPreset: 'europe', point: KATOWICE, pointEditable: true, precision: 'minute', readout: 'both', layers: { graticuleStep: 'auto', specialLines: true, tropics: true } } },
   ],
 };

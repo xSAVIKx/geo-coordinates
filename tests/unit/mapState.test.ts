@@ -167,8 +167,8 @@ describe('MapState', () => {
   });
   test('mercator: zooms out to the whole world, pans vertically at zoom 1, and stays inside ±85°', () => {
     const s = new MapState();
-    s.setProjectionPreference('mercator');
-    expect(globalThis.localStorage.getItem('geo-coords:projection')).toBe('mercator');
+    s.chooseProjection('mercator');
+    expect(s.flatProjection).toBe('mercator');
     // The whole-world view stays whole-world when the projection changes.
     expect(s.flat.zoom).toBeCloseTo(s.flatMinZoom, 12);
     expect(s.flatMinZoom).toBeLessThan(0.51);
@@ -185,11 +185,31 @@ describe('MapState', () => {
     expect(s.flat.zoom).toBeCloseTo(s.flatMinZoom, 12);
     s.setFlatPreset('poland');
     expect(s.flat.zoom).toBe(9);
-    s.setProjectionPreference('grid');
+    s.chooseProjection('grid');
     expect(s.flat.zoom).toBe(9);
-    s.setFlatPreset('world'); s.setProjectionPreference('mercator'); s.zoomFlat(1.2);
-    s.setProjectionPreference('grid');
+    s.setFlatPreset('world'); s.chooseProjection('mercator'); s.zoomFlat(1.2);
+    s.chooseProjection('grid');
     expect(s.flat.zoom).toBe(1); // below the grid map's minimum: clamped
+  });
+  test('Mercator is never remembered: it lasts until the next scene, which gets the saved projection back', () => {
+    const s = new MapState();
+    s.setProjectionPreference('equal-earth');
+    s.applyScene({ views: ['flat'] });
+    s.chooseProjection('mercator');
+    expect(s.flatProjection).toBe('mercator');
+    expect(s.projectionPreference).toBe('equal-earth');
+    expect(globalThis.localStorage.getItem('geo-coords:projection')).toBe('equal-earth');
+    expect(s.projectionOverride).toBeNull(); // the switch stays visible
+    s.applyScene({ views: ['flat'] });
+    expect(s.flatProjection).toBe('equal-earth');
+    expect(s.flat.zoom).toBe(1);
+    // Choosing a saved projection while on Mercator saves it and ends the scene-local pick.
+    s.chooseProjection('mercator'); s.chooseProjection('grid');
+    expect(s.flatProjection).toBe('grid');
+    expect(globalThis.localStorage.getItem('geo-coords:projection')).toBe('grid');
+    // An old build may have stored 'mercator': it reads as the grid map.
+    globalThis.localStorage.setItem('geo-coords:projection', 'mercator');
+    expect(new MapState().flatProjection).toBe('grid');
   });
   test('a mercator scene with the whole-world preset shows the whole world; projectionSwitch keeps choices scene-local', () => {
     const s = new MapState();
@@ -201,6 +221,8 @@ describe('MapState', () => {
     expect(s.flat.zoom).toBe(1);
     expect(s.projectionPreference).toBe('grid');
     expect(globalThis.localStorage.getItem('geo-coords:projection')).toBeNull();
+    s.applyScene({ views: ['flat'], flatProjection: 'mercator', projectionSwitch: true });
+    expect(s.flatProjection).toBe('mercator'); // the pick ended with the scene
     s.applyScene({ views: ['flat'] });
     expect(s.projectionSwitch).toBe(false);
     s.chooseProjection('equal-earth');

@@ -143,3 +143,29 @@ test('Map app (Mercator): the whole world at first, zoom in and pan north past 6
   }
   expect(pageErrors(page)).toEqual([]);
 });
+
+test('Map app (Mercator) is not remembered: the next page gets the saved projection, with the world as wide as the map (375 px)', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await openPage(page, 'en/lab', '?test');
+  const mercator = page.getByRole('button', { name: 'Map app (Mercator)' });
+  await mercator.click();
+  await expect(mercator).toHaveAttribute('aria-pressed', 'true');
+  expect(await page.evaluate(() => localStorage.getItem('geo-coords:projection'))).not.toBe('mercator');
+
+  await openPage(page, 'en/topic-3/practice', '?test');
+  const map = page.getByRole('group', { name: 'World map with parallels and meridians' });
+  await expect(map).toBeVisible();
+  const s = await page.evaluate(() => {
+    const m = (window as unknown as { __mapState: { flatProjection: string; flat: { zoom: number } } }).__mapState;
+    return { projection: m.flatProjection, zoom: m.flat.zoom };
+  });
+  expect(s.projection).toBe('grid');
+  expect(s.zoom).toBeGreaterThanOrEqual(1);
+  // 10° of longitude on the flat map, in CSS px: the whole world spans the map's width × zoom.
+  const width = (await map.boundingBox())!.width;
+  // A 349 px map at zoom 1 gives 9.7 px; Mercator's whole-world zoom (~0.5) would have given under 5.
+  expect((width * s.zoom) / 36).toBeGreaterThanOrEqual(9.5);
+  await page.reload();
+  await expect(page.getByRole('group', { name: 'World map with parallels and meridians' })).toBeVisible();
+  expect(await page.evaluate(() => (window as unknown as { __mapState: { flatProjection: string } }).__mapState.flatProjection)).toBe('grid');
+});

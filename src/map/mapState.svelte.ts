@@ -8,9 +8,14 @@ import { clampFlatCenter, flatMinZoom, panFlatCenter } from './geometry';
 import type { FlatPreset, FlatProjection, LabControl, LayerFlags, Overlay, Readout, SceneSpec, ViewId } from './types';
 
 const PROJECTION_KEY = 'geo-coords:projection';
-function initialProjectionPreference(): FlatProjection {
-  const stored = readString(PROJECTION_KEY);
-  return stored === 'equal-earth' || stored === 'mercator' ? stored : 'grid';
+/**
+ * The projections a pupil's choice is remembered for. Mercator is not one of them: zoomed out to the
+ * whole world it is half as wide as the view, which would shrink every world map in topics 1–8 and
+ * Practise — choosing it applies to the current scene only.
+ */
+export type SavedProjection = Exclude<FlatProjection, 'mercator'>;
+function initialProjectionPreference(): SavedProjection {
+  return readString(PROJECTION_KEY) === 'equal-earth' ? 'equal-earth' : 'grid';
 }
 
 export type ChangeSource = 'map' | 'slider' | 'program';
@@ -51,8 +56,11 @@ export class MapState {
   labControls = $state<LabControl[]>([]);
   phoneView = $state<ViewId>('flat');
   lastChange = $state<ChangeSource>('program');
-  projectionPreference = $state<FlatProjection>(initialProjectionPreference());
+  projectionPreference = $state<SavedProjection>(initialProjectionPreference());
+  /** The projection the scene sets (`SceneSpec.flatProjection`), if any. */
   projectionOverride = $state<FlatProjection | null>(null);
+  /** A projection picked with the switch that lasts until the next `applyScene` (Mercator, or any pick in a scene with its own projection). */
+  projectionChoice = $state<FlatProjection | null>(null);
   /** Whether the projection switch shows while a scene sets `flatProjection` (the scene's `projectionSwitch`). */
   projectionSwitch = $state(false);
   /** Bumped by every `applyScene`, so layers can drop per-scene memory (e.g. label hysteresis). */
@@ -73,24 +81,26 @@ export class MapState {
   }
 
   get flatProjection(): FlatProjection {
-    return this.projectionOverride ?? this.projectionPreference;
+    return this.projectionChoice ?? this.projectionOverride ?? this.projectionPreference;
   }
 
-  setProjectionPreference(p: FlatProjection): void {
+  setProjectionPreference(p: SavedProjection): void {
     const before = this.flatProjection;
     this.projectionPreference = p;
+    this.projectionChoice = null;
     writeString(PROJECTION_KEY, p);
     this.refitFlat(before);
   }
 
   /**
-   * The projection switch: changes the remembered preference, or — in a scene that sets its own
-   * projection but keeps the switch (`projectionSwitch`) — only this scene's projection.
+   * The projection switch. Grid map / Equal Earth become the remembered preference; Map app
+   * (Mercator) — and any pick in a scene that sets its own projection but keeps the switch
+   * (`projectionSwitch`) — applies to the current scene only: the next `applyScene` goes back.
    */
   chooseProjection(p: FlatProjection): void {
-    if (this.projectionOverride === null) { this.setProjectionPreference(p); return; }
+    if (this.projectionOverride === null && p !== 'mercator') { this.setProjectionPreference(p); return; }
     const before = this.flatProjection;
-    this.projectionOverride = p;
+    this.projectionChoice = p;
     this.refitFlat(before);
   }
 
@@ -128,6 +138,7 @@ export class MapState {
     this.views = [...scene.views];
     this.layers = { ...DEFAULT_LAYERS, ...scene.layers };
     this.projectionOverride = scene.flatProjection ?? null;
+    this.projectionChoice = null;
     this.projectionSwitch = scene.projectionSwitch ?? false;
     this.precision = scene.precision ?? 'degree';
     this.pointEditable = scene.pointEditable ?? false;

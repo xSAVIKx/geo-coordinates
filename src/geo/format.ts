@@ -107,7 +107,9 @@ function fixed(value: number, digits: number): string {
  * be typed into a map app as it is. `formatDecimal({ lat: 50.2649, lon: 19.0238 })` → `"50.2649, 19.0238"`.
  */
 export function formatDecimal(p: LatLon, digits = 4): string {
-  return `${fixed(clampLat(p.lat), digits)}, ${fixed(normalizeLon(p.lon), digits)}`;
+  // A longitude just east of -180 rounds to "-180.0000": that is the antimeridian, written 180 like `normalizeLon`.
+  const lon = fixed(normalizeLon(p.lon), digits);
+  return `${fixed(clampLat(p.lat), digits)}, ${/^-180\.?0*$/.test(lon) ? lon.slice(1) : lon}`;
 }
 
 /** Whole degrees, minutes and seconds of |value|, with 60″ and 60′ carried up. */

@@ -26,6 +26,8 @@ test('every step has title and body in every language and a valid scene', () => 
 
 test('free-play steps start at Katowice unless their text is about Warsaw', () => {
   for (const topic of Object.values(TOPICS)) {
+    // Topic 9 reads decimals to 4 places, so its free play starts at Katowice's exact decimal coordinates (checked below).
+    if (topic!.id === 9) continue;
     const play = topic!.steps.find((s) => s.id === 'play')!;
     const body = (en as Record<string, string>)[`topic.${topic!.id}.step.play.body`]!;
     if (/Warsaw/.test(body)) continue;
@@ -50,7 +52,18 @@ test('topic 9 texts: the numbers in the steps match the formatting helpers and t
   expect((uk as Record<string, string>)['topic.9.step.dms.body']).toContain(formatDMS(50.2649, 'lat', 'uk'));
   const markers = steps.swap!.scene.overlays!.filter((o) => o.kind === 'marker');
   expect(markers.map((m) => m.kind === 'marker' && m.label)).toEqual([formatDecimal({ lat: 50.2649, lon: 19.0238 }), '19.0238, 50.2649']);
-  expect(e['topic.9.step.signs.body']).toContain(formatDecimal(steps.signs!.scene.point!).replace('-', '−'));
+  expect(steps.play!.scene.point).toEqual({ lat: 50.2649, lon: 19.0238 });
+  // Every language: the same copyable decimal examples (ASCII minus, dot) and the language's DMS notation.
+  const katowice = formatDecimal({ lat: 50.2649, lon: 19.0238 });
+  for (const [lang, file] of Object.entries({ en, pl, uk }) as ['en' | 'pl' | 'uk', Record<string, string>][]) {
+    expect(file['topic.9.step.decimal.body'], lang).toContain(katowice);
+    expect(file['topic.9.step.signs.body'], lang).toContain(formatDecimal(steps.signs!.scene.point!));
+    expect(file['topic.9.step.signs.body'], lang).toContain(formatDecimal({ lat: 40.7128, lon: -74.006 }));
+    expect(file['topic.9.step.dms.body'], lang).toContain(`50.2649° = ${formatDMS(50.2649, 'lat', lang)}`);
+    expect(file['topic.9.step.swap.body'], lang).toContain('19.0238, 50.2649');
+    expect(file['topic.9.step.mercator.body'], lang).toMatch(/14/);
+    expect(file['topic.9.step.signs.body'], lang).not.toContain('−');
+  }
 });
 
 test("free-play steps with an adaptive grid use precision 'auto'; other steps don't", () => {

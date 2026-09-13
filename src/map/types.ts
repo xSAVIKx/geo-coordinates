@@ -15,7 +15,7 @@ export interface LayerFlags {
 }
 export type MarkerTone = 'a' | 'b' | 'c' | 'd' | 'answer' | 'wrong';
 export type OverlayKind =
-  | { kind: 'marker'; p: LatLon; tone: MarkerTone; label?: string }
+  | { kind: 'marker'; p: LatLon; tone: MarkerTone; label?: string; labelKey?: string } // labelKey: an i18n key, used instead of `label`
   | { kind: 'highlight-line'; axis: Axis; value: number }
   | { kind: 'highlight-region'; region: 'N' | 'S' | 'E' | 'W' }
   | { kind: 'lat-diff'; a: LatLon; b: LatLon }

@@ -77,6 +77,9 @@ describe('formatDecimal', () => {
     expect(formatDecimal({ lat: -0.00001, lon: -0.00004 })).toBe('0.0000, 0.0000');
     expect(formatDecimal({ lat: 0, lon: -180 })).toBe('0.0000, 180.0000');
     expect(formatDecimal({ lat: 91, lon: 190 })).toBe('90.0000, -170.0000');
+    expect(formatDecimal({ lat: 0, lon: -179.99996 })).toBe('0.0000, 180.0000');
+    expect(formatDecimal({ lat: 0, lon: -179.9999 })).toBe('0.0000, -179.9999');
+    expect(formatDecimal({ lat: 0, lon: -179.6 }, 0)).toBe('0, 180');
   });
 });
 

@@ -10,15 +10,17 @@
   let { ctx }: { ctx: ViewCtx } = $props();
 
   const MARKER_LABEL = 15;
+  /** A marker's label text: a translated `labelKey`, or `label` in the language's notation. */
+  const markerText = (o: { label?: string; labelKey?: string }): string => (o.labelKey ? t(o.labelKey) : o.label ? localizeLabel(o.label, i18n.lang) : '');
   const fmt = (value: number, unit: BracketUnit) => (unit === 'km' ? t('unit.km', { n: formatNumber(value, i18n.lang) }) : `${formatNumber(value, i18n.lang)}°`);
   // Widest marker label (CSS px), so a bracket that must sit right of the markers clears their labels.
   // Per overlay index: where its marker label goes, clear of earlier labels and of the marker symbols.
   const places = $derived(labelPlaces(mapState.overlays.map((o) => {
-    if (o.kind !== 'marker' || !o.label) return null;
+    if (o.kind !== 'marker' || !markerText(o)) return null;
     const xy = ctx.project(o.p);
-    return xy ? { x: xy[0], y: xy[1], width: labelWidth(localizeLabel(o.label, i18n.lang), MARKER_LABEL, ctx.px) } : null;
+    return xy ? { x: xy[0], y: xy[1], width: labelWidth(markerText(o), MARKER_LABEL, ctx.px) } : null;
   }), MARKER_LABEL, ctx.px, ctx.kind === 'flat' ? ctx.width : Infinity));
-  const labelRoom = $derived(Math.max(16, ...mapState.overlays.map((o) => (o.kind === 'marker' && o.label ? labelWidth(localizeLabel(o.label, i18n.lang), MARKER_LABEL, 1) : 0))));
+  const labelRoom = $derived(Math.max(16, ...mapState.overlays.map((o) => (o.kind === 'marker' && markerText(o) ? labelWidth(markerText(o), MARKER_LABEL, 1) : 0))));
 
   function shape(tone: MarkerTone, r: number): string {
     switch (tone) {
@@ -58,7 +60,7 @@
       <g transform="translate({xy[0]} {xy[1]})" class="marker tone-{o.tone}">
         <g class:reveal={o.animate}>
           <path d={shape(o.tone, 8 * ctx.px)} />
-          {#if o.label}<text class="halo" x={(places[i]!.endsWith('right') ? 12 : -12) * ctx.px} y={(places[i]!.startsWith('down') ? 8 + MARKER_LABEL * 0.8 : -10) * ctx.px} text-anchor={places[i]!.endsWith('right') ? 'start' : 'end'} font-size={MARKER_LABEL * ctx.px}>{localizeLabel(o.label, i18n.lang)}</text>{/if}
+          {#if markerText(o)}<text class="halo" x={(places[i]!.endsWith('right') ? 12 : -12) * ctx.px} y={(places[i]!.startsWith('down') ? 8 + MARKER_LABEL * 0.8 : -10) * ctx.px} text-anchor={places[i]!.endsWith('right') ? 'start' : 'end'} font-size={MARKER_LABEL * ctx.px}>{markerText(o)}</text>{/if}
         </g>
       </g>
     {/if}

@@ -58,8 +58,9 @@
         <path d="M1 44h238M1 88h238M60 1v130M120 1v130M180 1v130" class="ill-grid" />
         <path d="M120 70c-17-18-25-30-25-41a25 25 0 0 1 50 0c0 11-8 23-25 41z" class="ill-pin" />
         <circle cx="120" cy="29" r="9" class="ill-dot" />
-        <rect x="46" y="84" width="148" height="34" rx="17" class="ill-chip" />
-        <text x="120" y="106.5" text-anchor="middle" class="ill-text">50.2649, 19.0238</text>
+        <rect x="18" y="84" width="204" height="34" rx="17" class="ill-chip" />
+        <!-- textLength pins the text to the chip's inner width, whatever font the system picks. -->
+        <text x="120" y="106" text-anchor="middle" textLength="176" lengthAdjust="spacingAndGlyphs" class="ill-text">50.2649, 19.0238</text>
       </svg>
     {/if}
     <div class="nav">
@@ -99,7 +100,7 @@
   .ill-pin { fill: var(--warm); stroke: var(--halo); stroke-width: 3; }
   .ill-dot { fill: var(--surface); }
   .ill-chip { fill: var(--surface); stroke: var(--border-strong); stroke-width: 1.5; }
-  .ill-text { fill: var(--text); font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .ill-text { fill: var(--text); font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
   .nav { display: flex; gap: var(--space-2); flex-wrap: wrap; justify-content: space-between; }
   .nav .primary { margin-left: auto; }
   .dots { list-style: none; display: flex; flex-wrap: wrap; gap: var(--space-1); padding: var(--space-4) 0 0; margin: var(--space-4) 0 0; border-top: 1px solid var(--border); }
