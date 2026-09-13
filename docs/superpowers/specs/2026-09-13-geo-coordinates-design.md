@@ -150,7 +150,8 @@ On wide screens globe and flat map sit side by side; on phones one is shown at a
 
 ### 4.4 Day/night lab (topic 8)
 
-- Subsolar point computed from date and UTC time using the NOAA solar position approximation;
+- Subsolar latitude (declination) computed with the NOAA solar position approximation; the Sun's longitude
+  follows mean solar time (12:00 UTC → 0°), so the noon line matches the "15° = 1 h" rule taught in topic 8;
   the terminator and a twilight band (sun 0° to −6° below the horizon) are drawn on both views.
 - **Time slider** (UTC, 0–24 h): night moves westward; the noon meridian is highlighted.
 - **Meridian clocks:** the user pins meridians or places; each shows local solar time
