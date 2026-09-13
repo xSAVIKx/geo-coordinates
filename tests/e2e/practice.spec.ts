@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { expectNoAxeViolations, openPage, pageErrors } from './helpers';
 
-type Practice = { question: { type: string; input: { kind: string }; answer: { kind: string; index?: number; value?: { lat: number; lon: number } } } };
+type Practice = { question: { type: string; input: { kind: string; precision?: 'degree' | 'minute' }; answer: { kind: string; index?: number; value?: { lat: number; lon: number } | number } } };
 const current = (page: Page) => page.evaluate(() => (window as unknown as { __practice: Practice }).__practice);
 
 // The question lives inside the QuestionCard <form class="card">; the Difficulty fieldset
@@ -17,9 +17,18 @@ async function answerCorrectlyWithKeyboard(page: Page) {
     await radios.nth(0).focus();
     for (let i = 0; i < a.index!; i++) await page.keyboard.press('ArrowDown');
     if (a.index === 0) await page.keyboard.press('Space');
+  } else if (a.kind === 'number') {
+    await card(page).getByRole('textbox').focus();
+    await page.keyboard.type(String(a.value));
   } else if (a.kind === 'coords' && question.input.kind === 'coords') {
-    const v = a.value!;
-    const text = (n: number, pos: string, neg: string) => (n === 0 || Math.abs(n) === 180 ? `${Math.abs(n)}` : `${Math.abs(n)}${n > 0 ? pos : neg}`);
+    const v = a.value as { lat: number; lon: number };
+    const text = (n: number, pos: string, neg: string) => {
+      const abs = Math.abs(n);
+      const d = Math.floor(abs + 1e-9);
+      const m = Math.round((abs - d) * 60);
+      const body = m ? `${d}°${String(m).padStart(2, '0')}′` : `${d}`;
+      return n === 0 || abs === 180 ? body : `${body}${n > 0 ? pos : neg}`;
+    };
     const inputs = card(page).getByRole('textbox');
     if (await inputs.count() > 0) {
       await inputs.nth(0).focus();
@@ -32,17 +41,27 @@ async function answerCorrectlyWithKeyboard(page: Page) {
       const now = await current(page);
       void now;
       const readPoint = () => page.evaluate(() => (window as unknown as { __mapState: { point: { lat: number; lon: number } } }).__mapState.point);
+      // Shift+arrow is the big step: 1° with minute precision, 10° with degree precision.
+      const big = question.input.precision === 'minute' ? 1 : 10;
       let p = await readPoint();
       await lat.focus();
-      while (Math.round(p.lat) !== v.lat) { await page.keyboard.press(p.lat < v.lat ? 'ArrowUp' : 'ArrowDown'); p = await readPoint(); }
+      while (Math.abs(p.lat - v.lat) > 1e-6) {
+        const gap = Math.abs(p.lat - v.lat);
+        await page.keyboard.press(`${gap >= big ? 'Shift+' : ''}${p.lat < v.lat ? 'ArrowUp' : 'ArrowDown'}`);
+        p = await readPoint();
+      }
       await lon.focus();
-      while (Math.round(p.lon) !== v.lon) { await page.keyboard.press(p.lon < v.lon ? 'ArrowRight' : 'ArrowLeft'); p = await readPoint(); }
+      while (Math.abs(p.lon - v.lon) > 1e-6) {
+        const gap = Math.abs(p.lon - v.lon);
+        await page.keyboard.press(`${gap >= big ? 'Shift+' : ''}${p.lon < v.lon ? 'ArrowRight' : 'ArrowLeft'}`);
+        p = await readPoint();
+      }
     }
   }
   await page.keyboard.press('Enter');
 }
 
-for (const topic of [1, 2, 3, 4]) {
+for (const topic of [1, 2, 3, 4, 5, 6, 7]) {
   test(`topic ${topic}: a full keyboard-only round scores 10/10`, async ({ page }) => {
     test.setTimeout(120_000);
     await openPage(page, `en/topic-${topic}/practice`, '?test');
@@ -63,7 +82,7 @@ for (const topic of [1, 2, 3, 4]) {
 test('a wrong answer shows the mistake and the correct answer', async ({ page }) => {
   await openPage(page, 'en/topic-3/practice', '?test');
   const { question } = await current(page);
-  const v = question.answer.value!;
+  const v = question.answer.value as { lat: number; lon: number };
   const inputs = card(page).getByRole('textbox');
   await inputs.nth(0).fill(`${Math.abs(v.lat)}${v.lat > 0 ? 'S' : 'N'}`);
   await inputs.nth(1).fill(`${Math.abs(v.lon)}${v.lon > 0 ? 'E' : 'W'}`);
@@ -73,6 +92,28 @@ test('a wrong answer shows the mistake and the correct answer', async ({ page })
   await expect(card(page).getByText('Not quite')).toBeVisible();
   await expect(card(page).getByText(/Check the letter: N means north/)).toBeVisible();
   await expect(card(page).getByText(/^Correct answer:/)).toBeVisible();
+});
+
+test('topic 6: adding on the same side gets the "you added" hint and the bracket shows the difference', async ({ page }) => {
+  await openPage(page, 'en/topic-6/practice', '?test');
+  const q = await page.evaluate(() => (window as unknown as { __practice: { question: { answer: { value: number }; meta: { method: string; x: number; y: number } } } }).__practice.question);
+  expect(q.meta.method).toBe('same-subtract'); // easy differences stay on one side of the line
+  await card(page).getByRole('textbox').fill(String(q.meta.x + q.meta.y));
+  await page.getByRole('button', { name: 'Check' }).click();
+  await expect(card(page).getByText(/^You added, but both points are on the same side/)).toBeVisible();
+  await expect(card(page).getByText(`Correct answer: ${q.answer.value}°`)).toBeVisible();
+  await expect(page.locator('.diff text.total').first()).toHaveText(`${q.answer.value}°`);
+  expect(pageErrors(page)).toEqual([]);
+});
+
+test('topic 7: an answer using 111 km per degree is accepted with a note', async ({ page }) => {
+  await openPage(page, 'pl/topic-7/practice', '?test');
+  const q = await page.evaluate(() => (window as unknown as { __practice: { question: { meta: { deg: number } } } }).__practice.question);
+  await card(page).getByRole('textbox').fill(String(q.meta.deg * 111));
+  await page.getByRole('button', { name: 'Sprawdź' }).click();
+  await expect(card(page).getByText('Dobrze!', { exact: true })).toBeVisible();
+  await expect(card(page).getByText(/^Liczysz 111 km na stopień/)).toBeVisible();
+  await expect(page.locator('.diff text.total').first()).toHaveText(new RegExp(`^${String(Math.round(q.meta.deg * 111.2 * 10) / 10).replace('.', ',')} km$`));
 });
 
 test('submitting without an answer asks for one', async ({ page }) => {

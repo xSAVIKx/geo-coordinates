@@ -1,5 +1,7 @@
 import type { TopicId } from '../app/ids';
 import type { Text } from '../i18n/text';
+import { difference } from './generators/difference';
+import { distance } from './generators/distance';
 import { further } from './generators/further';
 import { nameLine } from './generators/nameLine';
 import { placePoint } from './generators/placePoint';
@@ -9,7 +11,7 @@ import { whichPlace } from './generators/whichPlace';
 import { createRng } from './rng';
 import type { Answer, CheckResult, Difficulty, Question, QuestionModule, QuestionTypeId } from './types';
 
-export const MODULES: QuestionModule[] = [nameLine, further, relativeLine, readCoords, placePoint, whichPlace];
+export const MODULES: QuestionModule[] = [nameLine, further, relativeLine, readCoords, placePoint, whichPlace, difference, distance];
 
 export function getModule(type: QuestionTypeId): QuestionModule {
   const m = MODULES.find((x) => x.type === type);
