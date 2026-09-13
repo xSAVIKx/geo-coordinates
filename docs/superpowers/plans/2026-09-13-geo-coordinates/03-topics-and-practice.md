@@ -50,6 +50,7 @@ export const topic1: TopicDef = {
     { id: 'angle', scene: { views: ['cross-section', 'globe'], point: { lat: 52, lon: 21 }, pointEditable: true, layers: { specialLines: true, places: false } } },
     { id: 'meridians', scene: { views: ['globe', 'flat'], point: null, rotate: [-30, -20], layers: { specialLines: true, graticuleStep: 15, places: false }, overlays: [{ kind: 'highlight-line', axis: 'lon', value: 30 }, { kind: 'highlight-line', axis: 'lon', value: -60 }] } },
     { id: 'prime', scene: { views: ['globe', 'flat'], point: null, rotate: [0, -20], layers: { specialLines: true, hemispheres: 'ew', places: false } } },
+    { id: 'projections', scene: { views: ['flat'], point: null, flatProjection: 'equal-earth', layers: { specialLines: true, hemispheres: 'none', places: true } } },
     { id: 'tropics', scene: { views: ['flat', 'cross-section'], point: { lat: 23, lon: 0 }, layers: { specialLines: true, tropics: true, places: false, pointGuides: false } } },
     { id: 'play', scene: { views: ['globe', 'flat'], point: { lat: 52, lon: 21 }, pointEditable: true, layers: { specialLines: true, tropics: true } } },
   ],
@@ -136,6 +137,7 @@ Topic 1:
 - `angle` — **Why degrees?** — "Latitude is an angle! Imagine a line from the centre of the Earth to a place. The angle between that line and the equator is the latitude. Drag the point on the circle and watch the angle change."
 - `meridians` — **Meridians** — "Meridians are half-circles that join the North Pole and the South Pole. All meridians are the same length. They tell us the longitude."
 - `prime` — **The prime meridian and 180°** — "The prime meridian (0°) goes through Greenwich in London. On the other side of the Earth is the 180° meridian. Together they divide the Earth into the Eastern and Western Hemispheres. Longitude goes from 0° up to 180°E or 180°W."
+- `projections` — **Many maps, one grid** — "A flat map is always a little stretched, because the Earth is round. This map is called Equal Earth: every country keeps its true size, so the meridians bend. The coordinates stay the same on every map. Try the Grid map in the Lab to compare."
 - `tropics` — **Tropics and polar circles** — "Some parallels have their own names: the Tropic of Cancer (about 23°N), the Tropic of Capricorn (about 23°S), the Arctic Circle (about 66°N) and the Antarctic Circle (about 66°S)."
 - `play` — **Try it yourself** — "Drag the point around. When is it in the Northern Hemisphere? When is it in the Western Hemisphere? Find the Tropic of Cancer."
 
