@@ -8,7 +8,8 @@
     "check": "svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
     "test": "vitest run",
     "e2e": "playwright test",
-    "shot": "node --experimental-strip-types scripts/shot.ts"
+    "shot": "node --experimental-strip-types scripts/shot.ts",
+    "data:regional": "node --experimental-strip-types scripts/build-regional-data.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
@@ -16,10 +17,16 @@
     "@sveltejs/vite-plugin-svelte": "^7.3.0",
     "@types/d3-geo": "^3.1.1",
     "@types/geojson": "^7946.0.16",
+    "@types/lineclip": "^2.0.0",
     "@types/node": "^24.13.4",
     "@types/topojson-client": "^3.1.5",
+    "@types/topojson-server": "^3.0.4",
+    "@types/topojson-simplify": "^3.0.3",
+    "lineclip": "^2.0.0",
     "svelte": "^5.57.0",
     "svelte-check": "^4.7.6",
+    "topojson-server": "^3.0.1",
+    "topojson-simplify": "^3.0.3",
     "typescript": "~6.0.3",
     "vite": "^8.3.0",
     "vite-plugin-singlefile": "^2.3.3",
