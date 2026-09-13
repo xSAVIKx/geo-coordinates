@@ -17,9 +17,30 @@ export function initSettings(): void {
   settings.reducedMotion = typeof s.reducedMotion === 'boolean' ? s.reducedMotion : systemReducedMotion();
 }
 
+/**
+ * What the app itself wrote to a root's theme attributes, and what was there before. A host page
+ * (e.g. an embedding viewer) may stamp data-theme on <html> for its own theme choice; "system"
+ * must leave that stamp alone, so only a value the app wrote is ever taken back.
+ */
+const appliedTheme = new WeakMap<HTMLElement, { theme: string; prevTheme: string | undefined; prevScheme: string }>();
+
 export function applySettings(root: HTMLElement = document.documentElement): void {
-  if (settings.theme === 'system') { delete root.dataset.theme; root.style.colorScheme = ''; }
-  else { root.dataset.theme = settings.theme; root.style.colorScheme = settings.theme; }
+  const applied = appliedTheme.get(root);
+  if (settings.theme === 'system') {
+    if (applied) {
+      // Restore what was there before, unless someone else has changed it since.
+      if (root.dataset.theme === applied.theme) {
+        if (applied.prevTheme === undefined) delete root.dataset.theme; else root.dataset.theme = applied.prevTheme;
+      }
+      if (root.style.colorScheme === applied.theme) root.style.colorScheme = applied.prevScheme;
+      appliedTheme.delete(root);
+    }
+  } else {
+    appliedTheme.set(root, applied
+      ? { ...applied, theme: settings.theme }
+      : { theme: settings.theme, prevTheme: root.dataset.theme, prevScheme: root.style.colorScheme });
+    root.dataset.theme = settings.theme; root.style.colorScheme = settings.theme;
+  }
   root.dataset.largeText = String(settings.largeText);
   root.dataset.reducedMotion = String(settings.reducedMotion);
 }
