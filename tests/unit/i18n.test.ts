@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import en from '../../src/i18n/en.json';
 import pl from '../../src/i18n/pl.json';
 import uk from '../../src/i18n/uk.json';
-import { detectLang, i18n, t, tn } from '../../src/i18n/i18n.svelte';
+import { detectLang, i18n, messages, t, tn } from '../../src/i18n/i18n.svelte';
 import { renderText } from '../../src/i18n/text';
 import { spokenLat, spokenLon } from '../../src/i18n/spoken';
 
@@ -68,5 +68,14 @@ describe('runtime', () => {
     expect(spokenLat(0, 'en')).toBe('0 degrees');
     expect(spokenLon(-1, 'pl')).toBe('1 stopień na zachód');
     expect(spokenLat(52 + 14 / 60, 'uk', 'minute')).toBe('52 градуси 14 хвилин північної широти');
+  });
+  test('spokenLon reads the spoken.lon message, not spoken.lat', () => {
+    const original = messages.en['spoken.lon']!;
+    messages.en['spoken.lon'] = 'LON:{amount}:{dir}';
+    try {
+      expect(spokenLon(21, 'en')).toBe('LON:21 degrees:east');
+    } finally {
+      messages.en['spoken.lon'] = original;
+    }
   });
 });
