@@ -12,10 +12,10 @@
 
 <defs>
   <pattern id="{idPrefix}-stripes" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-    <rect width="8" height="8" fill="var(--hemi-a)" /><line x1="0" y1="0" x2="0" y2="8" stroke="var(--marker-a)" stroke-width="1.5" stroke-opacity="0.35" />
+    <rect width="8" height="8" fill="var(--hemi-a)" /><line x1="0" y1="0" x2="0" y2="8" stroke="var(--marker-a)" stroke-width="1.5" stroke-opacity="0.16" />
   </pattern>
   <pattern id="{idPrefix}-dots" width="10" height="10" patternUnits="userSpaceOnUse">
-    <rect width="10" height="10" fill="var(--hemi-b)" /><circle cx="5" cy="5" r="1.6" fill="var(--marker-b)" fill-opacity="0.45" />
+    <rect width="10" height="10" fill="var(--hemi-b)" /><circle cx="5" cy="5" r="1.5" fill="var(--marker-b)" fill-opacity="0.26" />
   </pattern>
 </defs>
 {#each regions as r, i (r)}
@@ -27,5 +27,5 @@
 {/each}
 
 <style>
-  .hemi-label { fill: var(--text); }
+  .hemi-label { fill: var(--text); font-weight: 750; letter-spacing: 0.01em; }
 </style>

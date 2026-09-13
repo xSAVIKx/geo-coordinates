@@ -68,7 +68,15 @@
       onpointerup={() => (dragging = false)}
       onpointercancel={() => (dragging = false)}
     >
+      <defs>
+        <radialGradient id="{uid}-shade" cx="0.38" cy="0.32" r="0.75">
+          <stop offset="0" stop-color="var(--ocean-light)" stop-opacity="0.35" />
+          <stop offset="0.6" stop-color="var(--ocean-light)" stop-opacity="0" />
+          <stop offset="1" stop-color="var(--ocean-deep)" stop-opacity="0.35" />
+        </radialGradient>
+      </defs>
       <circle cx={C} cy={C} r={R} class="earth" />
+      <circle cx={C} cy={C} r={R} fill="url(#{uid}-shade)" class="shade" />
       {#if mapState.layers.tropics}
         {#each [TROPIC, -TROPIC, POLAR, -POLAR] as l (l)}
           <line x1={C - chordHalf(l)} x2={C + chordHalf(l)} y1={chordY(l)} y2={chordY(l)} class="tropic" />
@@ -105,17 +113,19 @@
   .cross { margin: 0; min-width: 0; }
   .frame { min-width: 0; }
   svg { display: block; width: 100%; max-width: min(100%, 60vh); margin-inline: auto; height: auto; touch-action: none; }
-  svg:focus-visible { outline: 3px solid var(--focus); border-radius: var(--radius); }
-  .earth { fill: var(--ocean); stroke: var(--land-stroke); stroke-width: 2; }
-  .equator { stroke: var(--equator); stroke-width: 3; }
+  svg:focus-visible { outline: 3px solid var(--focus); border-radius: var(--radius-lg); }
+  .earth { fill: var(--ocean); stroke: var(--grid); stroke-width: 2; }
+  .shade { pointer-events: none; }
+  .equator { stroke: var(--equator); stroke-width: 3.5; stroke-linecap: round; }
   .axis { stroke: var(--text-muted); stroke-width: 2; stroke-dasharray: 8 6; }
   .tropic { stroke: var(--tropics); stroke-width: 1.5; stroke-dasharray: 2 4; }
   .parallel { stroke: var(--accent); stroke-width: 2; stroke-dasharray: 6 4; }
-  .radius { stroke: var(--accent); stroke-width: 3; }
-  .angle { fill: none; stroke: var(--marker-b); stroke-width: 4; }
+  .radius { stroke: var(--accent); stroke-width: 3; stroke-linecap: round; }
+  .angle { fill: none; stroke: var(--marker-b); stroke-width: 4; stroke-linecap: round; }
   .angle-t { fill: var(--marker-b); font-weight: 800; }
   .lbl { fill: var(--text); }
-  .equator-t { fill: var(--equator); }
+  .small { fill: var(--text-muted); }
+  .equator-t { fill: var(--equator); font-weight: 750; }
   .centre { fill: var(--text); }
   .pt { fill: var(--accent); stroke: var(--surface); stroke-width: 3; }
   .editable { cursor: grab; }

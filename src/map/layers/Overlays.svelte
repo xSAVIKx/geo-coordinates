@@ -20,7 +20,9 @@
   {#if o.kind === 'highlight-region'}
     <path class="hl-region" d={ctx.path(hemisphere(o.region)) ?? ''} />
   {:else if o.kind === 'highlight-line'}
-    <path class="hl-line" d={ctx.path(o.axis === 'lat' ? parallelLine(o.value) : meridianLine(o.value)) ?? ''} />
+    {@const d = ctx.path(o.axis === 'lat' ? parallelLine(o.value) : meridianLine(o.value)) ?? ''}
+    <path class="hl-casing" {d} />
+    <path class="hl-line" {d} />
   {:else if o.kind === 'marker'}
     {@const xy = ctx.project(o.p)}
     {#if xy}
@@ -33,12 +35,13 @@
 {/each}
 
 <style>
-  .hl-region { fill: var(--accent); fill-opacity: 0.18; stroke: var(--accent); stroke-width: 2; vector-effect: non-scaling-stroke; }
-  .hl-line { fill: none; stroke: var(--accent); stroke-width: 6; stroke-opacity: 0.85; vector-effect: non-scaling-stroke; }
-  .marker path { stroke-width: 3; vector-effect: non-scaling-stroke; stroke: var(--surface); paint-order: stroke; }
-  .marker text { fill: var(--text); font-weight: 700; }
+  .hl-region { fill: var(--accent); fill-opacity: 0.16; stroke: var(--accent); stroke-width: 2; vector-effect: non-scaling-stroke; }
+  .hl-casing { fill: none; stroke: var(--halo); stroke-width: 9; stroke-opacity: 0.6; vector-effect: non-scaling-stroke; }
+  .hl-line { fill: none; stroke: var(--accent); stroke-width: 5; stroke-opacity: 0.9; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+  .marker path { stroke-width: 3; vector-effect: non-scaling-stroke; stroke: var(--halo); paint-order: stroke; stroke-linejoin: round; }
+  .marker text { fill: var(--text); font-weight: 750; }
   .tone-a path { fill: var(--marker-a); } .tone-b path { fill: var(--marker-b); }
   .tone-c path { fill: var(--marker-c); } .tone-d path { fill: var(--marker-d); }
-  .tone-answer path { fill: none; stroke: var(--marker-answer); stroke-width: 4; }
-  .tone-wrong path { fill: none; stroke: var(--marker-wrong); stroke-width: 4; }
+  .tone-answer path { fill: color-mix(in srgb, var(--marker-answer) 18%, transparent); stroke: var(--marker-answer); stroke-width: 4; stroke-linecap: round; }
+  .tone-wrong path { fill: none; stroke: var(--marker-wrong); stroke-width: 4; stroke-linecap: round; }
 </style>

@@ -13,7 +13,7 @@
 {#if bordersD}<path class="borders" d={bordersD} />{/if}
 
 <style>
-  .ocean { fill: var(--ocean); stroke: var(--grid); stroke-width: 1; vector-effect: non-scaling-stroke; }
-  .land { fill: var(--land); stroke: var(--land-stroke); stroke-width: 0.8; vector-effect: non-scaling-stroke; }
-  .borders { fill: none; stroke: var(--land-stroke); stroke-width: 0.5; stroke-opacity: 0.7; vector-effect: non-scaling-stroke; }
+  .ocean { fill: var(--ocean); stroke: none; }
+  .land { fill: var(--land); stroke: var(--land-stroke); stroke-width: 0.9; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+  .borders { fill: none; stroke: var(--land-stroke); stroke-width: 0.5; stroke-opacity: 0.55; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 </style>

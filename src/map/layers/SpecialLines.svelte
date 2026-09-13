@@ -28,25 +28,35 @@
 </script>
 
 {#each lines as line (line.id)}
-  <path class="line {line.cls}" d={ctx.path(line.geo) ?? ''} />
+  {@const d = ctx.path(line.geo) ?? ''}
+  <path class="casing" {d} />
+  <path class="line {line.cls}" {d} />
 {/each}
 {#each lines as line (line.id)}
   {@const xy = ctx.kind === 'globe'
     ? ctx.project({ lat: line.labelAt.lat, lon: line.cls === 'prime' || line.cls === 'antimeridian' ? line.labelAt.lon : -ctx.projection.rotate()[0] - 35 })
     : ctx.project(line.labelAt)}
   {#if xy}
-    <text class="label halo {line.cls}" x={xy[0] + 4 * ctx.px} y={xy[1] - 4 * ctx.px} font-size={12 * ctx.px}
-      transform={line.cls === 'prime' || line.cls === 'antimeridian' ? `rotate(-90 ${xy[0] + 4 * ctx.px} ${xy[1] - 4 * ctx.px})` : undefined}>{t(line.labelKey)}</text>
+    <!-- Vertical labels run up the meridian beside it, not across it: rotate(-90) turns the glyphs'
+         height to the left of the anchor, so the prime meridian's label anchors to the right of the
+         line and the 180° label (often at the flat map's right edge) sits to its left. -->
+    {@const vertical = line.cls === 'prime' || line.cls === 'antimeridian'}
+    {@const lx = vertical ? xy[0] + (line.cls === 'prime' ? 15 : -5) * ctx.px : xy[0] + 4 * ctx.px}
+    {@const ly = xy[1] - 5 * ctx.px}
+    <text class="label halo {line.cls}" x={lx} y={ly} font-size={12 * ctx.px}
+      transform={vertical ? `rotate(-90 ${lx} ${ly})` : undefined}>{t(line.labelKey)}</text>
   {/if}
 {/each}
 
 <style>
-  .line { fill: none; vector-effect: non-scaling-stroke; }
+  .casing { fill: none; stroke: var(--halo); stroke-width: 6; stroke-opacity: 0.55; vector-effect: non-scaling-stroke; pointer-events: none; }
+  .line { fill: none; vector-effect: non-scaling-stroke; stroke-linecap: butt; }
   path.equator { stroke: var(--equator); stroke-width: 3; }
   path.prime { stroke: var(--prime); stroke-width: 3; stroke-dasharray: 12 5; }
   path.antimeridian { stroke: var(--antimeridian); stroke-width: 3; stroke-dasharray: 3 5 12 5; }
   path.tropic { stroke: var(--tropics); stroke-width: 2; stroke-dasharray: 2 4; }
   path.polar { stroke: var(--tropics); stroke-width: 2; stroke-dasharray: 8 4 2 4; }
+  .label { font-weight: 750; letter-spacing: 0.01em; }
   text.equator { fill: var(--equator); } text.prime { fill: var(--prime); } text.antimeridian { fill: var(--antimeridian); }
   text.tropic, text.polar { fill: var(--tropics); }
 </style>
