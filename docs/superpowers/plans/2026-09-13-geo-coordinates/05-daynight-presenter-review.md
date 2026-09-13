@@ -938,6 +938,12 @@ Texts live in `src/i18n/{en,pl,uk}.json`; tests fail if a key is missing in any 
     npm run build        # dist/geo-coordinates.html + dist/translation-review.html
     npm run e2e          # Playwright + axe accessibility tests against the built file
 
+## Author
+
+Created by **Yurii Serhiichuk**. Author details for the page footer live in `src/app/credits.ts`.
+
+Map data: [Natural Earth](https://www.naturalearthdata.com/) (public domain).
+
 ## Publishing
 
 The built file is static. For GitHub Pages, publish `dist/` and link to `geo-coordinates.html`

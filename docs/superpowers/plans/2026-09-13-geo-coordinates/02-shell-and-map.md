@@ -7,8 +7,8 @@ Read `README.md` first. Svelte 5 runes syntax only (`$props`, `$state`, `$derive
 ### Task 6: App shell — ids, router, settings, announcer, header, home
 
 **Files:**
-- Create: `src/app/ids.ts`, `src/app/router.ts`, `src/app/router.svelte.ts`, `src/app/settings.svelte.ts`, `src/app/announcer.svelte.ts`, `src/app/LiveRegion.svelte`, `src/app/Header.svelte`, `src/app/SettingsDialog.svelte`, `src/app/Home.svelte`
-- Modify: `src/app/App.svelte` (replace), `src/i18n/{en,pl,uk}.json` (add keys)
+- Create: `src/app/ids.ts`, `src/app/router.ts`, `src/app/router.svelte.ts`, `src/app/settings.svelte.ts`, `src/app/announcer.svelte.ts`, `src/app/LiveRegion.svelte`, `src/app/Header.svelte`, `src/app/SettingsDialog.svelte`, `src/app/Home.svelte`, `src/app/Footer.svelte`, `src/app/credits.ts`
+- Modify: `src/app/App.svelte` (replace), `src/i18n/{en,pl,uk}.json` (add keys), `geo-coordinates.html` (author meta)
 - Test: `tests/unit/router.test.ts`, `tests/e2e/helpers.ts` (add axe helper), `tests/e2e/shell.spec.ts`
 
 **Interfaces:**
@@ -276,6 +276,9 @@ export function announceThrottled(channel: string, message: string, intervalMs =
 | mode.classQuiz.summary | Big questions on the big screen for the whole class | Duże pytania na dużym ekranie dla całej klasy | Великі запитання на великому екрані для всього класу |
 | mode.lab.title | Day and night lab | Laboratorium dnia i nocy | Лабораторія дня і ночі |
 | mode.lab.summary | Move the Sun and watch the time change | Przesuwaj Słońce i patrz, jak zmienia się czas | Рухай Сонце й дивись, як змінюється час |
+| footer.madeBy | Made by {name} | Autor: {name} | Автор: {name} |
+| footer.mapData | Map data: {source} | Dane mapy: {source} | Дані карти: {source} |
+| footer.label | About this page | O tej stronie | Про цю сторінку |
 
 - [ ] **Step 7: Components**
 
@@ -285,6 +288,7 @@ export function announceThrottled(channel: string, message: string, intervalMs =
   import { onMount } from 'svelte';
   import Header from './Header.svelte';
   import Home from './Home.svelte';
+  import Footer from './Footer.svelte';
   import LiveRegion from './LiveRegion.svelte';
   import { router, startRouter } from './router.svelte';
   import { applySettings, initSettings, saveSettings, settings } from './settings.svelte';
@@ -327,6 +331,7 @@ export function announceThrottled(channel: string, message: string, intervalMs =
     <Home />
   {/if}
 </main>
+<Footer />
 <LiveRegion />
 
 <style>
@@ -489,6 +494,39 @@ export function announceThrottled(channel: string, message: string, intervalMs =
 </style>
 ```
 
+**Attribution (the page will be published on GitHub Pages).** `src/app/credits.ts` is the single place holding author data, so a link can be added later without touching components:
+```ts
+export const AUTHOR = { name: 'Yurii Serhiichuk', url: null as string | null };
+export const MAP_DATA = { name: 'Natural Earth', url: 'https://www.naturalearthdata.com/' };
+```
+`src/app/Footer.svelte`:
+```svelte
+<script lang="ts">
+  import { t } from '../i18n/i18n.svelte';
+  import { AUTHOR, MAP_DATA } from './credits';
+  const year = new Date().getFullYear();
+</script>
+
+<footer aria-label={t('footer.label')}>
+  <p>
+    {#if AUTHOR.url}
+      © {year} <a href={AUTHOR.url} rel="author">{t('footer.madeBy', { name: AUTHOR.name })}</a>
+    {:else}
+      © {year} {t('footer.madeBy', { name: AUTHOR.name })}
+    {/if}
+    <span aria-hidden="true"> · </span>
+    {t('footer.mapData', { source: '' })}<a href={MAP_DATA.url} rel="noopener">{MAP_DATA.name}</a>
+  </p>
+</footer>
+
+<style>
+  footer { border-top: 1px solid var(--border); margin-top: var(--space-8); padding: var(--space-4); color: var(--text-muted); text-align: center; font-size: 0.95rem; }
+  footer p { margin: 0; }
+  footer a { color: inherit; display: inline-flex; align-items: center; min-height: var(--tap); }
+</style>
+```
+(`footer.mapData` renders "Map data: " with an empty `{source}` followed by the link — keep the `{source}` param at the end of the string in all languages.) Links in the footer are the only external links on the page; they are ordinary navigations, not runtime requests, so the no-network constraint holds. In `geo-coordinates.html` add `<meta name="author" content="Yurii Serhiichuk" />` after the viewport meta. Presenter mode (Task 18) hides the footer: `:root[data-presenter="true"] footer { display: none; }`.
+
 - [ ] **Step 8: E2E — axe helper and shell spec**
 
 Append to `tests/e2e/helpers.ts`:
@@ -528,6 +566,14 @@ test('language switch updates lang, hash and text', async ({ page }) => {
   await expect(page.locator('html')).toHaveAttribute('lang', 'pl');
   await expect(page).toHaveURL(/#pl\/$/);
   await expect(page.locator('h1')).toHaveText('Współrzędne na kuli ziemskiej');
+});
+
+test('footer credits the author and the map data', async ({ page }) => {
+  await openPage(page, 'pl/');
+  const footer = page.getByRole('contentinfo');
+  await expect(footer).toContainText('Autor: Yurii Serhiichuk');
+  await expect(footer.getByRole('link', { name: 'Natural Earth' })).toHaveAttribute('href', 'https://www.naturalearthdata.com/');
+  await expect(page.locator('meta[name="author"]')).toHaveAttribute('content', 'Yurii Serhiichuk');
 });
 
 test('unknown route falls back to home', async ({ page }) => {
