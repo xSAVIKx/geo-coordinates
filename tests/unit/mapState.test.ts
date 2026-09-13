@@ -1,8 +1,65 @@
-import { describe, expect, test } from 'vitest';
+import { beforeEach, describe, expect, test } from 'vitest';
 import { DEFAULT_LAYERS, MapState } from '../../src/map/mapState.svelte';
 import type { Overlay } from '../../src/map/types';
 
+function makeLocalStorageStub(): Storage {
+  const store = new Map<string, string>();
+  return {
+    get length() { return store.size; },
+    getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
+    setItem: (k: string, v: string) => { store.set(k, v); },
+    removeItem: (k: string) => { store.delete(k); },
+    clear: () => store.clear(),
+    key: (i: number) => [...store.keys()][i] ?? null,
+  } as Storage;
+}
+
 describe('MapState', () => {
+  beforeEach(() => {
+    globalThis.localStorage = makeLocalStorageStub();
+  });
+
+  test('flatProjection defaults to grid', () => {
+    const s = new MapState();
+    expect(s.projectionPreference).toBe('grid');
+    expect(s.flatProjection).toBe('grid');
+  });
+
+  test('setProjectionPreference updates preference, persists it, and getter reflects it', () => {
+    const s = new MapState();
+    s.setProjectionPreference('equal-earth');
+    expect(s.projectionPreference).toBe('equal-earth');
+    expect(s.flatProjection).toBe('equal-earth');
+    expect(globalThis.localStorage.getItem('geo-coords:projection')).toBe('equal-earth');
+  });
+
+  test('a new MapState initialises its preference from storage', () => {
+    globalThis.localStorage.setItem('geo-coords:projection', 'equal-earth');
+    const s = new MapState();
+    expect(s.projectionPreference).toBe('equal-earth');
+    expect(s.flatProjection).toBe('equal-earth');
+  });
+
+  test('the preference survives applyScene when the scene does not force a projection', () => {
+    const s = new MapState();
+    s.setProjectionPreference('equal-earth');
+    s.applyScene({ views: ['flat'] });
+    expect(s.projectionOverride).toBeNull();
+    expect(s.projectionPreference).toBe('equal-earth');
+    expect(s.flatProjection).toBe('equal-earth');
+  });
+
+  test('a scene with flatProjection overrides, and the next scene without it restores the preference', () => {
+    const s = new MapState();
+    expect(s.projectionPreference).toBe('grid');
+    s.applyScene({ views: ['flat'], flatProjection: 'equal-earth' });
+    expect(s.projectionOverride).toBe('equal-earth');
+    expect(s.flatProjection).toBe('equal-earth');
+    s.applyScene({ views: ['flat'] });
+    expect(s.projectionOverride).toBeNull();
+    expect(s.flatProjection).toBe('grid');
+  });
+
   test('applyScene fills defaults', () => {
     const s = new MapState();
     s.applyScene({ views: ['flat'], layers: { tropics: true }, point: { lat: 10, lon: 20 } });

@@ -2,6 +2,7 @@ import type { Axis, LatLon, Precision } from '../geo/types';
 
 export type ViewId = 'globe' | 'flat' | 'cross-section';
 export type FlatPreset = 'world' | 'europe' | 'poland';
+export type FlatProjection = 'grid' | 'equal-earth';
 export interface LayerFlags {
   graticuleStep: 1 | 5 | 10 | 15 | 30;
   specialLines: boolean;      // equator, prime meridian, 180°
@@ -32,6 +33,7 @@ export interface SceneSpec {
   rotate?: [number, number];             // globe rotation [lambda, phi] in degrees
   flatPreset?: FlatPreset;
   flatView?: { center: LatLon; zoom: number }; // overrides flatPreset
+  flatProjection?: FlatProjection;       // forces this projection for the scene; absent = viewer preference applies
   overlays?: Overlay[];
   sun?: { utcMinutes: number; dayOfYear: number } | null;
   labControls?: LabControl[];

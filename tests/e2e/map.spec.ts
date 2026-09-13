@@ -73,3 +73,35 @@ test('dragging the globe rotates the view', async ({ page }) => {
     expect(Math.abs(after.x - before.x)).toBeGreaterThan(5);
   }
 });
+
+test('switching to Equal Earth keeps the point workable and the map accessible', async ({ page }) => {
+  await openPage(page, 'en/lab');
+  const map = page.getByRole('group', { name: 'World map with parallels and meridians' });
+  const gridBtn = page.getByRole('button', { name: 'Grid map' });
+  const equalEarthBtn = page.getByRole('button', { name: 'Equal Earth' });
+  await expect(gridBtn).toHaveAttribute('aria-pressed', 'true');
+  await expect(equalEarthBtn).toHaveAttribute('aria-pressed', 'false');
+
+  await equalEarthBtn.click();
+  await expect(equalEarthBtn).toHaveAttribute('aria-pressed', 'true');
+  await expect(gridBtn).toHaveAttribute('aria-pressed', 'false');
+
+  const handle = map.locator('[data-point-handle]');
+  await expect(handle).toHaveCount(1);
+  const before = (await handle.boundingBox())!;
+  await map.focus();
+  await page.keyboard.press('Shift+ArrowRight');
+  const after = (await handle.boundingBox())!;
+  expect(after.x).not.toBeCloseTo(before.x, 0);
+
+  await expectNoAxeViolations(page, 'lab equal-earth');
+  expect(pageErrors(page)).toEqual([]);
+});
+
+test('the Equal Earth preference is remembered after a reload', async ({ page }) => {
+  await openPage(page, 'en/lab');
+  await page.getByRole('button', { name: 'Equal Earth' }).click();
+  await openPage(page, 'en/lab');
+  await expect(page.getByRole('button', { name: 'Equal Earth' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Grid map' })).toHaveAttribute('aria-pressed', 'false');
+});

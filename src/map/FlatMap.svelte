@@ -4,14 +4,16 @@
   import { makeFlatCtx } from './geometry';
   import Layers from './layers/Layers.svelte';
   import { mapState } from './mapState.svelte';
-  import type { FlatPreset } from './types';
+  import type { FlatPreset, FlatProjection } from './types';
 
   const W = 960, H = 480;
   const uid = `flat-${Math.random().toString(36).slice(2, 8)}`;
   let svg: SVGSVGElement;
   let clientWidth = $state(W);
   const uiScale = $derived(settings.largeText ? 1.25 : 1);
-  const ctx = $derived(makeFlatCtx(W, H, mapState.flat.center, mapState.flat.zoom, (W / Math.max(1, clientWidth)) * uiScale));
+  const ctx = $derived(
+    makeFlatCtx(W, H, mapState.flat.center, mapState.flat.zoom, (W / Math.max(1, clientWidth)) * uiScale, mapState.flatProjection),
+  );
 
   type Drag = { mode: 'point' | 'pan' | 'maybe-click' | 'idle'; startX: number; startY: number; lastX: number; lastY: number };
   let drag: Drag | null = null;
@@ -120,6 +122,7 @@
   });
 
   const PRESETS: FlatPreset[] = ['world', 'europe', 'poland'];
+  const PROJECTIONS: FlatProjection[] = ['grid', 'equal-earth'];
 </script>
 
 <figure class="flat">
@@ -148,6 +151,19 @@
     {#each PRESETS as p (p)}
       <button type="button" onclick={() => mapState.setFlatPreset(p)}>{t(`map.preset.${p}`)}</button>
     {/each}
+    {#if mapState.projectionOverride === null}
+      <div class="projection-group" role="group" aria-label={t('map.projection')} aria-describedby="{uid}-projection-hint">
+        {#each PROJECTIONS as proj (proj)}
+          <button
+            type="button"
+            aria-pressed={mapState.flatProjection === proj}
+            title={t(`map.projection.${proj}`)}
+            onclick={() => mapState.setProjectionPreference(proj)}
+          >{t(`map.projection.${proj}`)}</button>
+        {/each}
+      </div>
+      <p id="{uid}-projection-hint" class="visually-hidden">{t('map.projection.hint')}</p>
+    {/if}
   </div>
 </figure>
 
@@ -156,6 +172,8 @@
   .frame { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--ocean); }
   svg { display: block; width: 100%; height: auto; user-select: none; -webkit-user-select: none; }
   svg:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
-  .toolbar { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+  .toolbar { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
   .toolbar button { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0 var(--space-3); font-weight: 600; }
+  .projection-group { display: flex; gap: 1px; }
+  .projection-group button[aria-pressed='true'] { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); }
 </style>

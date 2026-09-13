@@ -1,5 +1,6 @@
-import { geoCircle, geoDistance, geoEquirectangular, geoOrthographic, geoPath, type GeoPath, type GeoProjection } from 'd3-geo';
+import { geoCircle, geoDistance, geoEqualEarth, geoEquirectangular, geoOrthographic, geoPath, type GeoPath, type GeoProjection } from 'd3-geo';
 import type { LatLon } from '../geo/types';
+import type { FlatProjection } from './types';
 
 export interface ViewCtx {
   kind: 'flat' | 'globe';
@@ -43,12 +44,21 @@ function inRange(ll: [number, number] | null | undefined): LatLon | null {
   return { lat, lon };
 }
 
-export function makeFlatCtx(width: number, height: number, center: LatLon, zoom: number, px: number): ViewCtx {
-  const projection = geoEquirectangular()
-    .scale((width / (2 * Math.PI)) * zoom)
-    .translate([width / 2, height / 2])
-    .center([center.lon, center.lat])
-    .precision(0.5);
+const SPHERE = { type: 'Sphere' } as const;
+
+export function makeFlatCtx(width: number, height: number, center: LatLon, zoom: number, px: number, projectionKind: FlatProjection = 'grid'): ViewCtx {
+  const projection =
+    projectionKind === 'equal-earth'
+      ? geoEqualEarth()
+          .scale(geoEqualEarth().fitWidth(width, SPHERE).scale() * zoom)
+          .translate([width / 2, height / 2])
+          .center([center.lon, center.lat])
+          .precision(0.5)
+      : geoEquirectangular()
+          .scale((width / (2 * Math.PI)) * zoom)
+          .translate([width / 2, height / 2])
+          .center([center.lon, center.lat])
+          .precision(0.5);
   const path = geoPath(projection);
   return {
     kind: 'flat', width, height, projection, path, px,

@@ -1,6 +1,12 @@
+import { readString, writeString } from '../app/storage';
 import { clampLat, normalizeLon, roundTo } from '../geo/format';
 import type { LatLon, Precision } from '../geo/types';
-import type { FlatPreset, LabControl, LayerFlags, Overlay, SceneSpec, ViewId } from './types';
+import type { FlatPreset, FlatProjection, LabControl, LayerFlags, Overlay, SceneSpec, ViewId } from './types';
+
+const PROJECTION_KEY = 'geo-coords:projection';
+function initialProjectionPreference(): FlatProjection {
+  return readString(PROJECTION_KEY) === 'equal-earth' ? 'equal-earth' : 'grid';
+}
 
 export type ChangeSource = 'map' | 'slider' | 'program';
 
@@ -32,10 +38,22 @@ export class MapState {
   labControls = $state<LabControl[]>([]);
   phoneView = $state<ViewId>('flat');
   lastChange = $state<ChangeSource>('program');
+  projectionPreference = $state<FlatProjection>(initialProjectionPreference());
+  projectionOverride = $state<FlatProjection | null>(null);
+
+  get flatProjection(): FlatProjection {
+    return this.projectionOverride ?? this.projectionPreference;
+  }
+
+  setProjectionPreference(p: FlatProjection): void {
+    this.projectionPreference = p;
+    writeString(PROJECTION_KEY, p);
+  }
 
   applyScene(scene: SceneSpec): void {
     this.views = [...scene.views];
     this.layers = { ...DEFAULT_LAYERS, ...scene.layers };
+    this.projectionOverride = scene.flatProjection ?? null;
     this.precision = scene.precision ?? 'degree';
     this.pointEditable = scene.pointEditable ?? false;
     this.showReadout = scene.showReadout ?? true;
