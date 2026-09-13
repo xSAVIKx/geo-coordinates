@@ -3,6 +3,7 @@
   import { i18n, t } from '../i18n/i18n.svelte';
   import { spokenLat, spokenLon } from '../i18n/spoken';
   import CoordinateControls from './CoordinateControls.svelte';
+  import CrossSection from './CrossSection.svelte';
   import FlatMap from './FlatMap.svelte';
   import Globe from './Globe.svelte';
   import { mapState } from './mapState.svelte';
@@ -31,7 +32,7 @@
   <div class="views" class:wide style:--count={shown.length}>
     {#each shown as v (v)}
       <div class="view view-{v}">
-        {#if v === 'globe'}<Globe />{:else if v === 'flat'}<FlatMap />{/if}
+        {#if v === 'globe'}<Globe />{:else if v === 'flat'}<FlatMap />{:else}<CrossSection />{/if}
       </div>
     {/each}
   </div>
