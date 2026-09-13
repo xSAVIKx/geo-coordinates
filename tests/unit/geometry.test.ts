@@ -180,3 +180,22 @@ describe('deep zoom (Task 21)', () => {
     expect(boundsIntersect({ west: -200, south: 0, east: 200, north: 50 }, region)).toBe(true);
   });
 });
+
+describe('regionPath', () => {
+  test('on the grid map it draws exactly where the projection does, at any zoom', () => {
+    for (const zoom of [4, 9, 80]) {
+      const ctx = makeFlatCtx(960, 480, { lat: 50.26, lon: 19.02 }, zoom, 1);
+      const line: GeoJSON.LineString = { type: 'LineString', coordinates: [[19, 50.2], [19.05, 50.3]] };
+      const nums = (d: string) => [...d.matchAll(/-?\d+(?:\.\d+)?/g)].map((m) => Number(m[0]));
+      const planar = nums(ctx.regionPath(line)!);
+      const a = ctx.project({ lat: 50.2, lon: 19 })!, b = ctx.project({ lat: 50.3, lon: 19.05 })!;
+      expect(planar[0]).toBeCloseTo(a[0], 0); expect(planar[1]).toBeCloseTo(a[1], 0);
+      expect(planar.at(-2)).toBeCloseTo(b[0], 0); expect(planar.at(-1)).toBeCloseTo(b[1], 0);
+    }
+  });
+  test('globe and Equal Earth have one too', () => {
+    const line: GeoJSON.LineString = { type: 'LineString', coordinates: [[19, 50.2], [19.05, 50.3]] };
+    expect(makeGlobeCtx(500, [-19, -50], 1, 6).regionPath(line)).toMatch(/^M/);
+    expect(makeFlatCtx(960, 480, { lat: 50, lon: 19 }, 6, 1, 'equal-earth').regionPath(line)).toMatch(/^M/);
+  });
+});

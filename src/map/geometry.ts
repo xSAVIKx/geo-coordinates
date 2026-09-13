@@ -1,4 +1,4 @@
-import { geoCircle, geoDistance, geoEqualEarth, geoEquirectangular, geoOrthographic, geoPath, type GeoPath, type GeoProjection } from 'd3-geo';
+import { geoCircle, geoDistance, geoEqualEarth, geoEquirectangular, geoIdentity, geoOrthographic, geoPath, type GeoPath, type GeoProjection } from 'd3-geo';
 import type { LatLon } from '../geo/types';
 import type { FlatProjection } from './types';
 
@@ -10,6 +10,11 @@ export interface ViewCtx {
   height: number;
   projection: GeoProjection;
   path: GeoPath;
+  /**
+   * A faster path generator for the dense Central Europe data (short segments, far from the
+   * antimeridian): plain scaling on the grid map, no great-circle resampling elsewhere.
+   */
+  readonly regionPath: GeoPath;
   px: number;
   /** Map scale as a flat-map zoom factor (1 = whole world across the width); the globe reports its flat equivalent. */
   zoom: number;
@@ -65,23 +70,33 @@ function inRange(ll: [number, number] | null | undefined): LatLon | null {
 const SPHERE = { type: 'Sphere' } as const;
 
 export function makeFlatCtx(width: number, height: number, center: LatLon, zoom: number, px: number, projectionKind: FlatProjection = 'grid'): ViewCtx {
-  const base =
-    projectionKind === 'equal-earth'
+  const clip: [[number, number], [number, number]] = [[-CLIP_PAD, -CLIP_PAD], [width + CLIP_PAD, height + CLIP_PAD]];
+  const build = (precision: number) =>
+    (projectionKind === 'equal-earth'
       ? geoEqualEarth().scale(geoEqualEarth().fitWidth(width, SPHERE).scale() * zoom)
-      : geoEquirectangular().scale((width / (2 * Math.PI)) * zoom);
-  const projection = base
-    .translate([width / 2, height / 2])
-    .center([center.lon, center.lat])
-    .precision(0.5)
-    // Only what can be seen is turned into SVG path data — at zoom 80 the world is 77 000 px wide.
-    .clipExtent([[-CLIP_PAD, -CLIP_PAD], [width + CLIP_PAD, height + CLIP_PAD]]);
+      : geoEquirectangular().scale((width / (2 * Math.PI)) * zoom))
+      .translate([width / 2, height / 2])
+      .center([center.lon, center.lat])
+      .precision(precision)
+      // Only what can be seen is turned into SVG path data — at zoom 80 the world is 77 000 px wide.
+      .clipExtent(clip);
+  const projection = build(0.5);
   const path = geoPath(projection);
+  let regionPath: GeoPath | null = null;
+  const makeRegionPath = (): GeoPath => {
+    if (projectionKind === 'equal-earth') return geoPath(build(0)).digits(1);
+    // The grid map is equirectangular: x and y are just scaled longitude and latitude.
+    const k = ((width / (2 * Math.PI)) * zoom * Math.PI) / 180;
+    // One decimal (a tenth of a map unit) is plenty for these thousands of short segments.
+    return geoPath(geoIdentity().reflectY(true).scale(k).translate([width / 2 - k * center.lon, height / 2 + k * center.lat]).clipExtent(clip)).digits(1);
+  };
   const invert = (xy: [number, number]): LatLon | null => {
     if (xy[0] < 0 || xy[0] > width || xy[1] < 0 || xy[1] > height) return null;
     return inRange(projection.invert?.(xy));
   };
   return {
     kind: 'flat', width, height, projection, path, px, zoom, center,
+    get regionPath() { return (regionPath ??= makeRegionPath()); },
     bounds: projectionKind === 'grid' ? gridBounds(center, zoom) : sampledBounds(invert, width, height),
     isVisible: () => true,
     project: (p) => projection([p.lon, p.lat]) as [number, number],
@@ -119,18 +134,21 @@ function sampledBounds(invert: (xy: [number, number]) => LatLon | null, width: n
 
 export function makeGlobeCtx(size: number, rotate: [number, number], px: number, zoom = 1): ViewCtx {
   const radius = (size / 2 - 6) * zoom;
-  const projection = geoOrthographic()
+  const build = (precision: number) => geoOrthographic()
     .scale(radius)
     .translate([size / 2, size / 2])
     .rotate(rotate)
     .clipAngle(90)
-    .precision(0.5)
+    .precision(precision)
     .clipExtent([[-CLIP_PAD, -CLIP_PAD], [size + CLIP_PAD, size + CLIP_PAD]]);
+  const projection = build(0.5);
   const path = geoPath(projection);
+  let regionPath: GeoPath | null = null;
   const centre: [number, number] = [-rotate[0], -rotate[1]];
   const isVisible = (p: LatLon) => geoDistance([p.lon, p.lat], centre) < Math.PI / 2 - 1e-6;
   return {
     kind: 'globe', width: size, height: size, projection, path, px, isVisible,
+    get regionPath() { return (regionPath ??= geoPath(build(0)).digits(1)); },
     // The whole globe disc spans 180° of longitude — about what a flat map shows at zoom 2.
     zoom: 2 * zoom,
     center: { lat: centre[1], lon: centre[0] },

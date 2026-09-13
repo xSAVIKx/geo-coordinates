@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { ViewCtx } from '../geometry';
-  import { bordersFor, landFor, sphere } from '../world';
+  import { bordersFor, detailFor, landFor, sphere } from '../world';
   import { mapState } from '../mapState.svelte';
   let { ctx }: { ctx: ViewCtx } = $props();
   const oceanD = $derived(ctx.path(sphere) ?? '');
@@ -12,12 +12,17 @@
   const region = $derived.by(() => {
     const r = layers.region;
     if (!r) return null;
+    const path = ctx.regionPath;
+    // From zoom 6: rivers, and the voivodeships as thin dashed lines (with the other borders).
+    const detail = detailFor(ctx.zoom, ctx.bounds);
     return {
-      mask: ctx.path(r.mask) ?? '',
-      land: ctx.path(r.land) ?? '',
-      lakes: ctx.path(r.lakes) ?? '',
-      coast: ctx.path(r.coast) ?? '',
-      borders: borderLayers?.region ? (ctx.path(borderLayers.region) ?? '') : '',
+      rivers: detail ? detail.rivers.map((river) => ({ id: river.id, d: path(river.line) ?? '' })) : [],
+      voivodeships: detail && mapState.layers.borders ? (path(detail.voivodeships) ?? '') : '',
+      mask: path(r.mask) ?? '',
+      land: path(r.land) ?? '',
+      lakes: path(r.lakes) ?? '',
+      coast: path(r.coast) ?? '',
+      borders: borderLayers?.region ? (path(borderLayers.region) ?? '') : '',
     };
   });
 </script>
@@ -30,7 +35,9 @@
     <path class="mask" d={region.mask} />
     <path class="region-land" d={region.land} />
     <path class="lakes" d={region.lakes} />
+    {#each region.rivers as river (river.id)}<path class="river" data-river={river.id} d={river.d} />{/each}
     <path class="coast" d={region.coast} />
+    {#if region.voivodeships}<path class="voivodeships" d={region.voivodeships} />{/if}
     {#if region.borders}<path class="borders" d={region.borders} />{/if}
   </g>
 {/if}
@@ -46,4 +53,6 @@
   .lakes { fill: var(--ocean); stroke: var(--land-stroke); stroke-width: 0.6; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
   .coast { fill: none; stroke: var(--land-stroke); stroke-width: 0.9; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
   .region .borders { stroke-width: 0.8; stroke-opacity: 0.7; }
+  .river { fill: none; stroke: var(--river); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+  .voivodeships { fill: none; stroke: var(--land-stroke); stroke-width: 0.7; stroke-opacity: 0.75; stroke-dasharray: 5 3; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 </style>

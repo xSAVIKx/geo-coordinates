@@ -67,7 +67,13 @@ interface RegionData {
   lakes: Part<GeoJSON.Position[][]>[];
   coast: Part<GeoJSON.Position[]>[];
   borders: Part<GeoJSON.Position[]>[];
+  voivodeships: Part<GeoJSON.Position[]>[];
+  rivers: { id: RiverId; parts: Part<GeoJSON.Position[]>[] }[];
 }
+
+export type RiverId = 'vistula' | 'oder' | 'warta' | 'bug' | 'dnieper' | 'danube';
+/** Rivers whose name is written on the map (i18n `river.<id>`). */
+export const LABELLED_RIVERS: readonly RiverId[] = ['vistula', 'oder'];
 
 // The 10m data has a vertex every ~1 km, which is right at zoom 80 but ten times more than a
 // Europe-sized view can show — and turning points into SVG path data is what makes panning slow.
@@ -110,6 +116,12 @@ function regionData(zoom: number): RegionData {
       lakes: polygonParts(asMultiPolygon(feature(topology, topology.objects.lakes))),
       coast: lineParts(mesh(topology, topology.objects.coast)),
       borders: lineParts(mesh(topology, topology.objects.borders)),
+      // Only the lines between two voivodeships: Poland's outline is already a country border or coast.
+      voivodeships: lineParts(mesh(topology, topology.objects.voivodeships, (a, b) => a !== b)),
+      rivers: topology.objects.rivers.geometries.map((g) => ({
+        id: (g.properties as { id: RiverId }).id,
+        parts: lineParts(mesh(topology, { type: 'GeometryCollection', geometries: [g] })),
+      })),
     };
     levels.set(level, data);
   }
@@ -158,3 +170,38 @@ export function bordersFor(zoom: number, view: GeoBounds): BorderLayers {
   if (!regionActive(zoom, view)) return { world: borders, region: null };
   return { world: borders, region: { type: 'MultiLineString', coordinates: visibleParts(regionData(zoom).borders, view) } };
 }
+
+export interface DetailLayers {
+  voivodeships: GeoJSON.MultiLineString;
+  rivers: { id: RiverId; line: GeoJSON.MultiLineString }[];
+}
+
+/** Voivodeship borders and major rivers: from zoom 6 when the view reaches Central Europe. */
+export function detailFor(zoom: number, view: GeoBounds): DetailLayers | null {
+  if (zoom < REGION_DETAIL_ZOOM || !regionActive(zoom, view)) return null;
+  const region = regionData(zoom);
+  return {
+    voivodeships: { type: 'MultiLineString', coordinates: visibleParts(region.voivodeships, view) },
+    rivers: region.rivers
+      .map((r) => ({ id: r.id, line: { type: 'MultiLineString' as const, coordinates: visibleParts(r.parts, view) } }))
+      .filter((r) => r.line.coordinates.length > 0),
+  };
+}
+
+/**
+ * Points along a river, about every 0.3°, where its name may be written; the map picks the visible
+ * one nearest the middle of the view, so the name stays on screen while panning.
+ */
+export function riverLabelPoints(id: RiverId): readonly { lat: number; lon: number }[] {
+  const cached = labelPoints.get(id);
+  if (cached) return cached;
+  const out: { lat: number; lon: number }[] = [];
+  for (const part of regionData(DETAIL_LEVELS[DETAIL_LEVELS.length - 1]!).rivers.find((r) => r.id === id)?.parts ?? []) {
+    for (const [lon, lat] of part.coordinates) {
+      if (out.every((p) => Math.hypot((p.lon - lon!) * 0.64, p.lat - lat!) >= 0.3)) out.push({ lat: lat!, lon: lon! });
+    }
+  }
+  labelPoints.set(id, out);
+  return out;
+}
+const labelPoints = new Map<RiverId, { lat: number; lon: number }[]>();

@@ -15,6 +15,9 @@ for (const lang of ['en', 'uk'] as const) {
     const zoomIn = page.locator('.view-flat').getByRole('button', { name: n.zoomIn, exact: true });
     for (let i = 0; i < 3; i++) await zoomIn.click();
     await expect(map.locator('[data-detail="central-europe"]')).toHaveCount(1);
+    await expect(map.locator('path.river[data-river="vistula"]')).toHaveCount(1);
+    await expect(map.locator('path.voivodeships')).toHaveCount(1);
+    await expect(map.locator('text.river-name[data-river="vistula"]')).toHaveCount(1);
 
     // Pan south from the preset's centre (52°N) to Katowice (50.26°N) by dragging the map up.
     const zoom = await page.evaluate(() => (window as unknown as { __mapState: { flat: { zoom: number } } }).__mapState.flat.zoom);

@@ -1,7 +1,8 @@
 import { geoArea } from 'd3-geo';
 import { describe, expect, test } from 'vitest';
 import { makeFlatCtx, makeGlobeCtx } from '../../src/map/geometry';
-import { REGION, REGION_MIN_ZOOM, bordersFor, land, landFor, regionActive, thinArc } from '../../src/map/world';
+import { mesh } from 'topojson-client';
+import { LABELLED_RIVERS, REGION, REGION_MIN_ZOOM, bordersFor, detailFor, land, landFor, regionActive, riverLabelPoints, thinArc } from '../../src/map/world';
 import regionJson from '../../src/map/data/central-europe.json';
 
 const katowice = { lat: 50.26, lon: 19.02 };
@@ -54,5 +55,36 @@ describe('regional level of detail', () => {
     const arc: [number, number][] = [[0, 50], [0.001, 50], [0.002, 50], [0.1, 50], [0.1005, 50], [0.2, 50]];
     expect(thinArc(arc, 0.01)).toEqual([[0, 50], [0.1, 50], [0.2, 50]]);
     expect(thinArc([[0, 0], [1, 1]], 5)).toEqual([[0, 0], [1, 1]]);
+  });
+});
+
+describe('voivodeships and rivers', () => {
+  test('appear from zoom 6 over the region only', () => {
+    const z5 = makeFlatCtx(960, 480, { lat: 52, lon: 19 }, 5.9, 1);
+    expect(detailFor(z5.zoom, z5.bounds)).toBeNull();
+    const far = makeFlatCtx(960, 480, { lat: 40, lon: -15 }, 12, 1);
+    expect(detailFor(far.zoom, far.bounds)).toBeNull();
+    const z6 = makeFlatCtx(960, 480, { lat: 50, lon: 20 }, 6, 1);
+    const detail = detailFor(z6.zoom, z6.bounds)!;
+    expect(detail.rivers.map((r) => r.id).sort()).toEqual(['bug', 'danube', 'dnieper', 'oder', 'vistula', 'warta']);
+    expect(detail.voivodeships.coordinates.length).toBeGreaterThan(10);
+  });
+  test('voivodeship lines are the borders between voivodeships, inside Poland', () => {
+    const ctx = makeFlatCtx(960, 480, { lat: 52, lon: 19 }, 6, 1);
+    const pts = detailFor(ctx.zoom, ctx.bounds)!.voivodeships.coordinates.flat();
+    for (const [lon, lat] of pts) {
+      expect(lon).toBeGreaterThan(14); expect(lon).toBeLessThan(24.2);
+      expect(lat).toBeGreaterThan(49); expect(lat).toBeLessThan(54.9);
+    }
+    // Interior only: far fewer vertices than every voivodeship outline (which would include Poland's border and coast).
+    const outline = mesh(regionJson as never, (regionJson as unknown as { objects: { voivodeships: never } }).objects.voivodeships);
+    expect(pts.length).toBeLessThan(outline.coordinates.flat().length * 0.7);
+  });
+  test('labelled rivers have label spots along them', () => {
+    expect(LABELLED_RIVERS).toEqual(['vistula', 'oder']);
+    const vistula = riverLabelPoints('vistula');
+    expect(vistula.length).toBeGreaterThan(10);
+    for (const p of vistula) { expect(p.lat).toBeGreaterThan(49.5); expect(p.lat).toBeLessThan(54.5); }
+    expect(riverLabelPoints('oder').length).toBeGreaterThan(8);
   });
 });

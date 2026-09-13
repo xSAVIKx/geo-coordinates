@@ -5,10 +5,11 @@
   import { edgeTicks } from '../edgeTicks';
   import type { ViewCtx } from '../geometry';
   import { gridUsesMinutes, resolveGridStep } from '../gridStep';
-  import { createLabelMemory, rotateBoxAround, selectStableLabels, textBox, type LabelBox } from '../labelLayout';
+  import { createLabelMemory, overlaps, rotateBoxAround, selectStableLabels, textBox, type LabelBox } from '../labelLayout';
   import { lineLabelPoint, lineLabelSpecs } from '../lineLabels';
   import { mapState } from '../mapState.svelte';
-  import { MAP_LABELS, PLACES, tierVisible, type Place } from '../places';
+  import { MAP_LABELS, PLACES, tierVisible } from '../places';
+  import { LABELLED_RIVERS, REGION_DETAIL_ZOOM, regionActive, riverLabelPoints } from '../world';
   let { ctx }: { ctx: ViewCtx } = $props();
 
   // Which place labels were visible the *previous* time this ran, for the hysteresis bonus in
@@ -82,20 +83,20 @@
 
   // Every named place (dot always stays visible; only the text label is at risk), with the box
   // it would occupy and how far it sits from what the view is currently centred on.
-  interface Candidate { place: Place; xy: [number, number]; box: LabelBox; distance: number }
+  interface Candidate { id: string; featured: boolean; xy: [number, number]; box: LabelBox; distance: number }
   const centre = $derived(ctx.kind === 'flat' ? mapState.flat.center : { lat: -mapState.rotate[1], lon: -mapState.rotate[0] });
-  const candidates = $derived.by<Candidate[]>(() => {
+  const degreesFromCentre = (p: { lat: number; lon: number }) => Math.hypot(p.lat - centre.lat, ((p.lon - centre.lon + 540) % 360) - 180);
+  const placeCandidates = $derived.by<Candidate[]>(() => {
     const size = roomy ? 12 : 10.5;
     return places.flatMap((p): Candidate[] => {
       if (!(p.featured || showAllNames)) return [];
       const xy = ctx.project(p);
       if (!xy) return [];
       const box = textBox(xy[0] + 6 * ctx.px, xy[1] + 4 * ctx.px, labelWidth(t(`place.${p.id}`), size, ctx.px), size * ctx.px, 'start');
-      const dLat = p.lat - centre.lat, dLon = ((p.lon - centre.lon + 540) % 360) - 180;
-      const distance = Math.hypot(dLat, dLon);
-      return [{ place: p, xy, box, distance }];
+      return [{ id: p.id, featured: p.featured, xy, box, distance: degreesFromCentre(p) }];
     });
   });
+  const candidates = $derived(placeCandidates);
   // Featured places always outrank non-featured ones; among non-featured places, one already
   // showing keeps its priority bonus over one that wasn't (so a tiny pan/zoom doesn't flicker
   // labels in and out), and distance-to-centre (bucketed, so small shifts don't reorder ties) is
@@ -105,15 +106,40 @@
     const visible = selectStableLabels(
       candidates,
       (c) => c.box,
-      (c) => c.place.featured,
+      (c) => c.featured,
       (c) => c.distance,
-      (c) => previousVisible.has(c.place.id),
+      (c) => previousVisible.has(c.id),
       [...lineObstacles, ...continentObstacles, ...edgeObstacles],
     );
     const ids = new Set<string>();
-    candidates.forEach((c, i) => { if (visible[i]) ids.add(c.place.id); });
+    candidates.forEach((c, i) => { if (visible[i]) ids.add(c.id); });
     labelMemory.remember(ids);
     return ids;
+  });
+
+  // River names (Wisła, Odra) from zoom 6, after the place names: each is written at the point of
+  // the river nearest the middle of the view whose label box is free (clear of place names, line
+  // and edge labels, and the other river's name); a river with no free spot goes unnamed.
+  const RIVER_FONT = 11.5;
+  const riverLabels = $derived.by(() => {
+    if (!mapState.layers.places || ctx.zoom < REGION_DETAIL_ZOOM || !regionActive(ctx.zoom, ctx.bounds)) return [];
+    const placed: LabelBox[] = [...lineObstacles, ...continentObstacles, ...edgeObstacles, ...candidates.filter((c) => visibleIds.has(c.id)).map((c) => c.box)];
+    const out: { id: string; x: number; y: number }[] = [];
+    for (const id of LABELLED_RIVERS) {
+      const width = labelWidth(t(`river.${id}`), RIVER_FONT, ctx.px);
+      const spots = riverLabelPoints(id)
+        .map((p) => ctx.project(p))
+        .filter((xy): xy is [number, number] => xy !== null && xy[0] >= 0 && xy[0] <= ctx.width && xy[1] >= 0 && xy[1] <= ctx.height)
+        .sort((a, b) => Math.hypot(a[0] - ctx.width / 2, a[1] - ctx.height / 2) - Math.hypot(b[0] - ctx.width / 2, b[1] - ctx.height / 2));
+      for (const [x, y] of spots) {
+        const box = textBox(x + 5 * ctx.px, y - 5 * ctx.px, width, RIVER_FONT * ctx.px, 'start');
+        if (placed.some((b) => overlaps(box, b))) continue;
+        placed.push(box);
+        out.push({ id, x: x + 5 * ctx.px, y: y - 5 * ctx.px });
+        break;
+      }
+    }
+    return out;
   });
 </script>
 
@@ -136,12 +162,16 @@
       {/if}
     {/if}
   {/each}
+  {#each riverLabels as r (r.id)}
+    <text class="halo river-name" data-river={r.id} x={r.x} y={r.y} font-size={RIVER_FONT * ctx.px}>{t(`river.${r.id}`)}</text>
+  {/each}
 {/if}
 
 <style>
   .place { fill: var(--text); stroke: var(--halo); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
   .place.minor { fill: var(--map-label); fill-opacity: 0.55; stroke-width: 1; }
   .place-name { fill: var(--text); }
+  .river-name { fill: var(--river-label); font-style: italic; font-weight: 650; letter-spacing: 0.02em; }
   .map-label { fill: var(--map-label); font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
   .map-label.ocean { fill: var(--ocean-label); font-style: italic; font-weight: 500; letter-spacing: 0.04em; text-transform: none; }
 </style>
