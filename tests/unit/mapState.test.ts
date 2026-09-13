@@ -1,0 +1,69 @@
+import { describe, expect, test } from 'vitest';
+import { DEFAULT_LAYERS, MapState } from '../../src/map/mapState.svelte';
+
+describe('MapState', () => {
+  test('applyScene fills defaults', () => {
+    const s = new MapState();
+    s.applyScene({ views: ['flat'], layers: { tropics: true }, point: { lat: 10, lon: 20 } });
+    expect(s.views).toEqual(['flat']);
+    expect(s.layers).toEqual({ ...DEFAULT_LAYERS, tropics: true });
+    expect(s.point).toEqual({ lat: 10, lon: 20 });
+    expect(s.pointEditable).toBe(false);
+    expect(s.precision).toBe('degree');
+    expect(s.showReadout).toBe(true);
+    expect(s.overlays).toEqual([]);
+    expect(s.phoneView).toBe('flat');
+    expect(s.rotate).toEqual([-20, -10]);
+  });
+  test('flatView overrides preset and is clamped', () => {
+    const s = new MapState();
+    s.applyScene({ views: ['flat'], flatPreset: 'europe', flatView: { center: { lat: 89, lon: 21 }, zoom: 6 } });
+    expect(s.flat.zoom).toBe(6);
+    expect(s.flat.center).toEqual({ lat: 75, lon: 21 });
+  });
+  test('scene without point hides it; globe first becomes phone view', () => {
+    const s = new MapState();
+    s.applyScene({ views: ['globe', 'cross-section'] });
+    expect(s.point).toBeNull();
+    expect(s.phoneView).toBe('globe');
+  });
+  test('setPoint snaps, clamps and normalizes', () => {
+    const s = new MapState();
+    s.setPoint({ lat: 95.4, lon: 190.6 });
+    expect(s.point).toEqual({ lat: 90, lon: -169 });
+    s.precision = 'minute';
+    s.setPoint({ lat: 52.2334, lon: 21.0 });
+    expect(s.point!.lat).toBeCloseTo(52 + 14 / 60, 9);
+  });
+  test('userSetPoint respects editability and records source', () => {
+    const s = new MapState();
+    s.applyScene({ views: ['flat'], point: { lat: 0, lon: 0 }, pointEditable: false });
+    expect(s.userSetPoint({ lat: 5, lon: 5 }, 'map')).toBe(false);
+    expect(s.point).toEqual({ lat: 0, lon: 0 });
+    s.pointEditable = true;
+    expect(s.userSetPoint({ lat: 5, lon: 5 }, 'map')).toBe(true);
+    expect(s.lastChange).toBe('map');
+  });
+  test('nudge and step sizes', () => {
+    const s = new MapState();
+    s.applyScene({ views: ['flat'], point: { lat: 89, lon: 179 }, pointEditable: true });
+    expect(s.stepSize(false)).toBe(1); expect(s.stepSize(true)).toBe(10);
+    s.nudge(s.stepSize(true), s.stepSize(false), 'slider');
+    expect(s.point).toEqual({ lat: 90, lon: 180 });
+    s.nudge(0, 1, 'slider');
+    expect(s.point).toEqual({ lat: 90, lon: -179 });
+    s.precision = 'minute';
+    expect(s.stepSize(false)).toBeCloseTo(1 / 60, 12); expect(s.stepSize(true)).toBe(1);
+  });
+  test('flat zoom clamps and pan keeps the view inside the world', () => {
+    const s = new MapState();
+    s.zoomFlat(100);
+    expect(s.flat.zoom).toBe(12);
+    s.zoomFlat(0.001);
+    expect(s.flat.zoom).toBe(1);
+    expect(s.flat.center).toEqual({ lat: 0, lon: 0 });
+    s.zoomFlat(2);
+    s.panFlat(80, 0);
+    expect(s.flat.center.lat).toBe(45); // half-height at zoom 2 is 45°
+  });
+});
