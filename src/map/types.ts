@@ -25,6 +25,11 @@ export type OverlayKind =
 // `animate` is set only by `MapState.addOverlays(o, { animate: true })` (never by scene authors) to
 // mark overlays that should draw/scale/fade in — see Overlays.svelte.
 export type Overlay = OverlayKind & { animate?: boolean };
+/**
+ * How the readout writes the point: `letters` 52°14′N, 21°E; `decimal` like a map app (50.2649, 19.0238)
+ * with the letters below; `both` the decimal pair with degrees, minutes and seconds below.
+ */
+export type Readout = 'letters' | 'decimal' | 'both';
 export type LabControl = 'sun-time' | 'sun-date' | 'clocks' | 'now';
 export interface SceneSpec {
   views: ViewId[];                       // views shown, in order
@@ -34,6 +39,7 @@ export interface SceneSpec {
   pointEditable?: boolean;
   precision?: Precision;
   showReadout?: boolean;                 // default true; false hides readout + sliders
+  readout?: Readout;                     // default 'letters'; 'decimal'/'both' also keep the point to 4 decimals
   rotate?: [number, number];             // globe rotation [lambda, phi] in degrees
   globeZoom?: number;                    // globe zoom factor; default 1
   flatPreset?: FlatPreset;

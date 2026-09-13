@@ -5,7 +5,7 @@ import { clampLat, normalizeLon, roundTo } from '../geo/format';
 import { dateFromDayAndMinutes, dayOfYear, daysInYear } from '../geo/sun';
 import type { LatLon, Precision } from '../geo/types';
 import { clampFlatCenter, flatMinZoom, panFlatCenter } from './geometry';
-import type { FlatPreset, FlatProjection, LabControl, LayerFlags, Overlay, SceneSpec, ViewId } from './types';
+import type { FlatPreset, FlatProjection, LabControl, LayerFlags, Overlay, Readout, SceneSpec, ViewId } from './types';
 
 const PROJECTION_KEY = 'geo-coords:projection';
 function initialProjectionPreference(): FlatProjection {
@@ -39,6 +39,7 @@ export class MapState {
   pointEditable = $state(true);
   precision = $state<Precision>('degree');
   showReadout = $state(true);
+  readout = $state<Readout>('letters');
   rotate = $state<[number, number]>([-21, -30]);
   globeZoom = $state(1);
   flat = $state<{ center: LatLon; zoom: number }>({ center: { lat: 0, lon: 0 }, zoom: 1 });
@@ -114,6 +115,7 @@ export class MapState {
     this.precision = scene.precision ?? 'degree';
     this.pointEditable = scene.pointEditable ?? false;
     this.showReadout = scene.showReadout ?? true;
+    this.readout = scene.readout ?? 'letters';
     this.point = null;
     if (scene.point) this.setPoint(scene.point, 'program');
     const p = this.point as LatLon | null;
@@ -141,8 +143,16 @@ export class MapState {
     return this.sun ? dateFromDayAndMinutes(this.sun.year, this.sun.dayOfYear, this.sun.utcMinutes) : null;
   }
 
+  /** Rounds to the scene's precision — or, when the readout shows decimals, to 4 decimals like a map app. */
   setPoint(p: LatLon, source: ChangeSource = 'program'): void {
-    this.point = { lat: clampLat(roundTo(p.lat, this.precision)), lon: normalizeLon(roundTo(p.lon, this.precision)) };
+    if (this.readout === 'letters') {
+      this.point = { lat: clampLat(roundTo(p.lat, this.precision)), lon: normalizeLon(roundTo(p.lon, this.precision)) };
+    } else {
+      // Normalized first: wrapping with % 360 after rounding would bring back float noise (19.0238 → 19.023799999999994).
+      const round4 = (v: number) => Math.round(v * 1e4) / 1e4 + 0;
+      const lon = round4(normalizeLon(p.lon));
+      this.point = { lat: round4(clampLat(p.lat)), lon: lon <= -180 ? 180 : lon };
+    }
     this.lastChange = source;
   }
 

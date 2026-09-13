@@ -176,6 +176,17 @@ describe('MapState', () => {
     s.chooseProjection('equal-earth');
     expect(s.projectionPreference).toBe('equal-earth');
   });
+  test('a decimal readout keeps the point to 4 decimals (like a map app); letters keep the scene precision', () => {
+    const s = new MapState();
+    s.applyScene({ views: ['flat'], point: { lat: 50.264893, lon: 19.023781 }, precision: 'minute', readout: 'decimal', pointEditable: true });
+    expect(s.readout).toBe('decimal');
+    expect(s.point).toEqual({ lat: 50.2649, lon: 19.0238 });
+    s.userSetPoint({ lat: -33.86882, lon: -180.00004 }, 'map');
+    expect(s.point).toEqual({ lat: -33.8688, lon: 180 });
+    s.applyScene({ views: ['flat'], point: { lat: 50.264893, lon: 19.023781 }, precision: 'minute' });
+    expect(s.readout).toBe('letters');
+    expect(s.point!.lat).toBeCloseTo(50 + 16 / 60, 12);
+  });
   test('setFlatPreset applies the preset through the same clamp path as zoom/pan', () => {
     const s = new MapState();
     s.setFlatPreset('poland');
