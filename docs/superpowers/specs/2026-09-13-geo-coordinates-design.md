@@ -208,7 +208,9 @@ Randomness uses a seeded PRNG so a seed reproduces a question set exactly.
 - **Medium:** any whole degree; crossings of the equator and the prime meridian. (Reading and placing
   coordinates at medium use multiples of 5°, so values can be read exactly on the 5° grid; any whole
   degree is used at hard with a 1° grid.)
-- **Hard:** crossings of the 180° meridian, minutes (topics 5–7), multi-step questions.
+- **Hard:** crossings of the 180° meridian, minutes (topic 5), multi-step questions. (Hard difference and
+  distance questions in topics 6–7 use whole degrees; their difficulty comes from equator, prime-meridian
+  and 180° crossings.)
 
 Generators reject and redraw ambiguous cases: two points on the same meridian for an E/W question,
 points exactly on the reference line, or points at a pole. East/west comparison questions never
