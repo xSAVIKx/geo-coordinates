@@ -12,12 +12,23 @@
   // different seeds/difficulties at the same position, so keying the reset/remount logic on
   // `question.id` would leave a stale selection/typed answer/feedback on screen when, say, the
   // difficulty changes while staying on question 1.
-  let { question, number, total, result, onsubmit, onnext, nextLabel, roundKey, showFeedback = true, big = false }: {
+  //
+  // `value` and the two `*Draft` props are `$bindable`, owned by Practice rather than local
+  // `$state` here. The phone/desktop layout switch (see MapStage's `midContent`) moves this
+  // component to a different place in the DOM, which destroys and recreates it — a purely local
+  // answer would be lost on every resize across the breakpoint. Because Practice holds the real
+  // state, a fresh instance picks the in-progress answer back up from its initial prop values.
+  let {
+    question, number, total, result, onsubmit, onnext, nextLabel, roundKey,
+    value = $bindable(null), coordsDraft = $bindable({ lat: '', lon: '' }), numberDraft = $bindable(''),
+    showFeedback = true, big = false,
+  }: {
     question: Question; number: number; total: number; result: CheckResult | null;
-    onsubmit: (a: Answer) => void; onnext: () => void; nextLabel: string; roundKey: string; showFeedback?: boolean; big?: boolean;
+    onsubmit: (a: Answer) => void; onnext: () => void; nextLabel: string; roundKey: string;
+    value?: Answer | null; coordsDraft?: { lat: string; lon: string }; numberDraft?: string;
+    showFeedback?: boolean; big?: boolean;
   } = $props();
 
-  let value = $state<Answer | null>(null);
   let invalid = $state(false);
   let heading: HTMLHeadingElement;
   let feedbackBox = $state<HTMLDivElement>();
@@ -25,12 +36,14 @@
   const uid = `q-${Math.random().toString(36).slice(2, 8)}`;
   const answered = $derived(result !== null);
 
+  // Resetting `value`/the drafts for a new question is Practice's job (it owns them and must do
+  // it before this component even mounts on the very first question); this only handles moving
+  // focus to the heading on every question after the first.
   let lastKey = '';
   $effect(() => {
     if (roundKey === lastKey) return;
     const first = lastKey === '';
     lastKey = roundKey;
-    value = null;
     invalid = false;
     if (!first) queueMicrotask(() => heading?.focus());
   });
@@ -88,9 +101,9 @@
     {#if question.input.kind === 'choice'}
       <ChoiceInput options={question.input.options} bind:value disabled={answered} {invalid} describedBy="{uid}-prompt" {big} />
     {:else if question.input.kind === 'coords'}
-      <CoordsInput spec={question.input} bind:value disabled={answered} {invalid} describedBy="{uid}-prompt" />
+      <CoordsInput spec={question.input} bind:value bind:draft={coordsDraft} disabled={answered} {invalid} describedBy="{uid}-prompt" />
     {:else if question.input.kind === 'number'}
-      <NumberInput unit={question.input.unit} bind:value disabled={answered} {invalid} describedBy="{uid}-prompt" />
+      <NumberInput unit={question.input.unit} bind:value bind:draft={numberDraft} disabled={answered} {invalid} describedBy="{uid}-prompt" />
     {/if}
   {/key}
 

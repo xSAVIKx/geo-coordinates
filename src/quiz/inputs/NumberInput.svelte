@@ -2,15 +2,18 @@
   import { t } from '../../i18n/i18n.svelte';
   import type { Answer } from '../types';
 
-  let { unit, value = $bindable(null), disabled = false, invalid = false, describedBy }: {
-    unit: 'deg' | 'km' | 'h' | 'min'; value?: Answer | null; disabled?: boolean; invalid?: boolean; describedBy?: string;
+  // `draft` holds the raw, possibly-unparsable typed text. It is `$bindable` so a parent
+  // (Practice) can keep it alive across a remount of this component — e.g. when the
+  // phone/desktop layout swap moves the question card to a different place in the DOM — instead
+  // of the typed text being lost the way a purely-local `$state` would be.
+  let { unit, value = $bindable(null), draft = $bindable(''), disabled = false, invalid = false, describedBy }: {
+    unit: 'deg' | 'km' | 'h' | 'min'; value?: Answer | null; draft?: string; disabled?: boolean; invalid?: boolean; describedBy?: string;
   } = $props();
   const uid = `num-${Math.random().toString(36).slice(2, 8)}`;
-  let text = $state('');
 
   $effect(() => {
     if (disabled) return;
-    const cleaned = text.trim().replace(/\s+/g, '').replace(',', '.').replace(/°$/, '');
+    const cleaned = draft.trim().replace(/\s+/g, '').replace(',', '.').replace(/°$/, '');
     const n = cleaned === '' ? NaN : Number(cleaned);
     value = Number.isFinite(n) ? { kind: 'number', value: n } : null;
   });
@@ -19,7 +22,7 @@
 <div class="field">
   <label for={uid}>{t('input.number')}</label>
   <div class="row">
-    <input id={uid} type="text" inputmode="decimal" autocomplete="off" bind:value={text} {disabled}
+    <input id={uid} type="text" inputmode="decimal" autocomplete="off" bind:value={draft} {disabled}
       aria-invalid={invalid} aria-describedby="{uid}-err {describedBy ?? ''}" />
     <span class="unit">{t(`unit.label.${unit}`)}</span>
   </div>

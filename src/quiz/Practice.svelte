@@ -25,6 +25,16 @@
   let index = $state(0);
   let results = $state<CheckResult[]>([]);
   let finished = $state(false);
+
+  // The in-progress (not yet submitted) answer for the current question, lifted up from
+  // QuestionCard/CoordsInput/NumberInput so it survives those components being torn down and
+  // recreated — which happens whenever the phone/desktop layout switch (`wide`, below) moves the
+  // question card to a different place in the DOM. `coordsText`/`numberText` hold the raw typed
+  // text (which may not parse to a valid `value` yet); reset together, synchronously, everywhere
+  // the round position changes so a fresh question never inherits a previous one's draft.
+  interface Draft { value: Answer | null; coordsText: { lat: string; lon: string }; numberText: string }
+  const emptyDraft = (): Draft => ({ value: null, coordsText: { lat: '', lon: '' }, numberText: '' });
+  let draft = $state<Draft>(emptyDraft());
   // The best score for the *currently selected* difficulty — shown both beside the difficulty
   // selector and in the round summary. Loaded on init, reloaded whenever `difficulty` (or the
   // topic) changes, and updated the moment a round finishes, so it never goes stale like a plain
@@ -56,6 +66,7 @@
     index = 0;
     results = [];
     finished = false;
+    draft = emptyDraft();
   });
 
   let applied = '';
@@ -76,7 +87,7 @@
   }
 
   function next() {
-    if (index < ROUND - 1) { index += 1; return; }
+    if (index < ROUND - 1) { index += 1; draft = emptyDraft(); return; }
     finished = true;
     currentBest = recordScore(scoreId(topic.id, difficulty), score);
   }
@@ -88,6 +99,7 @@
     index = 0;
     results = [];
     finished = false;
+    draft = emptyDraft();
   }
 
   let summaryHeading = $state<HTMLHeadingElement>();
@@ -110,7 +122,8 @@
 
 {#snippet questionCard()}
   <QuestionCard {question} number={index + 1} total={ROUND} {result} onsubmit={submit} onnext={next}
-    nextLabel={index < ROUND - 1 ? t('practice.next') : t('practice.results')} {roundKey} />
+    nextLabel={index < ROUND - 1 ? t('practice.next') : t('practice.results')} {roundKey}
+    bind:value={draft.value} bind:coordsDraft={draft.coordsText} bind:numberDraft={draft.numberText} />
 {/snippet}
 
 <div class="practice">
@@ -127,7 +140,7 @@
   </fieldset>
 
   {#if !finished}
-    <div class="layout" class:wide>
+    <div class="layout">
       <div class="stage"><MapStage midContent={wide ? undefined : questionCard} /></div>
       {#if wide}
         <div class="panel">
