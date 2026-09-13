@@ -203,8 +203,11 @@ Randomness uses a seeded PRNG so a seed reproduces a question set exactly.
 
 ### 5.2 Difficulty
 
-- **Easy:** multiples of 10°; one hemisphere; no boundary crossings.
-- **Medium:** any whole degree; crossings of the equator and the prime meridian.
+- **Easy:** multiples of 10°; one hemisphere; no boundary crossings. (Exception: "which place is at"
+  questions use real cities rounded to whole degrees.)
+- **Medium:** any whole degree; crossings of the equator and the prime meridian. (Reading and placing
+  coordinates at medium use multiples of 5°, so values can be read exactly on the 5° grid; any whole
+  degree is used at hard with a 1° grid.)
 - **Hard:** crossings of the 180° meridian, minutes (topics 5–7), multi-step questions.
 
 Generators reject and redraw ambiguous cases: two points on the same meridian for an E/W question,
