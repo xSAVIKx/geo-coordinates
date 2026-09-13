@@ -14,10 +14,15 @@
   const wide = $derived(width >= 640);
   const shown = $derived(wide ? mapState.views : mapState.views.filter((v) => v === mapState.phoneView));
 
+  let lastAnnounced: string | null = null;
+
   $effect(() => {
     const p = mapState.point;
     if (!p || mapState.lastChange !== 'map' || !mapState.showReadout) return;
-    announceThrottled('point', `${spokenLat(p.lat, i18n.lang, mapState.precision)}, ${spokenLon(p.lon, i18n.lang, mapState.precision)}`, 700);
+    const spoken = `${spokenLat(p.lat, i18n.lang, mapState.precision)}, ${spokenLon(p.lon, i18n.lang, mapState.precision)}`;
+    if (spoken === lastAnnounced) return;
+    lastAnnounced = spoken;
+    announceThrottled('point', spoken, 700);
   });
 </script>
 

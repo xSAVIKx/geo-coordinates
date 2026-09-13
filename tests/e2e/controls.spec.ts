@@ -32,3 +32,28 @@ test('place list moves the point', async ({ page }) => {
   await expect(page.locator('output')).toHaveText('50°N, 31°E');
   await expectNoAxeViolations(page, 'places open');
 });
+
+test('the readout does not double as its own live region', async ({ page }) => {
+  await openPage(page, 'en/lab');
+  await expect(page.locator('output')).toHaveAttribute('aria-live', 'off');
+});
+
+test('clicking the flat map announces the new point once, via the live region', async ({ page }) => {
+  await openPage(page, 'en/lab');
+  const live = page.locator('[aria-live="polite"]').first();
+  const map = page.getByRole('group', { name: 'World map with parallels and meridians' });
+  const box = (await map.boundingBox())!;
+  await map.click({ position: { x: box.width * 0.75, y: box.height * 0.25 } });
+  await expect(live).toHaveText(/degrees (north|south)/, { timeout: 2000 });
+});
+
+test('keyboard slider changes rely on aria-valuetext, not the live region', async ({ page }) => {
+  await openPage(page, 'en/lab');
+  const live = page.locator('[aria-live="polite"]').first();
+  const lat = page.getByRole('slider', { name: 'Latitude' });
+  await lat.focus();
+  await page.keyboard.press('ArrowUp');
+  await expect(lat).toHaveAttribute('aria-valuetext', '53 degrees north');
+  await page.waitForTimeout(1000);
+  await expect(live).toHaveText('');
+});

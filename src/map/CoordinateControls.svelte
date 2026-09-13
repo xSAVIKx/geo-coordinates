@@ -11,7 +11,7 @@
 
 {#if p && mapState.showReadout}
   <div class="controls">
-    <p class="readout"><span class="visually-hidden">{t('controls.readout')}: </span><output>{formatLatLon(p, i18n.lang, prec)}</output></p>
+    <p class="readout"><span class="visually-hidden">{t('controls.readout')}: </span><output aria-live="off">{formatLatLon(p, i18n.lang, prec)}</output></p>
     {#if mapState.pointEditable}
       <div class="sliders">
         <Slider label={t('controls.latitude')} min={-90} max={90} value={p.lat}
