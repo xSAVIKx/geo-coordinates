@@ -1,3 +1,4 @@
+import { untrack } from 'svelte';
 import { motionReduced } from '../app/settings.svelte';
 import { readString, writeString } from '../app/storage';
 import { clampLat, normalizeLon, roundTo } from '../geo/format';
@@ -55,7 +56,18 @@ export class MapState {
     writeString(PROJECTION_KEY, p);
   }
 
+  /**
+   * Replaces the whole scene. Callers run this from an `$effect` keyed on the current question/step,
+   * so it must not read any `$state` of its own: a read here (e.g. `this.point` right after writing
+   * it, or `this.precision` inside `setPoint`) would subscribe the calling effect to state this very
+   * method rewrites — `point` is a fresh object on every call — and the effect would re-run itself
+   * forever (`effect_update_depth_exceeded`). `untrack` keeps it a pure write.
+   */
   applyScene(scene: SceneSpec): void {
+    untrack(() => this.replaceScene(scene));
+  }
+
+  private replaceScene(scene: SceneSpec): void {
     this.views = [...scene.views];
     this.layers = { ...DEFAULT_LAYERS, ...scene.layers };
     this.projectionOverride = scene.flatProjection ?? null;
