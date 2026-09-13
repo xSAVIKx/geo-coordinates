@@ -1,6 +1,6 @@
 # Part 7 — Extensions requested by the owner (approved 2026-09-13)
 
-Execution order: 17b → 23a (data research, can run in parallel with 17b/21) → 21 → 22 → 23b → D2 → 18 → 19 → 20.
+Execution order: 17b → 17c → 23a (data research, can run in parallel with 17b/21) → 21 → 22 → 23b → D2 → 18 → 19 → 20.
 
 ---
 
@@ -18,6 +18,20 @@ Small behaviour/markup improvements proposed by the design pass and the Task 16 
 Tests: unit tests for labelLayout; e2e: after a wrong answer the correct option shows the ✓ badge and accessible text; `app.shortTitle` visible at 375px; reduced-motion run shows overlays without animation classes.
 
 ---
+
+### Task 17c: Neutral example places (owner request)
+
+The owner asked for politically neutral example places, because Polish teachers may not be comfortable with Kyiv used in lessons. Replace every *example* that uses a Ukrainian city, keep the geography identical where possible, and keep the maths in the texts correct.
+
+- Topic 2 `east-west`: marker Kyiv (31°E) → Lublin (51.25°N, 22.57°E, label "23°E"); text "Lublin (23°E) is east of the 20°E meridian. London (0°) is west of it. …".
+- Topic 4 `plan` / `meridian` / `cross`: 50°N, 30°E (Kyiv) → 50°N, 20°E (Kraków): "Let's find 50°N, 20°E …", "Now find the meridian 20°E …", "… It is Kraków!"; overlays/markers updated to lat 50 / lon 20; the `europe` preset still frames it.
+- Topic 6 `same-lon`: Kyiv 31°E → Cairo 31°E (30°N, 31°E): "Cairo is at 31°E and Warsaw at 21°E. Both are east of Greenwich: 31 − 21 = 10°." Marker/overlay use Cairo; the scene may switch to the world preset or a flatView that frames both.
+- Topic 8 `calculate`: Kyiv → Cairo: "Warsaw (21°E) and Cairo (31°E) are 10° apart … it is 12:40 in Cairo, because Cairo is further east." Markers updated.
+- Lab clocks: `CLOCK_PLACES` kyiv → cairo (comment updated).
+- `places.ts`: Kyiv no longer `featured` (not labelled at world zoom); Ukrainian cities stay available on the map and in the place list as ordinary places.
+- Generated questions: exclude `kyiv`, `lviv`, `odesa`, `kharkiv` from the city pool used by question generators (e.g. an `inQuestions: false` flag or an exclusion list in whichPlace), so random questions don't feature them.
+- PL/UK texts updated with the same meaning (Lublin/Lublin/Люблін; Kraków/Kraków/Краків; Cairo/Kair/Каїр).
+- Tests: update e2e tests that used Kyiv (controls.spec place list → use another city, lab.spec clocks); add a unit test asserting no topic step overlay/marker and no generated which-place question uses the excluded ids (e.g. search topic texts in all languages for the localized names of excluded cities).
 
 ### Task 23a: Maple Bear schools dataset (research)
 
@@ -43,7 +57,7 @@ Produce `src/map/data/maple-bear-schools.json`:
 
 ### Task 21: Katowice, detailed Central Europe and deep zoom
 
-- **Places:** add Katowice, Łódź, Szczecin, Lublin, Białystok, Rzeszów, Bydgoszcz, Olsztyn, Zakopane, and neighbour capitals Berlin (exists), Prague, Bratislava, Vienna, Budapest, Vilnius, Riga, Minsk, Chisinau; localized names in EN/PL/UK. A new `tier` field: `world` (shown at world zoom), `region` (zoom ≥ 3), `local` (zoom ≥ 8). Katowice is `region`.
+- **Places:** add Katowice, Łódź, Szczecin, Lublin, Białystok, Rzeszów, Bydgoszcz, Olsztyn, Zakopane, and neighbour capitals Berlin (exists), Prague, Bratislava, Vienna, Budapest, Vilnius, Riga; localized names in EN/PL/UK. A new `tier` field: `world` (shown at world zoom), `region` (zoom ≥ 3), `local` (zoom ≥ 8). Katowice is `region`.
 - **Regional data:** Natural Earth 10m land + country borders + admin-1 (Polish voivodeships only) + major rivers (Vistula/Wisła, Oder/Odra, Warta, Bug, Dnieper/Dnipro, Danube) + lakes, clipped to lon 8–32°E, lat 44–58°N, simplified and quantized with `topojson-server`/`topojson-simplify`/`topojson-client` in a build-time script `scripts/build-regional-data.ts` whose output `src/map/data/central-europe.json` is committed (the script documents the download source; the downloaded raw files are not committed). If Natural Earth downloads are blocked in this environment, report NEEDS_CONTEXT.
 - **Level of detail:** `world.ts` exposes `landFor(zoom, view)`/`bordersFor(...)`: world 110m below zoom 4; regional 10m features drawn on top when the view intersects the region bbox and zoom ≥ 4 (world land still drawn underneath outside the bbox). Voivodeship borders (thin, dashed) and rivers (blue lines, labelled Wisła/Odra at zoom ≥ 6) appear at zoom ≥ 6 in the region.
 - **Deep zoom:** flat `MAX_ZOOM` 12 → 80; globe `GLOBE_MAX_ZOOM` 8 → 60. Wheel/pinch/keys scale unchanged. Pan clamping still keeps the view within the world.
