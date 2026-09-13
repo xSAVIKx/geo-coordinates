@@ -48,20 +48,20 @@
 <div class="explore">
   <div class="stage"><MapStage showPlaces={current.showPlaces ?? false} /></div>
   <aside class="panel" aria-labelledby="step-title">
-    <p class="progress">{t('explore.progress', { n: index + 1, total })}</p>
+    <p class="progress eyebrow">{t('explore.progress', { n: index + 1, total })}</p>
     <h2 id="step-title" tabindex="-1" bind:this={heading}>{t(`topic.${topic.id}.step.${current.id}.title`)}</h2>
-    <p class="body">{t(`topic.${topic.id}.step.${current.id}.body`)}</p>
+    {#key index}<p class="body">{t(`topic.${topic.id}.step.${current.id}.body`)}</p>{/key}
     <div class="nav">
-      <button type="button" onclick={() => go(index - 1)} disabled={index === 0}>← {t('explore.prev')}</button>
+      <button type="button" class="btn" onclick={() => go(index - 1)} disabled={index === 0}>← {t('explore.prev')}</button>
       {#if index < total - 1}
-        <button type="button" class="primary" onclick={() => go(index + 1)}>{t('explore.next')} →</button>
+        <button type="button" class="btn primary" onclick={() => go(index + 1)}>{t('explore.next')} →</button>
       {:else}
-        <a class="primary" href={formatRoute({ name: 'practice', lang: i18n.lang, topic: topic.id })}>{t('explore.practiceNow')} →</a>
+        <a class="btn primary" href={formatRoute({ name: 'practice', lang: i18n.lang, topic: topic.id })}>{t('explore.practiceNow')} →</a>
       {/if}
     </div>
     <ol class="dots">
       {#each topic.steps as s, i (s.id)}
-        <li><button type="button" aria-current={i === index ? 'step' : undefined} aria-label={t('explore.goto', { n: i + 1 })} onclick={() => go(i)}>{i + 1}</button></li>
+        <li><button type="button" class:done={i < index} aria-current={i === index ? 'step' : undefined} aria-label={t('explore.goto', { n: i + 1 })} onclick={() => go(i)}>{i + 1}</button></li>
       {/each}
     </ol>
     <p class="hint">{t('explore.keysHint')}</p>
@@ -69,19 +69,25 @@
 </div>
 
 <style>
-  .explore { display: grid; gap: var(--space-4); grid-template-columns: 1fr; }
-  @media (min-width: 1024px) { .explore { grid-template-columns: minmax(0, 1fr) 24rem; align-items: start; } .panel { position: sticky; top: 5rem; } }
-  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-4) var(--space-6); }
-  .progress { margin: 0; color: var(--text-muted); font-weight: 600; }
-  h2 { margin: var(--space-1) 0 var(--space-2); font-size: clamp(1.3rem, 1rem + 1.2vw, 2rem); }
-  .body { font-size: clamp(1.05rem, 0.95rem + 0.4vw, 1.35rem); line-height: 1.55; }
+  .explore { display: grid; gap: var(--space-4); grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 1024px) {
+    .explore { grid-template-columns: minmax(0, 1fr) clamp(20rem, 20vw, 25rem); gap: var(--space-5); align-items: start; }
+    .panel { position: sticky; top: calc(var(--header-h) + var(--space-4)); }
+  }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-2); padding: var(--space-5) var(--space-6) var(--space-4); }
+  h2 { margin: var(--space-1) 0 var(--space-3); font-size: var(--step-3); font-weight: var(--weight-heavy); }
+  h2:focus { outline: none; }
+  h2:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; border-radius: 4px; }
+  .body { margin: 0 0 var(--space-5); font-size: var(--step-1); line-height: 1.55; max-width: var(--measure); animation: rise 260ms var(--ease) both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
   .nav { display: flex; gap: var(--space-2); flex-wrap: wrap; justify-content: space-between; }
-  .nav button, .nav a { display: inline-flex; align-items: center; min-height: var(--tap); padding: 0 var(--space-4); border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); font-weight: 600; text-decoration: none; color: var(--text); }
-  .nav .primary { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); }
-  .nav button:disabled { opacity: 0.55; cursor: not-allowed; }
-  .dots { list-style: none; display: flex; flex-wrap: wrap; gap: var(--space-1); padding: 0; margin: var(--space-4) 0 0; }
-  .dots button { border-radius: 50%; border: 1px solid var(--border); background: var(--surface-2); font-weight: 600; }
-  .dots button[aria-current='step'] { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); }
-  .hint { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0; }
+  .nav .primary { margin-left: auto; }
+  .dots { list-style: none; display: flex; flex-wrap: wrap; gap: var(--space-1); padding: var(--space-4) 0 0; margin: var(--space-4) 0 0; border-top: 1px solid var(--border); }
+  .dots button { border-radius: 50%; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-muted); font-weight: var(--weight-strong); font-size: var(--step--1); font-variant-numeric: tabular-nums; transition: background-color var(--dur) var(--ease), border-color var(--dur) var(--ease); }
+  .dots button:hover { border-color: var(--border-strong); color: var(--text); }
+  .dots button.done { background: var(--accent-soft); color: var(--text); border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); }
+  .dots button[aria-current='step'] { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .hint { color: var(--text-muted); font-size: var(--step--1); margin: var(--space-3) 0 0; }
   @media (hover: none) { .hint { display: none; } }
+  @media (max-width: 599px) { .panel { padding: var(--space-4); } }
 </style>

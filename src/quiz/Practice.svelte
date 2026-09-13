@@ -116,11 +116,13 @@
 <div class="practice">
   <fieldset class="difficulty">
     <legend>{t('practice.difficulty')}</legend>
-    {#each DIFFS as d (d)}
-      <label><input type="radio" name="difficulty-{topic.id}" checked={difficulty === d} onchange={() => newRound(d)} /> {t(`difficulty.${d}`)}</label>
-    {/each}
+    <div class="seg levels">
+      {#each DIFFS as d, i (d)}
+        <label><input type="radio" name="difficulty-{topic.id}" checked={difficulty === d} onchange={() => newRound(d)} /><span class="pips" aria-hidden="true">{#each DIFFS as _, j (j)}<i class:on={j <= i}></i>{/each}</span> {t(`difficulty.${d}`)}</label>
+      {/each}
+    </div>
     {#if currentBest !== null}
-      <span class="best">{t('practice.best', { best: currentBest, total: ROUND })}</span>
+      <span class="best"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20h7" /></svg>{t('practice.best', { best: currentBest, total: ROUND })}</span>
     {/if}
   </fieldset>
 
@@ -135,25 +137,34 @@
     </div>
   {:else}
     <section class="summary" aria-labelledby="summary-title">
-      <h2 id="summary-title" tabindex="-1" bind:this={summaryHeading}>{t('practice.done')}</h2>
-      <p class="score">{t('practice.score', { score, total: ROUND })}</p>
-      {#if currentBest !== null}<p>{t('practice.best', { best: currentBest, total: ROUND })}</p>{/if}
+      <div class="summary-head">
+        <svg class="meter" viewBox="0 0 64 64" aria-hidden="true">
+          <circle cx="32" cy="32" r="27" class="meter-track" />
+          <circle cx="32" cy="32" r="27" class="meter-fill" pathLength="100" stroke-dasharray="{(score / ROUND) * 100} 100" />
+          <text x="32" y="38" text-anchor="middle" class="meter-t">{score}</text>
+        </svg>
+        <div>
+          <h2 id="summary-title" tabindex="-1" bind:this={summaryHeading}>{t('practice.done')}</h2>
+          <p class="score">{t('practice.score', { score, total: ROUND })}</p>
+          {#if currentBest !== null}<p class="best-line">{t('practice.best', { best: currentBest, total: ROUND })}</p>{/if}
+        </div>
+      </div>
       <h3>{t('practice.review')}</h3>
       <ol class="review">
         {#each questions as q, i (q.id)}
           <li class:ok={results[i]?.correct}>
-            <span class="mark" aria-hidden="true">{results[i]?.correct ? '✓' : '✗'}</span>
+            <span class="mark" aria-hidden="true">{#if results[i]?.correct}<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>{:else}<svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17" /></svg>{/if}</span>
             <span class="visually-hidden">{results[i]?.correct ? t('practice.resultCorrect') : t('practice.resultWrong')}: </span>
             {renderText(q.prompt)}
           </li>
         {/each}
       </ol>
       <div class="actions">
-        <button type="button" class="primary" onclick={() => newRound()}>{t('practice.newRound')}</button>
+        <button type="button" class="btn primary" onclick={() => newRound()}>{t('practice.newRound')}</button>
         {#if difficulty !== 'hard'}
-          <button type="button" onclick={() => newRound(difficulty === 'easy' ? 'medium' : 'hard')}>{t('practice.harder')}</button>
+          <button type="button" class="btn" onclick={() => newRound(difficulty === 'easy' ? 'medium' : 'hard')}>{t('practice.harder')}</button>
         {/if}
-        <a href={formatRoute({ name: 'explore', lang: i18n.lang, topic: topic.id, step: 0 })}>{t('practice.backToLearn')}</a>
+        <a class="btn quiet" href={formatRoute({ name: 'explore', lang: i18n.lang, topic: topic.id, step: 0 })}>{t('practice.backToLearn')}</a>
       </div>
     </section>
   {/if}
@@ -161,20 +172,38 @@
 
 <style>
   .practice { display: flex; flex-direction: column; gap: var(--space-4); }
-  .difficulty { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); align-items: center; border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-2) var(--space-4); background: var(--surface); }
-  .difficulty legend { font-weight: 700; padding: 0 var(--space-1); }
-  .difficulty label { display: inline-flex; gap: var(--space-2); align-items: center; min-height: var(--tap); }
-  .difficulty input { width: 1.2rem; height: 1.2rem; }
-  .best { margin-left: auto; color: var(--text-muted); }
-  .layout { display: grid; gap: var(--space-4); grid-template-columns: 1fr; }
-  @media (min-width: 1024px) { .layout { grid-template-columns: minmax(0, 1fr) 26rem; align-items: start; } .panel { position: sticky; top: 5rem; } }
-  .summary { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-4) var(--space-6); }
-  .score { font-size: 2rem; font-weight: 800; margin: 0; }
-  .review { display: grid; gap: var(--space-2); padding-left: 1.5rem; }
-  .review li { padding: var(--space-1) 0; }
-  .mark { display: inline-block; width: 1.5rem; font-weight: 800; color: var(--bad); }
-  .ok .mark { color: var(--ok); }
-  .actions { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; margin-top: var(--space-4); }
-  .actions button, .actions a { min-height: var(--tap); display: inline-flex; align-items: center; padding: 0 var(--space-4); border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); font-weight: 600; color: var(--text); }
-  .actions .primary { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); }
+  .difficulty { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); align-items: center; border: 0; margin: 0; padding: 0; min-width: 0; }
+  .difficulty legend { float: left; font-weight: var(--weight-strong); color: var(--text-muted); padding: 0; margin-right: var(--space-1); }
+  .levels label { gap: var(--space-2); padding: 0 var(--space-4); }
+  .pips { display: inline-flex; align-items: flex-end; gap: 2px; height: 0.9rem; }
+  .pips i { display: block; width: 4px; border-radius: 1px; background: var(--border-strong); opacity: 0.45; }
+  .pips i:nth-child(1) { height: 40%; } .pips i:nth-child(2) { height: 70%; } .pips i:nth-child(3) { height: 100%; }
+  .pips i.on { background: var(--accent); opacity: 1; }
+  .best { margin-left: auto; display: inline-flex; align-items: center; gap: var(--space-2); min-height: 2.25rem; padding: 0 var(--space-3); border-radius: var(--radius-pill); background: var(--warm-soft); color: var(--warm-text); font-weight: var(--weight-strong); font-size: var(--step--1); }
+  .best svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .layout { display: grid; gap: var(--space-4); grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 1024px) {
+    .layout { grid-template-columns: minmax(0, 1fr) clamp(22rem, 22vw, 27rem); gap: var(--space-5); align-items: start; }
+    .panel { position: sticky; top: calc(var(--header-h) + var(--space-4)); }
+  }
+  @media (max-width: 599px) { .best { margin-left: 0; } }
+  .summary { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-2); padding: var(--space-6); max-width: 56rem; }
+  .summary-head { display: flex; align-items: center; gap: var(--space-5); }
+  .summary h2 { margin: 0; font-size: var(--step-3); }
+  .summary h2:focus { outline: none; }
+  .summary h2:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; border-radius: 4px; }
+  .meter { flex: none; width: clamp(5rem, 10vw, 7rem); height: auto; }
+  .meter-track { fill: none; stroke: var(--surface-2); stroke-width: 7; }
+  .meter-fill { fill: none; stroke: var(--ok); stroke-width: 7; stroke-linecap: round; transform: rotate(-90deg); transform-origin: center; transition: stroke-dasharray 600ms var(--ease); }
+  .meter-t { fill: var(--text); font-size: 22px; font-weight: 800; font-family: var(--font); }
+  .score { font-size: var(--step-2); font-weight: var(--weight-heavy); margin: var(--space-1) 0 0; }
+  .best-line { margin: var(--space-1) 0 0; color: var(--text-muted); }
+  .summary h3 { font-size: var(--step-1); margin: var(--space-6) 0 var(--space-2); }
+  .review { display: grid; gap: var(--space-1); padding: 0; margin: 0; list-style: none; }
+  .review li { display: flex; gap: var(--space-3); align-items: flex-start; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--bad-soft); }
+  .review li.ok { background: transparent; box-shadow: inset 0 -1px 0 var(--border); border-radius: 0; }
+  .mark { flex: none; display: grid; place-items: center; width: 1.6rem; height: 1.6rem; margin-top: 0.05rem; border-radius: 50%; background: var(--bad); color: var(--surface); }
+  .ok .mark { background: var(--ok); }
+  .mark svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+  .actions { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; margin-top: var(--space-6); }
 </style>

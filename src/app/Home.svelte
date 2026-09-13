@@ -10,49 +10,94 @@
   ] as const;
 </script>
 
-<h1 tabindex="-1">{t('app.title')}</h1>
-<p class="intro">{t('home.intro')}</p>
+<section class="hero">
+  <div class="hero-text">
+    <h1 tabindex="-1">{t('app.title')}</h1>
+    <p class="intro">{t('home.intro')}</p>
+  </div>
+  <svg class="hero-art" viewBox="0 0 240 240" aria-hidden="true">
+    <circle cx="120" cy="120" r="104" class="art-sea" />
+    <g class="art-grid">
+      <ellipse cx="120" cy="120" rx="36" ry="104" />
+      <ellipse cx="120" cy="120" rx="74" ry="104" />
+      <path d="M120 16v208M30 68h180M18 94h204M30 172h180M18 146h204" />
+    </g>
+    <path d="M16 120h208" class="art-eq" />
+    <circle cx="120" cy="120" r="104" class="art-rim" />
+    <path d="M161 81v39M120 81h41" class="art-guide" />
+    <circle cx="161" cy="81" r="9" class="art-pt" />
+  </svg>
+</section>
 
-<h2>{t('home.topics')}</h2>
+<h2 class="section-title">{t('home.topics')}</h2>
 <ol class="cards">
   {#each TOPIC_IDS as id (id)}
     <li class="card">
-      <span class="num" aria-hidden="true">{id}</span>
-      <h3><a href={formatRoute({ name: 'explore', lang: i18n.lang, topic: id, step: 0 })}>{t(`topic.${id}.title`)}</a></h3>
-      <p>{t(`topic.${id}.summary`)}</p>
-      <a class="secondary" href={formatRoute({ name: 'practice', lang: i18n.lang, topic: id })}>{t('home.practice')}<span class="visually-hidden">: {t(`topic.${id}.title`)}</span></a>
+      <span class="badge" aria-hidden="true">{id}</span>
+      <div class="card-body">
+        <h3><a href={formatRoute({ name: 'explore', lang: i18n.lang, topic: id, step: 0 })}>{t(`topic.${id}.title`)}</a></h3>
+        <p>{t(`topic.${id}.summary`)}</p>
+        <a class="btn practise" href={formatRoute({ name: 'practice', lang: i18n.lang, topic: id })}>{t('home.practice')}<span class="visually-hidden">: {t(`topic.${id}.title`)}</span></a>
+      </div>
     </li>
   {/each}
 </ol>
 
-<h2>{t('home.more')}</h2>
-<ul class="cards">
+<h2 class="section-title">{t('home.more')}</h2>
+<ul class="cards modes">
   {#each modes as m (m.key)}
     <li class="card">
-      <h3>
-        {#if m.route === 'class-quiz'}
-          <a href={formatRoute({ name: 'class-quiz', lang: i18n.lang, seed: null })}>{t(`mode.${m.key}.title`)}</a>
-        {:else}
-          <a href={formatRoute({ name: m.route, lang: i18n.lang })}>{t(`mode.${m.key}.title`)}</a>
-        {/if}
-      </h3>
-      <p>{t(`mode.${m.key}.summary`)}</p>
+      <svg class="mode-icon" viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
+        {#if m.key === 'rehearsal'}<path d="M9 5h10M9 12h10M9 19h10M3.5 5l1.5 1.5L7.5 4M3.5 12l1.5 1.5 2.5-2.5M4 18.2h2.5v2H4z" />
+        {:else if m.key === 'classQuiz'}<path d="M3 4.5h18v11H3zM12 15.5V20M8 20h8M8 11l2.5-2.5 2 2L16 7" />
+        {:else}<circle cx="12" cy="12" r="4" /><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" />{/if}
+      </svg>
+      <div class="card-body">
+        <h3>
+          {#if m.route === 'class-quiz'}
+            <a href={formatRoute({ name: 'class-quiz', lang: i18n.lang, seed: null })}>{t(`mode.${m.key}.title`)}</a>
+          {:else}
+            <a href={formatRoute({ name: m.route, lang: i18n.lang })}>{t(`mode.${m.key}.title`)}</a>
+          {/if}
+        </h3>
+        <p>{t(`mode.${m.key}.summary`)}</p>
+      </div>
     </li>
   {/each}
 </ul>
 
 <style>
-  h1 { font-size: clamp(1.6rem, 1.2rem + 2vw, 2.6rem); margin: var(--space-4) 0 var(--space-2); }
-  .intro { font-size: 1.15rem; max-width: 60ch; color: var(--text-muted); }
-  .cards { list-style: none; padding: 0; display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr)); }
-  .card { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-4); padding-left: 3.75rem; }
-  .card h3 { margin: 0 0 var(--space-1); font-size: 1.15rem; }
+  .hero { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--space-6); margin: var(--space-2) 0 var(--space-6); padding: var(--space-6) var(--space-10); border-radius: var(--radius-lg); overflow: hidden;
+    background: radial-gradient(120% 140% at 100% 0%, var(--accent-soft) 0%, transparent 55%), linear-gradient(180deg, var(--surface), color-mix(in srgb, var(--surface) 70%, var(--bg)));
+    border: 1px solid var(--border); box-shadow: var(--shadow-2); }
+  h1 { font-size: var(--step-4); font-weight: var(--weight-heavy); margin: 0 0 var(--space-3); }
+  .intro { font-size: var(--step-1); max-width: var(--measure); color: var(--text-muted); margin: 0; }
+  .hero-art { width: clamp(8rem, 13vw, 13rem); height: auto; }
+  .art-sea { fill: var(--ocean); }
+  .art-grid { fill: none; stroke: var(--grid); stroke-width: 1.5; opacity: 0.6; }
+  .art-eq { stroke: var(--equator); stroke-width: 4; stroke-linecap: round; }
+  .art-rim { fill: none; stroke: var(--accent); stroke-width: 4; }
+  .art-guide { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-dasharray: 6 5; }
+  .art-pt { fill: var(--warm); stroke: var(--surface); stroke-width: 4; }
+  @media (max-width: 719px) {
+    .hero { grid-template-columns: 1fr; padding: var(--space-6) var(--space-5); margin-bottom: var(--space-6); }
+    .hero-art { position: absolute; right: -2.5rem; top: -2.5rem; width: 9rem; opacity: 0.35; }
+    .hero-text { position: relative; }
+  }
+  @media (max-width: 479px) { .hero-art { display: none; } }
+
+  .section-title { font-size: var(--step-2); margin: var(--space-8) 0 var(--space-4); }
+  .cards { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fill, minmax(min(100%, max(17rem, calc((100% - 3 * var(--space-4)) / 4))), 1fr)); }
+  .card { position: relative; display: flex; gap: var(--space-4); align-items: flex-start; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--space-5); box-shadow: var(--shadow-1); transition: box-shadow var(--dur) var(--ease), transform var(--dur) var(--ease), border-color var(--dur) var(--ease); }
+  .card:hover { box-shadow: var(--shadow-3); transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); }
+  .card-body { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); min-width: 0; height: 100%; }
+  .card h3 { margin: 0; font-size: var(--step-1); font-weight: var(--weight-heavy); }
   .card h3 a { color: var(--text); text-decoration: none; }
-  .card h3 a::after { content: ''; position: absolute; inset: 0; border-radius: var(--radius); }
+  .card h3 a::after { content: ''; position: absolute; inset: 0; border-radius: var(--radius-lg); }
+  .card:hover h3 a { color: var(--accent); }
   .card h3 a:focus-visible { outline: none; }
   .card:has(h3 a:focus-visible) { outline: 3px solid var(--focus); outline-offset: 2px; }
-  .card p { margin: 0 0 var(--space-2); color: var(--text-muted); }
-  .num { position: absolute; left: var(--space-4); top: var(--space-4); width: 2.25rem; height: 2.25rem; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--accent-contrast); font-weight: 700; }
-  ul.cards .card { padding-left: var(--space-4); }
-  .secondary { position: relative; z-index: 1; display: inline-flex; align-items: center; min-height: var(--tap); color: var(--accent); font-weight: 600; }
+  .card p { margin: 0; color: var(--text-muted); flex: 1; }
+  .practise { position: relative; z-index: 1; margin-top: var(--space-2); padding: 0 var(--space-4); font-size: var(--step--1); }
+  .mode-icon { flex: none; width: 2.5rem; height: 2.5rem; padding: 0.5rem; border-radius: 0.8rem; background: var(--accent-soft); fill: none; stroke: var(--accent); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 </style>
