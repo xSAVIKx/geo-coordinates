@@ -6,6 +6,8 @@
   import TopicPage from './TopicPage.svelte';
   import Footer from './Footer.svelte';
   import LiveRegion from './LiveRegion.svelte';
+  import Rehearsal from '../quiz/Rehearsal.svelte';
+  import ClassQuiz from '../quiz/ClassQuiz.svelte';
   import { router, startRouter } from './router.svelte';
   import { applySettings, initSettings, saveSettings, settings } from './settings.svelte';
   import { t } from '../i18n/i18n.svelte';
@@ -51,6 +53,12 @@
     <TopicPage topic={route.topic} tab="explore" step={route.step} />
   {:else if route.name === 'practice'}
     <TopicPage topic={route.topic} tab="practice" step={0} />
+  {:else if route.name === 'rehearsal'}
+    <h1 tabindex="-1">{t('mode.rehearsal.title')}</h1>
+    <Rehearsal />
+  {:else if route.name === 'class-quiz'}
+    <h1 tabindex="-1">{t('mode.classQuiz.title')}</h1>
+    <ClassQuiz seed={route.seed} />
   {:else}
     <Home />
   {/if}
