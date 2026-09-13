@@ -78,7 +78,7 @@ function pointQuestion(rng: Rng, difficulty: Difficulty): Question {
     prompt: { key: 'q.nameLine.promptPoint' },
     input: { kind: 'choice', options: options.map((c): Text => ({ key: `q.opt.pair.${c}` })) },
     answer: { kind: 'choice', index: options.indexOf(pair) },
-    explanation: { key: 'q.nameLine.explainPoint', params: { coords: { coord: p }, nsHemi: { text: { key: `hemi.${hemisphereLat(p.lat)}` } }, ewHemi: { text: { key: `hemi.${hemisphereLon(p.lon)}` } } } },
+    explanation: { key: 'q.nameLine.explainPoint', params: { coords: { coord: p }, nsHemi: { text: { key: `q.nameLine.hemiAdj.${hemisphereLat(p.lat)}` } }, ewHemi: { text: { key: `q.nameLine.hemiAdj.${hemisphereLon(p.lon)}` } } } },
     scene: { views: ['flat'], point: null, layers: { specialLines: true, places: false }, overlays: [{ kind: 'marker', p, tone: 'a', label: 'A' }] },
     solution: [],
   });

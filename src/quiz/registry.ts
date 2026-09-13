@@ -32,12 +32,15 @@ export function describeAnswer(q: Question): Text {
 export function generateSet(seed: string, topics: readonly TopicId[], difficulty: Difficulty, count: number): Question[] {
   const out: Question[] = [];
   const seen = new Set<string>();
+  const perTopic = new Map<TopicId, number>(); // earlier questions of the same topic, so each topic rotates through its own modules
   for (let i = 0; i < count; i++) {
     const topic = topics[i % topics.length]!;
     const mods = modulesForTopic(topic);
     if (mods.length === 0) throw new Error(`Topic ${topic} has no question modules`);
+    const occurrence = perTopic.get(topic) ?? 0;
+    perTopic.set(topic, occurrence + 1);
     for (let attempt = 0; attempt < 10; attempt++) {
-      const mod = mods[(i + attempt) % mods.length]!;
+      const mod = mods[(occurrence + attempt) % mods.length]!;
       const q = mod.generate(createRng(`${seed}:${i}:${attempt}`), difficulty, topic);
       const signature = JSON.stringify([q.type, q.prompt, q.answer, q.scene.overlays]);
       if (seen.has(signature) && attempt < 9) continue;

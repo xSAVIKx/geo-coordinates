@@ -8,6 +8,7 @@ import type { Question, QuestionModule, Rng, Difficulty } from '../types';
 
 type Kind = 'answer' | 'ns' | 'ew' | 'both' | 'swap' | 'random';
 const far = (a: LatLon, b: LatLon, d: number) => Math.abs(a.lat - b.lat) >= d || lonDifference(a.lon, b.lon) >= d;
+const MIN_SPACING = 8; // markers closer than this are hard to tell apart on the world map
 
 function distractors(rng: Rng, difficulty: Difficulty, p: LatLon): { p: LatLon; kind: Kind }[] | null {
   const out: { p: LatLon; kind: Kind }[] = [];
@@ -19,9 +20,12 @@ function distractors(rng: Rng, difficulty: Difficulty, p: LatLon): { p: LatLon; 
     ];
     // |lat| = |lon| would make the swap coincide with the answer or a mirror.
     if (Math.abs(p.lon) <= 85 && Math.abs(p.lat) !== Math.abs(p.lon)) cands.push({ p: { lat: p.lon, lon: p.lat }, kind: 'swap' });
-    return rng.shuffle(cands).slice(0, 3);
+    for (const c of rng.shuffle(cands)) {
+      if (out.length < 3 && [p, ...out.map((o) => o.p)].every((x) => far(x, c.p, MIN_SPACING))) out.push(c);
+    }
+    return out.length === 3 ? out : null;
   }
-  const minDist = difficulty === 'easy' ? 25 : 8;
+  const minDist = difficulty === 'easy' ? 25 : MIN_SPACING;
   for (let tries = 0; out.length < 3 && tries < 300; tries++) {
     const q: LatLon = difficulty === 'easy'
       ? { lat: rng.int(5, 70) * signed(rng), lon: rng.int(5, 175) * signed(rng) }

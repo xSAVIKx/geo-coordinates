@@ -1,6 +1,7 @@
 import { extremeIndex, spansAntimeridian } from '../../geo/compare';
+import { normalizeLon } from '../../geo/format';
 import type { LatLon, Precision } from '../../geo/types';
-import type { Text } from '../../i18n/text';
+import type { Text, TextParam } from '../../i18n/text';
 import type { Overlay } from '../../map/types';
 import { checkChoice, choiceText } from '../check';
 import { LABELS, TONES, gridInt, signed, withMinutes } from '../values';
@@ -28,12 +29,21 @@ function values(rng: Rng, difficulty: Difficulty, axis: 'lat' | 'lon', n: number
   return out.length === n ? out : null;
 }
 
-function ruleFor(vals: number[], axis: 'lat' | 'lon'): Text {
-  const signs = new Set(vals.map(Math.sign));
-  if (signs.size > 1 || signs.has(0)) return { key: `q.rule.mixed.${axis}` };
-  const positive = vals[0]! > 0;
-  const letter = axis === 'lat' ? (positive ? 'N' : 'S') : positive ? 'E' : 'W';
+function biggerRule(value: number, axis: 'lat' | 'lon'): Text {
+  const letter = axis === 'lat' ? (value > 0 ? 'N' : 'S') : value > 0 ? 'E' : 'W';
   return { key: `q.rule.bigger.${letter}` };
+}
+
+// Values are never 0. One hemisphere: the bigger-number rule. Mixed: the letter rule, plus the
+// bigger-number rule when another point shares the winner's hemisphere (e.g. 37°S beats 30°S).
+function explanationFor(vals: number[], answer: number, axis: 'lat' | 'lon', params: Record<string, TextParam>): Text {
+  const win = vals[answer]!;
+  if (new Set(vals.map(Math.sign)).size === 1) return { key: 'q.further.explain', params: { ...params, rule: { text: biggerRule(win, axis) } } };
+  const mixed: Text = { key: `q.rule.mixed.${axis}` };
+  const rival = vals.some((v, i) => i !== answer && Math.sign(v) === Math.sign(win));
+  return rival
+    ? { key: 'q.further.explain2', params: { ...params, rule: { text: mixed }, rule2: { text: biggerRule(win, axis) } } }
+    : { key: 'q.further.explain', params: { ...params, rule: { text: mixed } } };
 }
 
 export const further: QuestionModule = {
@@ -48,7 +58,11 @@ export const further: QuestionModule = {
       const axis = dir === 'N' || dir === 'S' ? 'lat' : 'lon';
       const vals = values(rng, difficulty, axis, n, minutes);
       if (!vals) continue;
-      if (axis === 'lon' && spansAntimeridian(vals)) continue;
+      if (axis === 'lon') {
+        // "Further east/west" is only clear on a stretch narrower than 180° that does not cross the 180° meridian.
+        const lons = vals.map(normalizeLon);
+        if (spansAntimeridian(vals) || Math.max(...lons) - Math.min(...lons) >= 180) continue;
+      }
       const otherBase = minutes ? (axis === 'lat' ? rng.int(-170, 170) : rng.int(-60, 60)) : 0;
       const points: LatLon[] = vals.map((v, i) => {
         const other = minutes ? otherBase + i * 0.6 : axis === 'lat' ? rng.int(-160, 160) : rng.int(-60, 60);
@@ -64,7 +78,7 @@ export const further: QuestionModule = {
         prompt: { key: `q.further.prompt.${dir}` },
         input: { kind: 'choice', options: points.map((p, i): Text => ({ key: 'q.further.option', params: { label: LABELS[i]!, coord: { coord: p, axis, precision } } })) },
         answer: { kind: 'choice', index: answer },
-        explanation: { key: 'q.further.explain', params: { label: LABELS[answer]!, coord: { coord: winner, axis, precision }, dir: { text: { key: `q.dirWord.${dir}` } }, rule: { text: ruleFor(vals, axis) } } },
+        explanation: explanationFor(vals, answer, axis, { label: LABELS[answer]!, coord: { coord: winner, axis, precision }, dir: { text: { key: `q.dirWord.${dir}` } } }),
         scene: {
           views: ['flat'], point: null,
           layers: { specialLines: true, places: false, graticuleStep: minutes ? 1 : 10 },

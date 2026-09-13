@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
-import { extremeIndex, spansAntimeridian } from '../../src/geo/compare';
+import { extremeIndex, lonDifference, spansAntimeridian } from '../../src/geo/compare';
+import { normalizeLon } from '../../src/geo/format';
 import { renderText } from '../../src/i18n/text';
 import { coordMistake } from '../../src/quiz/check';
 import { MODULES, generateSet } from '../../src/quiz/registry';
@@ -49,11 +50,30 @@ for (const mod of MODULES) {
               const dir = q.meta?.dir;
               const vals = markers.map((m) => (dir === 'N' || dir === 'S' ? m.p.lat : m.p.lon));
               expect(new Set(vals).size).toBe(vals.length);
-              if (dir === 'E' || dir === 'W') expect(spansAntimeridian(vals)).toBe(false);
+              if (dir === 'E' || dir === 'W') {
+                expect(spansAntimeridian(vals)).toBe(false);
+                // Raw spread, independent of spansAntimeridian: a set 180° or wider has no clear "further east/west".
+                const lons = vals.map(normalizeLon);
+                expect(Math.max(...lons) - Math.min(...lons), `seed ${s}`).toBeLessThan(180);
+              }
+              // Explanation: the letter rule when signs are mixed, plus the bigger-number rule when the winner has a same-sign rival.
+              const win = vals[(q.answer as { index: number }).index]!;
+              const mixedSigns = new Set(vals.map(Math.sign)).size > 1;
+              const rival = vals.some((v, j) => j !== (q.answer as { index: number }).index && Math.sign(v) === Math.sign(win));
+              const letter = dir === 'N' || dir === 'S' ? (win > 0 ? 'N' : 'S') : win > 0 ? 'E' : 'W';
+              const params = q.explanation.params as Record<string, { text: { key: string } }>;
+              const axisName = dir === 'N' || dir === 'S' ? 'lat' : 'lon';
+              if (!mixedSigns) { expect(q.explanation.key).toBe('q.further.explain'); expect(params.rule!.text.key).toBe(`q.rule.bigger.${letter}`); }
+              else if (rival) { expect(q.explanation.key, `seed ${s}`).toBe('q.further.explain2'); expect(params.rule!.text.key).toBe(`q.rule.mixed.${axisName}`); expect(params.rule2!.text.key).toBe(`q.rule.bigger.${letter}`); }
+              else { expect(q.explanation.key).toBe('q.further.explain'); expect(params.rule!.text.key).toBe(`q.rule.mixed.${axisName}`); }
             }
             if (q.type === 'which-place') {
               const markers = (q.scene.overlays ?? []).filter((o) => o.kind === 'marker') as { p: { lat: number; lon: number } }[];
               expect(new Set(markers.map((m) => `${m.p.lat},${m.p.lon}`)).size).toBe(4);
+              // Every pair of markers is at least 8° apart in latitude or in longitude.
+              markers.forEach((a, i) => markers.forEach((b, j) => {
+                if (i < j) expect(Math.abs(a.p.lat - b.p.lat) >= 8 || lonDifference(a.p.lon, b.p.lon) >= 8, `seed ${s} markers ${i},${j}`).toBe(true);
+              }));
               // A hint may only name a mistake that really turns the asked coordinates into the chosen marker.
               const asked = markers[(q.answer as { index: number }).index]!.p;
               markers.forEach((m, j) => {
@@ -68,6 +88,15 @@ for (const mod of MODULES) {
                 const hint = mod.check(q, { kind: 'choice', index: j }).mistake;
                 expect(hint !== undefined, `seed ${s} marker ${j}`).toBe(j === opposite && j !== (q.answer as { index: number }).index);
               });
+            }
+            if (q.type === 'relative-line') {
+              const line = (q.scene.overlays ?? []).find((o) => o.kind === 'highlight-line') as { axis: 'lat' | 'lon'; value: number };
+              const marker = (q.scene.overlays ?? []).find((o) => o.kind === 'marker') as { p: { lat: number; lon: number } };
+              const v = marker.p[line.axis];
+              const ruleKey = (q.explanation.params as Record<string, { text: { key: string } }>).rule!.text.key;
+              if (v === 0 || line.value === 0) expect(ruleKey, `seed ${s}`).toBe(`q.rule.zero.${line.axis}`);
+              else if (Math.sign(v) !== Math.sign(line.value)) expect(ruleKey, `seed ${s}`).toBe(`q.rule.mixed.${line.axis}`);
+              else expect(ruleKey, `seed ${s}`).toMatch(/^q\.rule\.bigger\./);
             }
             if (q.type === 'relative-line' && d === 'easy') {
               const line = (q.scene.overlays ?? []).find((o) => o.kind === 'highlight-line') as { axis: 'lat' | 'lon'; value: number };
@@ -122,6 +151,12 @@ describe('generateSet', () => {
     expect(a).toHaveLength(10);
     expect(new Set(a.map((q) => q.id)).size).toBe(10);
     expect(new Set(a.map((q) => q.type))).toEqual(new Set(['further', 'relative-line']));
+  });
+  test('each topic mixes its own modules even when topic and module counts share a factor', () => {
+    const set = generateSet('mixing', [1, 2, 3, 4], 'medium', 16);
+    const typesFor = (topic: number) => new Set(set.filter((q) => q.topic === topic).map((q) => q.type));
+    expect(typesFor(2)).toEqual(new Set(['further', 'relative-line']));
+    expect(typesFor(4)).toEqual(new Set(['place-point', 'which-place']));
   });
   test('mixed topics cycle through the given topic list', () => {
     const set = generateSet('mix', [1, 2, 3, 4], 'easy', 8);

@@ -34,8 +34,10 @@ export const relativeLine: QuestionModule = {
       const index = (options as readonly string[]).indexOf(rel);
       if (index < 0) continue;
       const letter = { north: 'N', south: 'S', east: 'E', west: 'W' }[rel as 'north'];
-      const mixed = Math.sign(v) !== Math.sign(line) || v === 0 || line === 0;
-      const rule: Text = mixed ? { key: `q.rule.mixed.${axis}` } : { key: `q.rule.bigger.${axis === 'lat' ? (line > 0 ? 'N' : 'S') : line > 0 ? 'E' : 'W'}` };
+      // On 0° there is no letter: explain with the equator / prime meridian instead of comparing letters.
+      const rule: Text = v === 0 || line === 0 ? { key: `q.rule.zero.${axis}` }
+        : Math.sign(v) !== Math.sign(line) ? { key: `q.rule.mixed.${axis}` }
+        : { key: `q.rule.bigger.${axis === 'lat' ? (line > 0 ? 'N' : 'S') : line > 0 ? 'E' : 'W'}` };
       const lineCoord = { coord: { lat: line, lon: line }, axis };
       return {
         id: '', type: 'relative-line', topic: 2, difficulty,
