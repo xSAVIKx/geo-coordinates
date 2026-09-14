@@ -34,11 +34,12 @@
 </div>
 
 <style>
-  .countdown { position: relative; width: clamp(4rem, 8vw, 9rem); aspect-ratio: 1; flex: none; }
+  .countdown { position: relative; width: clamp(3.5rem, 2rem + 3.5vw, 10rem); aspect-ratio: 1; flex: none; }
   svg { width: 100%; height: 100%; transform: rotate(-90deg); }
   .track { fill: none; stroke: var(--surface-2); stroke-width: 8; }
   .ring { fill: none; stroke: var(--accent); stroke-width: 8; stroke-dasharray: 276.5; stroke-linecap: round; }
-  .ring.animate { transition: stroke-dashoffset 1s linear; }
-  span { position: absolute; inset: 0; display: grid; place-items: center; font-size: clamp(1.5rem, 3vw, 3.5rem); font-weight: var(--weight-heavy); font-variant-numeric: tabular-nums; }
+  .ring.animate { transition: stroke-dashoffset 1s linear, stroke 300ms var(--ease); }
+  span { position: absolute; inset: 0; display: grid; place-items: center; font-size: clamp(1.25rem, 0.6rem + 1.5vw, 4rem); font-weight: var(--weight-heavy); font-variant-numeric: tabular-nums; }
+  .done .track { stroke: var(--bad-soft); }
   .done span { color: var(--bad); }
 </style>

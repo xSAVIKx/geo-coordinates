@@ -89,6 +89,14 @@
   --prime: #6d28d9;
   --antimeridian: #0f766e;
   --tropics: #a16207;
+  /* Line names are text, so they get their own darker (light theme) inks: 6.6:1 or more on their halo and
+   * 5.3:1 or more on bare ocean or land, so they stay AA even where tinting (night, hemispheres) shows through.
+   * Presenter mode (AAA) can override just these. */
+  --equator-text: #9a3412;
+  --prime-text: #5b21b6;
+  --antimeridian-text: #115e59;
+  --tropics-text: #854d0e;
+  --line-halo-width: 4px;
   --hemi-a: rgb(23 89 201 / 0.10);
   --hemi-b: rgb(194 65 12 / 0.10);
   --marker-a: #1759c9;
@@ -127,6 +135,7 @@
     --ocean: #132c43; --ocean-deep: #07131f; --ocean-light: #2a5577; --land: #353b2f; --land-stroke: #8d8a6e;
     --grid: #7f9ab3; --map-label: #c3cdd8; --ocean-label: #8fb8d6; --halo: #0f2233;
     --equator: #fb923c; --prime: #c4b5fd; --antimeridian: #5eead4; --tropics: #facc15;
+    --equator-text: #fdba74; --prime-text: #ddd6fe; --antimeridian-text: #99f6e4; --tropics-text: #fde047;
     --hemi-a: rgb(130 177 255 / 0.14); --hemi-b: rgb(251 146 60 / 0.14);
     --marker-a: #82b1ff; --marker-b: #fb923c; --marker-c: #c4b5fd; --marker-d: #5eead4;
     --marker-answer: #6fdd8b; --marker-wrong: #ff8a80;
@@ -148,6 +157,7 @@
   --ocean: #132c43; --ocean-deep: #07131f; --ocean-light: #2a5577; --land: #353b2f; --land-stroke: #8d8a6e;
   --grid: #7f9ab3; --map-label: #c3cdd8; --ocean-label: #8fb8d6; --halo: #0f2233;
   --equator: #fb923c; --prime: #c4b5fd; --antimeridian: #5eead4; --tropics: #facc15;
+    --equator-text: #fdba74; --prime-text: #ddd6fe; --antimeridian-text: #99f6e4; --tropics-text: #fde047;
   --hemi-a: rgb(130 177 255 / 0.14); --hemi-b: rgb(251 146 60 / 0.14);
   --marker-a: #82b1ff; --marker-b: #fb923c; --marker-c: #c4b5fd; --marker-d: #5eead4;
   --marker-answer: #6fdd8b; --marker-wrong: #ff8a80;
@@ -156,3 +166,8 @@
     --school: #f9a8d4; --school-border: #161d26; --school-contrast: #0b1320; --school-text: #f9a8d4;
 }
 :root[data-large-text="true"] { --fs-scale: 1.25; }
+/* Big screens at 100% scaling (a 3840×2160 classroom display): the whole interface steps up by half, so
+ * type, spacing and 44px targets keep their proportions instead of shrinking to a strip in the middle. */
+@media (min-width: 2560px) {
+  :root { --ui-zoom: 1.5; --tap: 66px; --page-max: 2820px; }
+}

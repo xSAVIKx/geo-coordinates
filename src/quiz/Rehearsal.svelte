@@ -87,18 +87,21 @@
 {/snippet}
 
 {#if phase === 'setup'}
-  <section class="card">
-    <p>{t('rehearsal.intro')}</p>
+  <section class="card setup">
+    <svg class="setup-art" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5h10M9 12h10M9 19h10M3.5 5l1.5 1.5L7.5 4M3.5 12l1.5 1.5 2.5-2.5M4 18.2h2.5v2H4z" /></svg>
+    <p class="intro">{t('rehearsal.intro')}</p>
     <fieldset class="difficulty">
       <legend>{t('practice.difficulty')}</legend>
-      {#each DIFFS as d (d)}
-        <label><input type="radio" name="rehearsal-difficulty" value={d} bind:group={difficulty} /> {t(`difficulty.${d}`)}</label>
-      {/each}
+      <div class="seg levels">
+        {#each DIFFS as d, i (d)}
+          <label><input type="radio" name="rehearsal-difficulty" value={d} bind:group={difficulty} /><span class="pips" aria-hidden="true">{#each DIFFS as _, j (j)}<i class:on={j <= i}></i>{/each}</span> {t(`difficulty.${d}`)}</label>
+        {/each}
+      </div>
     </fieldset>
     {#if bestScore(scoreId('rehearsal', difficulty)) !== null}
       <p class="best">{t('practice.best', { best: bestScore(scoreId('rehearsal', difficulty))!, total: COUNT })}</p>
     {/if}
-    <button type="button" class="btn primary lg" onclick={start}>{t('rehearsal.start')}</button>
+    <button type="button" class="btn primary lg" onclick={start}>{t('rehearsal.start')} <span aria-hidden="true">→</span></button>
   </section>
 {:else if phase === 'run'}
   <div class="layout">
@@ -108,24 +111,35 @@
     {/if}
   </div>
 {:else}
-  <section class="card" aria-labelledby="rehearsal-results">
-    <h2 id="rehearsal-results" tabindex="-1" bind:this={heading}>{t('rehearsal.results')}</h2>
-    <p class="score">{t('practice.score', { score, total: COUNT })}</p>
-    {#if best !== null}<p class="best">{t('practice.best', { best, total: COUNT })}</p>{/if}
+  <section class="card results" aria-labelledby="rehearsal-results">
+    <div class="summary-head">
+      <svg class="meter" viewBox="0 0 64 64" aria-hidden="true">
+        <circle cx="32" cy="32" r="27" class="meter-track" />
+        <circle cx="32" cy="32" r="27" class="meter-fill" pathLength="100" stroke-dasharray="{(score / COUNT) * 100} 100" />
+        <text x="32" y="38" text-anchor="middle" class="meter-t">{score}</text>
+      </svg>
+      <div>
+        <h2 id="rehearsal-results" tabindex="-1" bind:this={heading}>{t('rehearsal.results')}</h2>
+        <p class="score">{t('practice.score', { score, total: COUNT })}</p>
+        {#if best !== null}<p class="best">{t('practice.best', { best, total: COUNT })}</p>{/if}
+      </div>
+    </div>
     <ol class="review">
       {#each questions as q, i (q.id)}
         {@const ok = results[i]?.correct}
         <li class:ok>
-          <p class="prompt"><span class="mark" aria-hidden="true">{ok ? '✓' : '✗'}</span><span class="visually-hidden">{ok ? t('practice.resultCorrect') : t('practice.resultWrong')}: </span>{renderText(q.prompt)}</p>
+          <p class="prompt"><span class="mark" aria-hidden="true">{#if ok}<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>{:else}<svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17" /></svg>{/if}</span><span class="n" aria-hidden="true">{i + 1}.</span><span class="visually-hidden">{ok ? t('practice.resultCorrect') : t('practice.resultWrong')}: </span>{renderText(q.prompt)}</p>
           {#if !ok}
-            <p>{t('rehearsal.yourAnswer', { answer: answers[i] ? renderText(responseText(q, answers[i]!)) : '—' })}</p>
-            {#if results[i]?.mistake}<p class="mistake">{renderText(results[i]!.mistake!)}</p>{/if}
-            <p class="answer">{t('practice.correctAnswer', { answer: renderText(describeAnswer(q)) })}</p>
-            <p>{renderText(q.explanation)}</p>
-            <p class="links">
-              <a class="btn quiet" href={formatRoute({ name: 'explore', lang: i18n.lang, topic: q.topic, step: 0 })}>{t('rehearsal.learn', { title: t(`topic.${q.topic}.title`) })}</a>
-              <a class="btn quiet" href={formatRoute({ name: 'practice', lang: i18n.lang, topic: q.topic })}>{t('rehearsal.practise', { title: t(`topic.${q.topic}.title`) })}</a>
-            </p>
+            <div class="detail">
+              <p class="yours">{t('rehearsal.yourAnswer', { answer: answers[i] ? renderText(responseText(q, answers[i]!)) : '—' })}</p>
+              {#if results[i]?.mistake}<p class="mistake">{renderText(results[i]!.mistake!)}</p>{/if}
+              <p class="answer">{t('practice.correctAnswer', { answer: renderText(describeAnswer(q)) })}</p>
+              <p class="why">{renderText(q.explanation)}</p>
+              <p class="links">
+                <a class="btn quiet" href={formatRoute({ name: 'explore', lang: i18n.lang, topic: q.topic, step: 0 })}>{t('rehearsal.learn', { title: t(`topic.${q.topic}.title`) })}</a>
+                <a class="btn quiet" href={formatRoute({ name: 'practice', lang: i18n.lang, topic: q.topic })}>{t('rehearsal.practise', { title: t(`topic.${q.topic}.title`) })}</a>
+              </p>
+            </div>
           {/if}
         </li>
       {/each}
@@ -135,21 +149,54 @@
 {/if}
 
 <style>
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-2); padding: var(--space-5) var(--space-6) var(--space-6); max-width: 56rem; }
-  .difficulty { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); align-items: center; border: 1px solid var(--border); border-radius: var(--radius); margin: var(--space-4) 0; padding: var(--space-2) var(--space-4); }
-  .difficulty label { display: inline-flex; gap: var(--space-2); align-items: center; min-height: var(--tap); }
-  .best { color: var(--text-muted); font-weight: var(--weight-strong); }
+  .card { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-2); padding: var(--space-6); max-width: 56rem; }
+  .setup { max-width: 44rem; display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-5); }
+  .setup-art { width: 3rem; height: 3rem; padding: 0.6rem; border-radius: 0.9rem; background: var(--accent-soft); fill: none; stroke: var(--accent); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .intro { margin: 0; font-size: var(--step-1); max-width: var(--measure); }
+  .difficulty { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); align-items: center; border: 0; margin: 0; padding: 0; min-width: 0; }
+  .difficulty legend { float: left; font-weight: var(--weight-strong); color: var(--text-muted); padding: 0; margin-right: var(--space-1); }
+  .levels label { gap: var(--space-2); padding: 0 var(--space-4); }
+  .pips { display: inline-flex; align-items: flex-end; gap: 2px; height: 0.9rem; }
+  .pips i { display: block; width: 4px; border-radius: 1px; background: var(--border-strong); opacity: 0.45; }
+  .pips i:nth-child(1) { height: 40%; } .pips i:nth-child(2) { height: 70%; } .pips i:nth-child(3) { height: 100%; }
+  .pips i.on { background: var(--accent); opacity: 1; }
+  .best { display: inline-flex; align-items: center; min-height: 2.25rem; margin: 0; padding: 0 var(--space-3); border-radius: var(--radius-pill); background: var(--warm-soft); color: var(--warm-text); font-weight: var(--weight-strong); font-size: var(--step--1); }
   .layout { display: grid; gap: var(--space-4); grid-template-columns: minmax(0, 1fr); }
   @media (min-width: 1024px) {
     .layout { grid-template-columns: minmax(0, 1fr) clamp(22rem, 22vw, 27rem); gap: var(--space-5); align-items: start; }
     .panel { position: sticky; top: calc(var(--header-h) + var(--space-4)); }
   }
-  .score { font-size: var(--step-3); font-weight: var(--weight-heavy); margin: var(--space-2) 0 0; }
-  .review { display: grid; gap: var(--space-4); padding: 0 0 0 1.5rem; margin: var(--space-4) 0; }
-  .review p { margin: var(--space-1) 0; }
-  .prompt { font-weight: var(--weight-strong); }
-  .mark { display: inline-block; width: 1.5rem; color: var(--bad); }
-  .ok .mark { color: var(--ok); }
-  .mistake, .answer { font-weight: var(--weight-strong); }
-  .links { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
+  .summary-head { display: flex; align-items: center; gap: var(--space-5); margin-bottom: var(--space-5); }
+  .summary-head .best { margin-top: var(--space-2); }
+  .meter { flex: none; width: clamp(5rem, 10vw, 7rem); height: auto; }
+  .meter-track { fill: none; stroke: var(--surface-2); stroke-width: 7; }
+  .meter-fill { fill: none; stroke: var(--ok); stroke-width: 7; stroke-linecap: round; transform: rotate(-90deg); transform-origin: center; transition: stroke-dasharray 600ms var(--ease); }
+  .meter-t { fill: var(--text); font-size: 22px; font-weight: 800; font-family: var(--font); }
+  h2 { margin: 0; font-size: var(--step-3); font-weight: var(--weight-heavy); }
+  h2:focus { outline: none; }
+  h2:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; border-radius: 4px; }
+  .score { font-size: var(--step-2); font-weight: var(--weight-heavy); margin: var(--space-1) 0 0; }
+
+  .review { display: grid; gap: var(--space-2); padding: 0; margin: 0 0 var(--space-6); list-style: none; }
+  .review li { padding: var(--space-3) var(--space-4); border-radius: var(--radius); background: var(--bad-soft); border: 1px solid color-mix(in srgb, var(--bad) 25%, transparent); }
+  .review li.ok { background: transparent; border-color: transparent; box-shadow: inset 0 -1px 0 var(--border); border-radius: 0; padding-block: var(--space-2); }
+  .review p { margin: 0; }
+  .prompt { display: flex; gap: var(--space-2); align-items: flex-start; font-weight: var(--weight-strong); }
+  .n { flex: none; min-width: 1.6rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .mark { flex: none; display: grid; place-items: center; width: 1.6rem; height: 1.6rem; margin-top: 0.05rem; border-radius: 50%; background: var(--bad); color: var(--surface); }
+  .ok .mark { background: var(--ok); }
+  .mark svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+  .detail { display: grid; gap: var(--space-1); margin: var(--space-2) 0 0 calc(3.2rem + var(--space-4)); }
+  .yours { color: var(--text-muted); }
+  .mistake { font-weight: var(--weight-strong); color: var(--bad); }
+  .answer { font-weight: var(--weight-heavy); }
+  .links { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-2); margin-top: var(--space-1) !important; margin-left: calc(-1 * var(--space-3)) !important; }
+  .links .btn { color: var(--accent); font-size: var(--step--1); padding: 0 var(--space-3); }
+  @media (max-width: 599px) {
+    .card { padding: var(--space-4); }
+    .detail { margin-left: 0; }
+    .summary-head { gap: var(--space-4); }
+    .setup .btn.lg { align-self: stretch; }
+  }
 </style>

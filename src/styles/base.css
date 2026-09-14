@@ -1,6 +1,6 @@
 *, *::before, *::after { box-sizing: border-box; }
 /* Keyboard focus and in-page jumps stop below the sticky header instead of under it (WCAG 2.4.11). */
-html { scroll-padding-top: calc(var(--header-h) + 0.5rem); font-family: var(--font); font-size: calc(100% * var(--fs-scale)); color: var(--text); background: var(--bg); -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html { scroll-padding-top: calc(var(--header-h) + 0.5rem); font-family: var(--font); font-size: calc(100% * var(--fs-scale) * var(--ui-zoom, 1)); color: var(--text); background: var(--bg); -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 /* body paints its own ground and text colour: a host page that wraps the lesson may style body
  * (e.g. a light reset background), which would otherwise show through behind themed text.
  * :root body (0,1,1) outranks a plain body reset wherever the host's stylesheet sits. */

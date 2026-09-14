@@ -66,9 +66,14 @@
     .settings .label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
     .brand { font-size: var(--step-0); gap: var(--space-2); }
     .logo { width: 2.25rem; height: 2.25rem; }
+    /* Room for the short title next to the logo: the language pills shrink to their 44px targets. */
+    .actions { gap: var(--space-1); }
+    .langs .btn { min-width: var(--tap); padding: 0 var(--space-1); }
   }
   @media (max-width: 479px) {
     .title.full { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-    .title.short { display: inline; }
+    .title.short { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.9rem; letter-spacing: -0.01em; }
   }
+  /* Too narrow for a word next to the language switch: the logo alone (the link keeps its full name). */
+  @media (max-width: 359px) { .title.short { display: none; } }
 </style>

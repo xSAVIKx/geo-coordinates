@@ -90,7 +90,17 @@
   @media (max-width: 479px) { .hero-art { display: none; } }
 
   .section-title { font-size: var(--step-2); margin: var(--space-8) 0 var(--space-4); }
-  .cards { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fill, minmax(min(100%, max(17rem, calc((100% - 3 * var(--space-4)) / 4))), 1fr)); }
+  /* Nine topics and three modes: one column on phones, two on tablets (an odd last card spans the
+     row instead of sitting alone), three from 1024px — a balanced 3×3 of topics over a row of 3 modes. */
+  .cards { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-4); grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 600px) {
+    .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .cards > .card:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  }
+  @media (min-width: 1024px) {
+    .cards { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-5); }
+    .cards > .card:last-child:nth-child(odd) { grid-column: auto; }
+  }
   .card { position: relative; display: flex; gap: var(--space-4); align-items: flex-start; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--space-5); box-shadow: var(--shadow-1); transition: box-shadow var(--dur) var(--ease), transform var(--dur) var(--ease), border-color var(--dur) var(--ease); }
   .card:hover { box-shadow: var(--shadow-3); transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); }
   .card-body { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); min-width: 0; height: 100%; }
