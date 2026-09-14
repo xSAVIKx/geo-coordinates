@@ -5,11 +5,14 @@ export interface Suspicious {
   lang: 'pl' | 'uk';
   reason: 'same-as-en' | 'latin-in-uk' | 'cyrillic-in-pl';
 }
+export interface InfoNote {
+  key: string;
+  lang: 'pl' | 'uk';
+}
 
 // Keys whose value is legitimately identical to English in every language. Each
 // entry's reason:
 //  - q.answer.*        answer tokens (letters/numbers/symbols, not prose)
-//  - unit.label.deg    the "°" degree symbol
 //  - unit.label.km     "km" is the same international SI abbreviation in PL
 //  - unit.label.min    "min" is the same international abbreviation in PL
 //  - unit.km           "{n} km" — same reason as unit.label.km
@@ -22,12 +25,14 @@ export interface Suspicious {
 //  - label.australia   place-like label, same reasoning as place.*
 //  - classQuiz.seconds  short unit word that happens to match across langs
 //  - spoken.*          spoken-form templates built only from params/units
-//  - q.further.option  answer-option token, not prose
-//  - map.projection.equal-earth  "Equal Earth" is the projection's proper name,
-//                       used unchanged in all three languages
+//  - map.projection.equal-earth  "Equal Earth" is the projection's proper name;
+//                       PL/UK have no established exonym, so the controller
+//                       ruled it stays untranslated in all three languages
+// (`unit.label.deg` and `q.further.option` were pruned: the former is already
+// "°" only, caught by onlySymbols(); the latter's UK/PL text never actually
+// matches English, so the entry never did anything.)
 const SAME_OK = [
   /^q\.answer\./,
-  /^unit\.label\.deg$/,
   /^unit\.label\.km$/,
   /^unit\.label\.min$/,
   /^unit\.km$/,
@@ -38,23 +43,53 @@ const SAME_OK = [
   /^label\.australia$/,
   /^classQuiz\.seconds$/,
   /^spoken\./,
-  /^q\.further\.option$/,
   /^map\.projection\.equal-earth$/,
 ];
 
+// Place-name keys are excluded from "info: foreign term" notes — a place name
+// identical across languages isn't a foreign term, it's just a name.
+const PLACE_NAME_KEY = /^place\.|^label\.australia$/;
+
 const onlySymbols = (s: string) => s.replace(/\{\w+\}/g, '').replace(/[\s\d°′:.,()\-–—·←→#%]/g, '') === '';
 
-// Latin words allowed to appear in Ukrainian text, with reasons:
-//  - UTC, Esc, Shift, Ctrl  keyboard-key / technical abbreviations conventionally
-//                       kept in Latin script even in Cyrillic UI text
-//  - N, S, E, W, A, B, C, D, P, L  single-letter option/direction codes
-//  - Google             brand name ("Google Карти", "Google Картах")
-//  - GPS, WGS           technical acronyms (WGS 84 datum)
-//  - Maple, Bear        the "Maple Bear" school brand (not an i18n string —
-//                       these come from data — but also appears in prose keys)
-//  - Mercator, Equal, Earth  map-projection proper names (Mercator, Equal Earth)
-// "km" is deliberately NOT here: Ukrainian uses "км", not the Latin abbreviation.
-const LATIN_OK = /\b(UTC|N|S|E|W|A|B|C|D|P|L|Esc|Shift|Ctrl|Google|GPS|WGS|Maple|Bear|Mercator|Equal|Earth)\b/g;
+// Latin words allowed to appear in Ukrainian text, with reasons. Checked as
+// whole standalone tokens (any run of 1+ Latin letters), not by substring, so
+// this stays minimal and every entry is actually used somewhere in the real
+// message files:
+//  - A, B               point labels used in q.nameLine/relative/diff/dist
+//                       prompts ("Точка A ({point})", "точками A і B"). C/D
+//                       (and E/F) exist only as hardcoded option letters in
+//                       ChoiceInput.svelte/ClassQuiz.svelte/quiz/values.ts —
+//                       they are never interpolated into an i18n string, so
+//                       they never need to be on this list.
+//  - UTC, Esc, Shift, Ctrl  keyboard-key / technical abbreviations
+//                       conventionally kept in Latin script even in Cyrillic
+//                       UI text (classQuiz.keys, map.zoomHint, map.*.hint,
+//                       topic.5/8 step bodies)
+//  - Google              brand name ("Google Карти", "Google Картах")
+//  - GPS, WGS            technical acronyms (WGS 84 datum)
+//  - Maple, Bear         the "Maple Bear" school brand (school data itself is
+//                       not i18n text, but the brand name also appears in
+//                       prose keys like footer.schools, map.schools.hint)
+//  - Mercator, Equal, Earth  map-projection proper names ("Equal Earth" is
+//                       kept untranslated per controller ruling; "Mercator"
+//                       is listed for when the Latin spelling is used instead
+//                       of the transliterated "Меркатор")
+// "N", "S", "E", "W", "P", "L" were pruned: no real message contains them as a
+// standalone Latin token, and Ukrainian coordinate text must never use Latin
+// compass letters (it uses «пн. ш.» / «пд. ш.» / «сх. д.» / «зх. д.»). "km" is
+// deliberately NOT here either: Ukrainian uses "км", not the Latin spelling.
+const LATIN_OK = new Set(['A', 'B', 'UTC', 'Esc', 'Shift', 'Ctrl', 'Google', 'GPS', 'WGS', 'Maple', 'Bear', 'Mercator', 'Equal', 'Earth']);
+
+const LATIN_TOKEN = /[A-Za-z]+/g;
+
+/** Every maximal run of Latin letters in `s`, params stripped first. */
+function latinTokens(s: string): string[] {
+  return s.replace(/\{\w+\}/g, '').match(LATIN_TOKEN) ?? [];
+}
+
+const hasDisallowedLatin = (s: string) => latinTokens(s).some((t) => !LATIN_OK.has(t));
+const hasAllowedLatin = (s: string) => latinTokens(s).some((t) => LATIN_OK.has(t));
 
 export function findSuspicious(m: Messages): Suspicious[] {
   const out: Suspicious[] = [];
@@ -64,9 +99,31 @@ export function findSuspicious(m: Messages): Suspicious[] {
       const v = m[lang][key];
       if (v === undefined) continue;
       if (v === en && !onlySymbols(v) && !SAME_OK.some((r) => r.test(key))) out.push({ key, lang, reason: 'same-as-en' });
-      else if (lang === 'uk' && /[A-Za-z]{3,}/.test(v.replace(/\{\w+\}/g, '').replace(LATIN_OK, '')))
-        out.push({ key, lang, reason: 'latin-in-uk' });
+      else if (lang === 'uk' && hasDisallowedLatin(v)) out.push({ key, lang, reason: 'latin-in-uk' });
       else if (lang === 'pl' && /[Ѐ-ӿ]/.test(v)) out.push({ key, lang, reason: 'cyrillic-in-pl' });
+    }
+  }
+  return out;
+}
+
+/**
+ * Cells that are fine (not suspicious) but worth showing to the owner because
+ * they deliberately keep a foreign/Latin term: either the value contains an
+ * allow-listed Latin word (Google, GPS, Maple Bear, Ctrl/Shift, ...), or the
+ * whole value is identical to English via the SAME_OK allow-list (Equal
+ * Earth, the "km"/"min" abbreviations, the N/S pole labels, ...) — excluding
+ * pure-symbol values and place names, neither of which is a "foreign term".
+ */
+export function findInfoNotes(m: Messages): InfoNote[] {
+  const flagged = new Set(findSuspicious(m).map((s) => `${s.key}|${s.lang}`));
+  const out: InfoNote[] = [];
+  for (const key of Object.keys(m.en)) {
+    const en = m.en[key]!;
+    for (const lang of ['pl', 'uk'] as const) {
+      const v = m[lang][key];
+      if (v === undefined || flagged.has(`${key}|${lang}`)) continue;
+      const sameAsEnAllowed = v === en && !onlySymbols(v) && SAME_OK.some((r) => r.test(key)) && !PLACE_NAME_KEY.test(key);
+      if (sameAsEnAllowed || hasAllowedLatin(v)) out.push({ key, lang });
     }
   }
   return out;
@@ -78,6 +135,7 @@ const LANG_NAMES: Record<Lang, string> = { en: 'English', pl: 'Polski', uk: 'У�
 
 export function buildReviewHtml(m: Messages): string {
   const flagged = new Set(findSuspicious(m).map((s) => `${s.key}|${s.lang}`));
+  const info = new Set(findInfoNotes(m).map((s) => `${s.key}|${s.lang}`));
   const groups = new Map<string, string[]>();
   for (const key of Object.keys(m.en).sort()) {
     const parts = key.split('.');
@@ -86,22 +144,29 @@ export function buildReviewHtml(m: Messages): string {
   }
   const totalKeys = Object.keys(m.en).length;
   const totalFlagged = new Set([...flagged].map((f) => f.split('|')[0])).size;
+  const totalInfo = new Set([...info].map((f) => f.split('|')[0])).size;
 
   const rows = [...groups.entries()]
     .map(([group, keys]) => {
       const groupFlagCount = keys.filter((k) => flagged.has(`${k}|pl`) || flagged.has(`${k}|uk`)).length;
+      const groupInfoCount = keys.filter((k) => info.has(`${k}|pl`) || info.has(`${k}|uk`)).length;
+      const groupCounts = `${keys.length}${groupFlagCount ? `, ${groupFlagCount} flagged` : ''}${groupInfoCount ? `, ${groupInfoCount} info` : ''}`;
       return `
-    <tbody><tr class="group"><th colspan="4">${esc(group)} <span class="count">(${keys.length}${groupFlagCount ? `, ${groupFlagCount} flagged` : ''})</span></th></tr>
+    <tbody><tr class="group"><th colspan="4">${esc(group)} <span class="count">(${groupCounts})</span></th></tr>
     ${keys
       .map((k) => {
         const isFlagged = flagged.has(`${k}|pl`) || flagged.has(`${k}|uk`);
-        return `<tr data-key="${esc(k)}"${isFlagged ? ' data-flagged="1"' : ''}><td class="key">${esc(k)}</td>${(['en', 'pl', 'uk'] as const)
-          .map(
-            (l) =>
-              `<td lang="${l}" class="cell${flagged.has(`${k}|${l}`) ? ' flag' : ''}">${esc(m[l][k] ?? '— MISSING —')}${
-                flagged.has(`${k}|${l}`) ? ' <strong>check</strong>' : ''
-              }</td>`,
-          )
+        const isInfo = info.has(`${k}|pl`) || info.has(`${k}|uk`);
+        return `<tr data-key="${esc(k)}"${isFlagged ? ' data-flagged="1"' : ''}${isInfo ? ' data-info="1"' : ''}><td class="key">${esc(k)}</td>${(
+          ['en', 'pl', 'uk'] as const
+        )
+          .map((l) => {
+            const isCellFlagged = flagged.has(`${k}|${l}`);
+            const isCellInfo = info.has(`${k}|${l}`);
+            const cls = isCellFlagged ? ' flag' : isCellInfo ? ' note' : '';
+            const marker = isCellFlagged ? ' <strong>check</strong>' : isCellInfo ? ' <em>info</em>' : '';
+            return `<td lang="${l}" class="cell${cls}">${esc(m[l][k] ?? '— MISSING —')}${marker}</td>`;
+          })
           .join('')}</tr>`;
       })
       .join('')}
@@ -120,6 +185,9 @@ export function buildReviewHtml(m: Messages): string {
   .group th{background:#eef2f6;font-size:1.05rem;position:sticky;top:0}
   .group .count{font-weight:normal;font-size:.85rem;color:#5a6472}
   .flag{background:#fff3c4}
+  .flag strong{color:#7a5b00}
+  .note{background:#eaf1fb}
+  .note em{color:#3a5a8a;font-style:normal;font-size:.85em}
   .toolbar{display:flex;flex-wrap:wrap;gap:.75rem 1.5rem;align-items:center;margin:.5rem 0 1rem}
   input[type=search]{font:inherit;padding:.4rem;width:min(24rem,100%)}
   label.toggle{display:inline-flex;gap:.4rem;align-items:center;font-size:.95rem;white-space:nowrap}
@@ -133,18 +201,20 @@ export function buildReviewHtml(m: Messages): string {
 </style></head>
 <body>
 <h1>Translation review</h1>
-<p>Every text in the lesson page, side by side, grouped by area. Yellow cells marked <strong>check</strong> may be untranslated or use the wrong alphabet.</p>
+<p>Every text in the lesson page, side by side, grouped by area. Yellow cells marked <strong>check</strong> may be untranslated or use the wrong alphabet. Blue cells marked <em>info</em> deliberately keep a foreign term (a brand name, a technical abbreviation, or a proper name with no translation) — nothing to fix, just worth knowing about.</p>
 <div class="toolbar">
   <input id="f" type="search" aria-label="Filter by key or text" placeholder="Filter by key or text…">
   <label class="toggle"><input type="checkbox" id="onlyFlagged"> Show only flagged</label>
+  <label class="toggle"><input type="checkbox" id="includeInfo"> Include info notes</label>
   <label class="toggle"><input type="checkbox" id="hideEn"> Hide English</label>
-  <span id="stats"><strong>${totalKeys}</strong> keys, <strong>${totalFlagged}</strong> flagged</span>
+  <span id="stats"><strong>${totalKeys}</strong> keys, <strong>${totalFlagged}</strong> flagged, <strong>${totalInfo}</strong> info notes</span>
 </div>
 <table id="t"><thead><tr><th>Key</th><th>${LANG_NAMES.en}</th><th>${LANG_NAMES.pl}</th><th>${LANG_NAMES.uk}</th></tr></thead>${rows}</table>
 <script>
 (function () {
   var filter = document.getElementById('f');
   var onlyFlagged = document.getElementById('onlyFlagged');
+  var includeInfo = document.getElementById('includeInfo');
   var hideEn = document.getElementById('hideEn');
   var rows = Array.prototype.slice.call(document.querySelectorAll('tr[data-key]'));
   var groups = Array.prototype.slice.call(document.querySelectorAll('tr.group'));
@@ -153,9 +223,10 @@ export function buildReviewHtml(m: Messages): string {
   function apply() {
     var q = filter.value.toLowerCase();
     var onlyF = onlyFlagged.checked;
+    var incInfo = includeInfo.checked;
     rows.forEach(function (r) {
       var matchesText = !q || r.textContent.toLowerCase().indexOf(q) !== -1;
-      var matchesFlag = !onlyF || r.hasAttribute('data-flagged');
+      var matchesFlag = !onlyF || r.hasAttribute('data-flagged') || (incInfo && r.hasAttribute('data-info'));
       r.hidden = !(matchesText && matchesFlag);
     });
     groups.forEach(function (g) {
@@ -165,16 +236,13 @@ export function buildReviewHtml(m: Messages): string {
       });
       g.hidden = !anyVisible;
     });
-    document.querySelectorAll('td, th').forEach(function (cell) {
-      // no-op placeholder to keep structure stable when toggling columns
-    });
     document.getElementById('t').classList.toggle('hide-en', hideEn.checked);
   }
 
   filter.addEventListener('input', apply);
   onlyFlagged.addEventListener('change', apply);
+  includeInfo.addEventListener('change', apply);
   hideEn.addEventListener('change', function () {
-    var table = document.getElementById('t');
     var idx = enCol; // English is the 2nd column (index 1) in each row
     document.querySelectorAll('tr').forEach(function (r) {
       var cells = r.children;

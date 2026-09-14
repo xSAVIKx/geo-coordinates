@@ -2,7 +2,7 @@ import { expect, test } from 'vitest';
 import en from '../../src/i18n/en.json';
 import pl from '../../src/i18n/pl.json';
 import uk from '../../src/i18n/uk.json';
-import { buildReviewHtml, findSuspicious } from '../../scripts/translation-review-lib';
+import { buildReviewHtml, findInfoNotes, findSuspicious } from '../../scripts/translation-review-lib';
 
 test('flags suspicious strings', () => {
   const found = findSuspicious({
@@ -18,6 +18,36 @@ test('flags suspicious strings', () => {
 
 test('real message files have no suspicious strings', () => {
   expect(findSuspicious({ en, pl, uk })).toEqual([]);
+});
+
+test('short Latin tokens are caught in Ukrainian, not just 3+ letter words', () => {
+  const found = findSuspicious({
+    en: { 'k.dist': '5 km to school', 'k.utc': 'at 12:00 UTC', 'k.pole': 'Point 52N' },
+    pl: { 'k.dist': '5 km do szkoły', 'k.utc': 'o 12:00 UTC', 'k.pole': 'Punkt 52N' },
+    uk: {
+      'k.dist': '5 km до школи',
+      'k.utc': 'о 12:00 UTC',
+      'k.pole': 'Точка 52N',
+    },
+  });
+  expect(found).toEqual([
+    { key: 'k.dist', lang: 'uk', reason: 'latin-in-uk' },
+    { key: 'k.pole', lang: 'uk', reason: 'latin-in-uk' },
+  ]);
+});
+
+test('findInfoNotes flags allowed foreign terms without marking them suspicious, but not place names', () => {
+  const messages = {
+    en: { 'a.brand': 'Open Google Maps', 'map.projection.equal-earth': 'Equal Earth', 'place.oslo': 'Oslo' },
+    pl: { 'a.brand': 'Otwórz Google Mapy', 'map.projection.equal-earth': 'Equal Earth', 'place.oslo': 'Oslo' },
+    uk: { 'a.brand': 'Відкрий Google Карти', 'map.projection.equal-earth': 'Equal Earth', 'place.oslo': 'Осло' },
+  };
+  expect(findSuspicious(messages)).toEqual([]);
+  const notes = findInfoNotes(messages);
+  expect(notes).toContainEqual({ key: 'a.brand', lang: 'uk' });
+  expect(notes).toContainEqual({ key: 'map.projection.equal-earth', lang: 'pl' });
+  expect(notes).toContainEqual({ key: 'map.projection.equal-earth', lang: 'uk' });
+  expect(notes.some((n) => n.key === 'place.oslo')).toBe(false);
 });
 
 test('review page lists every key with lang attributes', () => {
