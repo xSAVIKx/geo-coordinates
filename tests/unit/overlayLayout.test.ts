@@ -10,9 +10,10 @@ import { topic1 } from '../../src/topics/t1-grid';
 import { i18n } from '../../src/i18n/i18n.svelte';
 import { sceneLatEdgeBoxes, sceneLineLabels } from '../../src/map/overlayText';
 import { MapState } from '../../src/map/mapState.svelte';
-import { bracketBoxes, CONTINENT_WIDTH, fitMapNames, hemisphereLabelSpots, lineLabelVariants, markerLabelSize, markerLayout, noonLabel, NOON_LABEL, pathBox, placeLineLabels, viewEdgeBoxes } from '../../src/map/overlayLayout';
+import { bracketBoxes, CONTINENT_WIDTH, fitMapNames, hemisphereLabels, hemisphereLabelSpots, lineLabelVariants, markerLabelSize, markerLayout, noonLabel, NOON_LABEL, pathBox, placeLineLabels, viewEdgeBoxes } from '../../src/map/overlayLayout';
 import { tierVisible, tierZoom } from '../../src/map/places';
-import type { Overlay } from '../../src/map/types';
+import type { Overlay, SceneSpec } from '../../src/map/types';
+import { TOPICS } from '../../src/topics';
 import { topic6 } from '../../src/topics/t6-differences';
 import { topic8 } from '../../src/topics/t8-time';
 import { meanSunPoint } from '../../src/geo/sun';
@@ -118,20 +119,25 @@ for (const [lang, dict] of [['en', en], ['uk', uk], ['pl', pl]] as const) {
     expect(namedLines(ms.layers, ms.overlays).has('pm')).toBe(true);
     i18n.lang = lang;
     try {
-      for (const px of [960 / 375, 2.56, 960 / 320]) {
+      // The flat map's CSS width on a 400, 375 and 320 px phone (the page's side padding taken off), and a 320 px map.
+      for (const css of [375, 349, 320, 296]) {
+        const px = 960 / css;
         const ctx = makeFlatCtx(960, 480, ms.flat.center, ms.flat.zoom, px, 'grid');
         const prime = sceneLineLabels(ctx, ms.layers, ms.overlays).find((l) => l.spec.id === 'pm');
-        expect(prime, `${lang} px ${px}`).toBeDefined();
-        expect(prime!.size).toBeGreaterThanOrEqual(10);
+        expect(prime, `${lang} ${css}`).toBeDefined();
+        expect(prime!.size).toBeGreaterThanOrEqual(css < 320 ? 9 : 10);
         expect(prime!.lines[0]!.startsWith(dict['line.prime'].split(' (')[0]!)).toBe(true);
-        expect(prime!.box.top, `${lang} px ${px} top`).toBeGreaterThanOrEqual(0);
-        expect(prime!.box.bottom, `${lang} px ${px} bottom`).toBeLessThanOrEqual(ctx.height);
-        // On a 375 px phone there is a free spot; on a 320 px one the name still shows, where it covers the least.
-        if (px > 2.9) continue;
+        expect(prime!.box.top, `${lang} ${css} top`).toBeGreaterThanOrEqual(0);
+        expect(prime!.box.bottom, `${lang} ${css} bottom`).toBeLessThanOrEqual(ctx.height);
         const edge = sceneLatEdgeBoxes(ctx, ms.layers);
-        expect(edge.some((b) => overlaps(prime!.box, b)), `${lang} px ${px} edge numbers`).toBe(false);
-        const hemis = hemisphereLabelSpots(ctx, 'ew').map(({ r, xy }) => textBox(xy[0], xy[1], labelWidth(dict[`hemi.${r}` as keyof typeof dict], 15, px), 15 * px, 'middle'));
-        expect(hemis.some((b) => overlaps(prime!.box, b)), `${lang} px ${px} hemisphere names`).toBe(false);
+        expect(edge.some((b) => overlaps(prime!.box, b)), `${lang} ${css} edge numbers`).toBe(false);
+        const hemis = hemisphereLabels(ctx, 'ew', (r) => dict[`hemi.${r}` as keyof typeof dict]);
+        expect(hemis.some((h) => overlaps(prime!.box, h.box)), `${lang} ${css} hemisphere names`).toBe(false);
+        // The two hemisphere names stay inside the map and apart, each in its own half.
+        const [e, w] = [hemis.find((h) => h.r === 'E')!, hemis.find((h) => h.r === 'W')!];
+        expect(w.box.left, `${lang} ${css} west inside`).toBeGreaterThanOrEqual(0);
+        expect(e.box.right, `${lang} ${css} east inside`).toBeLessThanOrEqual(ctx.width);
+        expect(overlaps(e.box, w.box), `${lang} ${css} hemisphere names apart`).toBe(false);
       }
     } finally {
       i18n.lang = 'en';
@@ -240,4 +246,55 @@ test('line names never pile up: a horizontal name touching an earlier one is lef
   flat.forEach((a, i) => flat.forEach((b, j) => { if (i < j) expect(overlaps(a.box, b.box)).toBe(false); }));
   const roomy = placeLineLabels(lineLabelSpecs({ specialLines: true, tropics: true }), lineCtx(makeFlatCtx(960, 480, { lat: 0, lon: 0 }, 1, 1, 'grid')), () => 'Tropic of Cancer');
   expect(roomy.filter((l) => !l.vertical)).toHaveLength(5);
+});
+
+test('line names never touch one another: every topic step, the lab at several zooms, three languages, phone to desktop widths, flat map and globe', () => {
+  const grow = (b: { left: number; right: number; top: number; bottom: number }, d: number) => ({ left: b.left - d, right: b.right + d, top: b.top - d, bottom: b.bottom + d });
+  const scenes: [string, SceneSpec][] = [];
+  for (const topic of Object.values(TOPICS)) for (const s of topic!.steps) scenes.push([`topic ${topic!.id} ${s.id}`, s.scene]);
+  const lab: SceneSpec = { views: ['globe', 'flat'], point: { lat: 50.26, lon: 19.02 }, pointEditable: true, precision: 'auto', layers: { graticuleStep: 'auto', specialLines: true, tropics: true, daylight: true }, overlays: [{ kind: 'noon-meridian' }] };
+  for (const zoom of [1, 2, 3.5, 6, 9, 14]) for (const c of [{ lat: 0, lon: 0 }, { lat: 20, lon: 5 }, { lat: 50, lon: 15 }, { lat: -20, lon: 170 }]) {
+    scenes.push([`lab zoom ${zoom} at ${c.lat},${c.lon}`, { ...lab, flatView: { center: c, zoom }, globeZoom: zoom, rotate: [-c.lon, -c.lat] }]);
+  }
+  const touching: string[] = [];
+  try {
+    for (const lang of ['en', 'pl', 'uk'] as const) {
+      i18n.lang = lang;
+      for (const [name, scene] of scenes) {
+        const ms = new MapState();
+        ms.applyScene(scene);
+        for (const css of [349, 640, 975]) for (const kind of ['flat', 'globe'] as const) {
+          if (!ms.views.includes(kind)) continue;
+          const ctx = kind === 'flat' ? makeFlatCtx(960, 480, ms.flat.center, ms.flat.zoom, 960 / css, ms.flatProjection) : makeGlobeCtx(500, ms.rotate, 500 / css, ms.globeZoom);
+          const labels = sceneLineLabels(ctx, ms.layers, ms.overlays);
+          for (let i = 0; i < labels.length; i++) for (let j = i + 1; j < labels.length; j++) {
+            if (overlaps(grow(labels[i]!.box, 0.5 * ctx.px), labels[j]!.box)) touching.push(`${lang} ${name} ${kind} ${css}px: ${labels[i]!.spec.id} / ${labels[j]!.spec.id}`);
+          }
+        }
+      }
+    }
+  } finally {
+    i18n.lang = 'en';
+  }
+  expect(touching).toEqual([]);
+}, 60_000);
+
+test('line names keep clear of the extra boxes they are given (school count badges, the chosen school), on the flat map and the globe', () => {
+  const layers = { ...new MapState().layers, specialLines: true, tropics: true };
+  const flat = makeFlatCtx(960, 480, { lat: 0, lon: 0 }, 1, 1.4, 'grid');
+  const globe = makeGlobeCtx(500, [-19, -30], 1.5, 1);
+  for (const ctx of [flat, globe]) {
+    const free = sceneLineLabels(ctx, layers, []);
+    for (const id of ['tc', 'pm']) {
+      const before = free.find((l) => l.spec.id === id);
+      if (!before) continue;
+      // A badge right on the name's usual spot.
+      const cx = (before.box.left + before.box.right) / 2, cy = (before.box.top + before.box.bottom) / 2;
+      const badge = { left: cx - 20, right: cx + 20, top: cy - 12, bottom: cy + 12 };
+      const after = sceneLineLabels(ctx, layers, [], [badge]).find((l) => l.spec.id === id);
+      if (after) expect(overlaps(after.box, badge), `${ctx.kind} ${id}`).toBe(false);
+      // The tropic's name moves along its line rather than disappearing.
+      if (id === 'tc') expect(after, `${ctx.kind} tc kept`).toBeDefined();
+    }
+  }
 });

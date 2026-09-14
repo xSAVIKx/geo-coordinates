@@ -251,10 +251,24 @@ export class MapState {
 
   setGlobeZoom(zoom: number): void {
     this.globeZoom = Math.max(GLOBE_MIN_ZOOM, Math.min(GLOBE_MAX_ZOOM, zoom));
+    this.snapToZoom();
   }
 
   zoomGlobe(factor: number): void {
     this.globeZoom = Math.max(GLOBE_MIN_ZOOM, Math.min(GLOBE_MAX_ZOOM, this.globeZoom * factor));
+    this.snapToZoom();
+  }
+
+  /**
+   * With `precision: 'auto'`, zooming out below MINUTE_ZOOM rounds the point to whole degrees, so the point
+   * is where the (rounded) readout says it is, and the next arrow press moves only the axis it is meant to.
+   * Zooming in never moves it. Called by the zoom methods (user actions), never from an effect.
+   */
+  private snapToZoom(): void {
+    const p = this.point;
+    if (this.precisionMode !== 'auto' || this.readout !== 'letters' || !p || this.precision !== 'degree') return;
+    if (Number.isInteger(p.lat) && Number.isInteger(p.lon)) return;
+    this.setPoint(p, 'program');
   }
 
   /** The "world" preset is the whole world in every projection (Mercator zooms out further for it). */
@@ -262,17 +276,20 @@ export class MapState {
     const v = FLAT_PRESETS[preset];
     const zoom = preset === 'world' ? this.flatMinZoom : this.clampZoom(v.zoom);
     this.flat = { zoom, center: this.clampCenter(v.center, zoom) };
+    this.snapToZoom();
   }
 
   /** Centres the flat map on `center` at `zoom` (both kept within the world). */
   setFlatView(center: LatLon, zoom: number): void {
     const z = this.clampZoom(zoom);
     this.flat = { zoom: z, center: this.clampCenter(center, z) };
+    this.snapToZoom();
   }
 
   zoomFlat(factor: number): void {
     const zoom = this.clampZoom(this.flat.zoom * factor);
     this.flat = { zoom, center: this.clampCenter(this.flat.center, zoom) };
+    this.snapToZoom();
   }
 
   panFlat(dLat: number, dLon: number): void {

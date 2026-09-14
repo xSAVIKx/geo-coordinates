@@ -1,7 +1,7 @@
 // Where the name of the school chosen from a list goes (Task 23b): always fully inside the view and
 // never under a count badge. Pure geometry, shared by the map (layers/Layers.svelte) and the tests.
 import type { LatLon } from '../geo/types';
-import type { ViewCtx } from './geometry';
+import { meridianLine, parallelLine, type ViewCtx } from './geometry';
 import { overlaps, pointBox, type LabelBox } from './labelLayout';
 import { chosenSchoolMark, clearOfChosen, clusterSchools, SCHOOL_BADGE_H, schoolBadgeWidth, type School, type SchoolCluster } from './schools';
 
@@ -178,4 +178,38 @@ export function layoutSchools(ctx: ViewCtx, chosenId: string | null, point: LatL
   const label = { id: chosen.school.id, ...layoutChosenLabel({ x: chosen.x, y: chosen.y, name: chosen.school.name, px, bounds, hard, soft: [badges, guideBoxes] }) };
   clusters = clearOfLabel(clusters, label.box, hard[0]!, px);
   return { clusters, chosen, label };
+}
+
+/** Whether the segment from `a` to `b` touches `box` (Liang–Barsky clipping). */
+function segmentTouchesBox(a: [number, number], b: [number, number], box: LabelBox): boolean {
+  const dx = b[0] - a[0], dy = b[1] - a[1];
+  let t0 = 0, t1 = 1;
+  const edges: [number, number][] = [[-dx, a[0] - box.left], [dx, box.right - a[0]], [-dy, a[1] - box.top], [dy, box.bottom - a[1]]];
+  for (const [p, q] of edges) {
+    if (p === 0) { if (q < 0) return false; continue; }
+    const r = q / p;
+    if (p < 0) { if (r > t1) return false; if (r > t0) t0 = r; } else { if (r < t0) return false; if (r < t1) t1 = r; }
+  }
+  return true;
+}
+
+/**
+ * Which of the point's dashed guide lines would run under the chosen school's name: the parallel (`lat`)
+ * and the meridian (`lon`) through `point`, as drawn in `ctx` (straight on a flat map, curved on the globe).
+ * Layers.svelte leaves those guides out while the name is shown, so the name is never struck through; the
+ * other guide stays, and so does the readout.
+ */
+export function guidesUnderLabel(ctx: Pick<ViewCtx, 'project'>, box: LabelBox, point: LatLon, px: number): { lat: boolean; lon: boolean } {
+  const pad = 2 * px;
+  const grown = { left: box.left - pad, right: box.right + pad, top: box.top - pad, bottom: box.bottom + pad };
+  const crosses = (line: GeoJSON.LineString) => {
+    let prev: [number, number] | null = null;
+    for (const [lon, lat] of line.coordinates as [number, number][]) {
+      const xy = ctx.project({ lat, lon });
+      if (xy && prev && Math.hypot(xy[0] - prev[0], xy[1] - prev[1]) < 1e5 && segmentTouchesBox(prev, xy, grown)) return true;
+      prev = xy;
+    }
+    return false;
+  };
+  return { lat: crosses(parallelLine(point.lat, 0.5)), lon: crosses(meridianLine(point.lon, 0.5)) };
 }

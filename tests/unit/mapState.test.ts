@@ -143,6 +143,36 @@ describe('MapState', () => {
     s.globeZoom = 11.9;
     expect(s.precision).toBe('degree');
   });
+  test("precision 'auto': zooming out below 12 rounds a minute point to whole degrees, so the next arrow moves one axis only", () => {
+    const s = new MapState();
+    s.applyScene({ views: ['globe', 'flat'], point: { lat: 50.26, lon: 19.02 }, pointEditable: true, precision: 'auto', flatView: { center: { lat: 50, lon: 19 }, zoom: 20 } });
+    expect(s.point!.lon).toBeCloseTo(19 + 1 / 60, 9);
+    s.zoomFlat(1.5); // zooming in never moves the point
+    expect(s.point!.lon).toBeCloseTo(19 + 1 / 60, 9);
+    s.zoomFlat(1 / 4); // 30 → 7.5
+    expect(s.precision).toBe('degree');
+    expect(s.point).toEqual({ lat: 50, lon: 19 });
+    expect(s.lastChange).toBe('program'); // not announced as a move
+    s.nudge(1, 0, 'map');
+    expect(s.point).toEqual({ lat: 51, lon: 19 });
+    // The globe zoom, the presets and a chosen view do the same.
+    const cases: [string, () => void][] = [['globe', () => s.setGlobeZoom(4)], ['globe', () => s.zoomGlobe(0.25)], ['flat', () => s.setFlatPreset('europe')], ['flat', () => s.setFlatView({ lat: 50, lon: 19 }, 6)]];
+    for (const [view, zoomOut] of cases) {
+      // Zoomed in on one view only (plain assignments do not snap), with the point on half degrees.
+      s.flat = { center: { lat: 50, lon: 19 }, zoom: view === 'flat' ? 20 : 6 };
+      s.globeZoom = view === 'globe' ? 20 : 1;
+      s.userSetPoint({ lat: 50.5, lon: 19.5 }, 'map');
+      expect(s.point).toEqual({ lat: 50.5, lon: 19.5 });
+      zoomOut();
+      expect(s.precision).toBe('degree');
+      expect(Number.isInteger(s.point!.lat) && Number.isInteger(s.point!.lon)).toBe(true);
+    }
+    // A fixed precision or a decimal readout keeps its point as it is.
+    const d = new MapState();
+    d.applyScene({ views: ['flat'], point: { lat: 50.2649, lon: 19.0238 }, pointEditable: true, precision: 'auto', readout: 'decimal', flatView: { center: { lat: 50, lon: 19 }, zoom: 20 } });
+    d.zoomFlat(0.1);
+    expect(d.point).toEqual({ lat: 50.2649, lon: 19.0238 });
+  });
   test("a scene starting zoomed in with precision 'auto' snaps its point in minutes; fixed precisions ignore zoom", () => {
     const s = new MapState();
     s.applyScene({ views: ['flat'], point: { lat: 50.26, lon: 19.02 }, pointEditable: true, precision: 'auto', flatView: { center: { lat: 50, lon: 19 }, zoom: 20 } });

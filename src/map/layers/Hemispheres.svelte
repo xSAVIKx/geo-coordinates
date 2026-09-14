@@ -2,7 +2,7 @@
   import { t } from '../../i18n/i18n.svelte';
   import { hemisphere, type ViewCtx } from '../geometry';
   import { useMapState } from '../mapStateContext';
-  import { HEMI_LABEL, hemisphereLabelSpots } from '../overlayLayout';
+  import { hemisphereLabels } from '../overlayLayout';
   const mapState = useMapState();
   let { ctx, idPrefix }: { ctx: ViewCtx; idPrefix: string } = $props();
 
@@ -10,7 +10,7 @@
     mapState.layers.hemispheres === 'ns' ? (['N', 'S'] as const) : mapState.layers.hemispheres === 'ew' ? (['E', 'W'] as const) : ([] as const),
   );
   // Shared with the special-line names, which keep clear of these (overlayLayout.ts).
-  const spots = $derived(hemisphereLabelSpots(ctx, mapState.layers.hemispheres));
+  const labels = $derived(hemisphereLabels(ctx, mapState.layers.hemispheres, (r) => t(`hemi.${r}`)));
 </script>
 
 <defs>
@@ -24,8 +24,8 @@
 {#each regions as r, i (r)}
   <path d={ctx.path(hemisphere(r)) ?? ''} fill="url(#{idPrefix}-{i === 0 ? 'stripes' : 'dots'})" />
 {/each}
-{#each spots as { r, xy } (r)}
-  <text class="halo hemi-label" x={xy[0]} y={xy[1]} text-anchor="middle" font-size={HEMI_LABEL * ctx.px}>{t(`hemi.${r}`)}</text>
+{#each labels as l (l.r)}
+  <text class="halo hemi-label" x={l.x} y={l.y} text-anchor="middle" font-size={l.size * ctx.px}>{t(`hemi.${l.r}`)}</text>
 {/each}
 
 <style>

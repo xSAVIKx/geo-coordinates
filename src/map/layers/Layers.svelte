@@ -8,7 +8,7 @@
   import Land from './Land.svelte';
   import Overlays from './Overlays.svelte';
   import { useMapState } from '../mapStateContext';
-  import { layoutSchools } from '../chosenLabel';
+  import { badgeBox, guidesUnderLabel, layoutSchools } from '../chosenLabel';
   import Places from './Places.svelte';
   import PointMarker from './PointMarker.svelte';
   import Schools from './Schools.svelte';
@@ -24,7 +24,11 @@
   // Its name goes first, inside the view and clear of badges (they step aside) — see chosenLabel.ts.
   const schools = $derived(mapState.layers.schools ? layoutSchools(ctx, mapState.chosenSchool, mapState.point, mapState.layers.pointGuides) : null);
   const schoolClusters = $derived(schools?.clusters ?? []);
+  // While a chosen school's name is shown, the point's guide along the axis that would strike through it is left out.
+  const guideSkip = $derived(schools?.label && mapState.point && mapState.layers.pointGuides ? guidesUnderLabel(ctx, schools.label.box, mapState.point, ctx.px) : { lat: false, lon: false });
   const chosenBoxes = $derived(schools?.label && schools.chosen ? [schools.label.box, { left: schools.chosen.x - 12 * ctx.px, right: schools.chosen.x + 12 * ctx.px, top: schools.chosen.y - 12 * ctx.px, bottom: schools.chosen.y + 12 * ctx.px }] : []);
+  // Count badges and the chosen school are drawn over line names: every layer that places or avoids those names gets the same boxes to keep clear of.
+  const lineAvoid = $derived([...schoolClusters.filter((c) => c.members.length > 1).map((c) => badgeBox(c, ctx.px)), ...chosenBoxes]);
 </script>
 
 <g class="geo" transform={offset ? `translate(${offset[0]} ${offset[1]})` : undefined}>
@@ -49,12 +53,12 @@
 <!-- A school's square goes under a city's dot and name; count badges and the chosen school go over them, so the digits stay readable. -->
 {#if mapState.layers.schools}<Schools {ctx} clusters={schoolClusters} part="squares" />{/if}
 <!-- The noon meridian and the point's dashed guides run under line, place and river names: a name keeps its halo instead of being struck through. -->
-<Overlays {ctx} part="lines" />
-<PointMarker {ctx} part="guides" />
-<SpecialLines {ctx} part="labels" />
-<Places {ctx} {schoolClusters} {chosenBoxes} />
+<Overlays {ctx} part="lines" {lineAvoid} />
+<PointMarker {ctx} part="guides" skip={guideSkip} />
+<SpecialLines {ctx} part="labels" {lineAvoid} />
+<Places {ctx} {schoolClusters} {chosenBoxes} {lineAvoid} />
 {#if schools}<Schools {ctx} clusters={schoolClusters} chosen={schools.chosen} label={schools.label} part="badges" />{/if}
-<Overlays {ctx} part="marks" />
+<Overlays {ctx} part="marks" {lineAvoid} />
 <PointMarker {ctx} part="handle" />
 {#if schools?.label}<Schools {ctx} clusters={[]} label={schools.label} part="label" />{/if}
 </g>

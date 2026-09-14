@@ -5,7 +5,7 @@ import { retrieved, schools as slim } from 'virtual:maple-bear-schools';
 import { schoolsModuleCode, slimSchools } from '../../scripts/schools-plugin.ts';
 import { makeFlatCtx, makeGlobeCtx } from '../../src/map/geometry';
 import { gridCluster } from '../../src/map/gridCluster';
-import { badgeBox, chosenTextWidth, layoutChosenLabel, layoutSchools, wrapName } from '../../src/map/chosenLabel';
+import { badgeBox, chosenTextWidth, guidesUnderLabel, layoutChosenLabel, layoutSchools, wrapName } from '../../src/map/chosenLabel';
 import { overlaps } from '../../src/map/labelLayout';
 import { FLAT_MAX_ZOOM, GLOBE_MAX_ZOOM, MapState } from '../../src/map/mapState.svelte';
 import { HOME } from '../../src/map/places';
@@ -257,4 +257,38 @@ describe('school clusters', () => {
     expect(g.find((c) => c.members.some((s) => s.id === 'pl-katowice'))!.members).toHaveLength(1);
     expect(SCHOOL_CELL).toBeGreaterThanOrEqual(40);
   });
+  test('guides under a chosen name: only the guide whose line crosses the name is reported (flat and globe)', () => {
+    const k = katowice();
+    const flat = makeFlatCtx(960, 480, k, 20, 1.675, 'grid');
+    const [x, y] = flat.project(k)!;
+    const beside = { left: x + 20, right: x + 180, top: y - 10, bottom: y + 8 };   // right of the school: across the parallel
+    const above = { left: x - 80, right: x + 80, top: y - 60, bottom: y - 20 };   // above it: across the meridian
+    const corner = { left: x + 15, right: x + 175, top: y - 60, bottom: y - 20 };  // up and right: clear of both
+    expect(guidesUnderLabel(flat, beside, k, 1.675)).toEqual({ lat: true, lon: false });
+    expect(guidesUnderLabel(flat, above, k, 1.675)).toEqual({ lat: false, lon: true });
+    expect(guidesUnderLabel(flat, corner, k, 1.675)).toEqual({ lat: false, lon: false });
+    const globe = makeGlobeCtx(500, [-k.lon, -k.lat], 1.742, 30);
+    const [gx, gy] = globe.project(k)!;
+    expect(guidesUnderLabel(globe, { left: gx + 20, right: gx + 160, top: gy - 8, bottom: gy + 8 }, k, 1.742)).toEqual({ lat: true, lon: false });
+    expect(guidesUnderLabel(globe, { left: gx - 60, right: gx + 60, top: gy + 20, bottom: gy + 50 }, k, 1.742)).toEqual({ lat: false, lon: true });
+  });
+
+  test('every chosen school: the guides that stay drawn never cross its name (lab, flat and globe)', () => {
+    const failures: string[] = [];
+    for (const view of VIEWS) {
+      for (const s of SCHOOLS) {
+        const state = new MapState();
+        state.applyScene({ views: ['globe', 'flat'], point: HOME, pointEditable: true, precision: 'auto', layers: { graticuleStep: 'auto' }, schoolsToggle: true, ...(view.projection === 'mercator' ? { flatProjection: 'mercator' as const } : {}) });
+        state.viewPx = view.kind === 'flat' ? { flat: view.px, globe: null } : { flat: 1.675, globe: view.px };
+        state.chooseSchool(s.id);
+        const ctx = view.kind === 'flat' ? makeFlatCtx(960, 480, state.flat.center, state.flat.zoom, view.px, view.projection) : makeGlobeCtx(500, state.rotate, view.px, state.globeZoom);
+        const layout = layoutSchools(ctx, s.id, state.point, true);
+        if (!layout.label || !state.point) continue;
+        const skip = guidesUnderLabel(ctx, layout.label.box, state.point, ctx.px);
+        // Both guides go through the school; a name beside or above it can cross at most one of them.
+        if (skip.lat && skip.lon) failures.push(`${view.name} ${s.id}: both guides under the name`);
+      }
+    }
+    expect(failures).toEqual([]);
+  }, 120_000);
 });

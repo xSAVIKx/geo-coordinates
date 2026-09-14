@@ -4,7 +4,8 @@
   const mapState = useMapState();
   // `part`: 'guides' draws the dashed parallel and meridian (under place names, so they never strike
   // through one); 'handle' draws the point itself, on top of everything.
-  let { ctx, part = 'all' }: { ctx: ViewCtx; part?: 'all' | 'guides' | 'handle' } = $props();
+  // `skip`: guides left out along an axis (Layers.svelte: the one that would run under a chosen school's name).
+  let { ctx, part = 'all', skip = { lat: false, lon: false } }: { ctx: ViewCtx; part?: 'all' | 'guides' | 'handle'; skip?: { lat: boolean; lon: boolean } } = $props();
   const p = $derived(mapState.point);
   const xy = $derived(p ? ctx.project(p) : null);
   // A highlight-line overlay on the same parallel/meridian is the lesson's focus; the dashed guide
@@ -15,8 +16,8 @@
 
 {#if p}
   {#if part !== 'handle' && mapState.layers.pointGuides}
-    {@const lat = highlighted('lat', p.lat) ? '' : (ctx.path(parallelLine(p.lat)) ?? '')}
-    {@const lon = highlighted('lon', p.lon) ? '' : (ctx.path(meridianLine(p.lon)) ?? '')}
+    {@const lat = skip.lat || highlighted('lat', p.lat) ? '' : (ctx.path(parallelLine(p.lat)) ?? '')}
+    {@const lon = skip.lon || highlighted('lon', p.lon) ? '' : (ctx.path(meridianLine(p.lon)) ?? '')}
     {#if lat}<path class="guide-casing" d={lat} />{/if}
     {#if lon}<path class="guide-casing" d={lon} />{/if}
     {#if lat}<path class="guide" d={lat} />{/if}

@@ -10,8 +10,8 @@ import { gridUsesMinutes, resolveGridStep } from './gridStep';
 import { lineLabelSpecs, namedLines } from './lineLabels';
 import { localizeLabel } from './markerLabel';
 import { labelWidth } from './brackets';
-import { textBox } from './labelLayout';
-import { bracketBoxes, HEMI_LABEL, hemisphereLabelSpots, latEdgeBoxes, markerLayout, placeLineLabels, type PlacedLineLabel } from './overlayLayout';
+import { textBox, type LabelBox } from './labelLayout';
+import { bracketBoxes, hemisphereLabels, latEdgeBoxes, markerLayout, placeLineLabels, type PlacedLineLabel } from './overlayLayout';
 import type { LayerFlags, Overlay } from './types';
 
 /** A marker's label text: a translated `labelKey`, or `label` in the language's notation. */
@@ -30,12 +30,14 @@ export function sceneLatEdgeBoxes(ctx: ViewCtx, layers: Pick<LayerFlags, 'gratic
 /**
  * The special-line names of a scene, placed once for every layer that needs them (SpecialLines.svelte draws
  * them; Overlays.svelte and Places.svelte keep clear of them): clear of brackets, marker labels, hemisphere
- * names and the latitude numbers, and never left out for a line the scene is about.
+ * names and the latitude numbers, and never left out for a line the scene is about. `extra`: more boxes to keep
+ * clear of — the Maple Bear count badges and the chosen school's name and square, which are drawn over line names
+ * (Layers.svelte hands the same list to every layer, so they all agree).
  */
-export function sceneLineLabels(ctx: ViewCtx, layers: LayerFlags, overlays: readonly Overlay[]): PlacedLineLabel[] {
+export function sceneLineLabels(ctx: ViewCtx, layers: LayerFlags, overlays: readonly Overlay[], extra: readonly LabelBox[] = []): PlacedLineLabel[] {
   const m = markerLayout(overlays, ctx, markerText);
-  const hemis = hemisphereLabelSpots(ctx, layers.hemispheres).map(({ r, xy }) => textBox(xy[0], xy[1], labelWidth(t(`hemi.${r}`), HEMI_LABEL, ctx.px), HEMI_LABEL * ctx.px, 'middle'));
-  const avoid = [...bracketBoxes(overlays, ctx, bracketFmt, m.room), ...m.labels, ...hemis];
+  const hemis = hemisphereLabels(ctx, layers.hemispheres, (r) => t(`hemi.${r}`)).map((h) => h.box);
+  const avoid = [...bracketBoxes(overlays, ctx, bracketFmt, m.room), ...m.labels, ...hemis, ...extra];
   return placeLineLabels(lineLabelSpecs(layers), { kind: ctx.kind, width: ctx.width, height: ctx.height, px: ctx.px, project: (p) => ctx.project(p), rotateLambda: ctx.projection.rotate()[0] },
     (spec) => t(spec.labelKey), avoid, { keep: namedLines(layers, overlays), edge: sceneLatEdgeBoxes(ctx, layers) });
 }

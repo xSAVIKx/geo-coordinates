@@ -2,6 +2,7 @@
   import { bracketModel, labelWidth } from '../brackets';
   import { hemisphere, meridianLine, parallelLine, type ViewCtx } from '../geometry';
   import { meanSunPoint } from '../../geo/sun';
+  import type { LabelBox } from '../labelLayout';
   import { useMapState } from '../mapStateContext';
   import { bracketBoxes, markerLayout, noonLabel, NOON_LABEL } from '../overlayLayout';
   import { bracketFmt as fmt, markerText, noonText, sceneLineLabels } from '../overlayText';
@@ -9,7 +10,7 @@
   const mapState = useMapState();
   // `part`: 'lines' draws only the noon meridian's line (under place names, so it never strikes through
   // one); 'marks' draws everything else (markers, brackets, highlights and the noon label) above them.
-  let { ctx, part = 'all' }: { ctx: ViewCtx; part?: 'all' | 'lines' | 'marks' } = $props();
+  let { ctx, part = 'all', lineAvoid = [] }: { ctx: ViewCtx; part?: 'all' | 'lines' | 'marks'; lineAvoid?: LabelBox[] } = $props();
   const lines = $derived(part !== 'marks');
   const marks = $derived(part !== 'lines');
 
@@ -25,8 +26,8 @@
     const date = mapState.sunDate();
     if (!date) return null;
     const brackets = bracketBoxes(mapState.overlays, ctx, fmt, labelRoom);
-    const lineLabels = sceneLineLabels(ctx, mapState.layers, mapState.overlays).map((l) => l.box);
-    const obstacles = [...markers.symbols, ...markers.labels, ...brackets, ...lineLabels];
+    const lineLabels = sceneLineLabels(ctx, mapState.layers, mapState.overlays, lineAvoid).map((l) => l.box);
+    const obstacles = [...markers.symbols, ...markers.labels, ...brackets, ...lineLabels, ...lineAvoid];
     return noonLabel(ctx, meanSunPoint(date).lon, labelWidth(noonText(), NOON_LABEL, ctx.px), obstacles);
   });
 

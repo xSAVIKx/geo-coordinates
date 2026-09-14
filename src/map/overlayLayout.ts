@@ -110,9 +110,13 @@ export function noonLabel(ctx: Ctx, lon: number, width: number, obstacles: reado
   return fallback;
 }
 
+const grow = (b: LabelBox, d: number): LabelBox => ({ left: b.left - d, right: b.right + d, top: b.top - d, bottom: b.bottom + d });
+
 export const LINE_LABEL = 12;
 /** Smallest size (CSS px) a vertical line name shrinks to before it gives up its preferred spot. */
 export const LINE_LABEL_MIN = 10;
+/** A named line's short name on the smallest maps (a 320 px phone), rather than its whole name cut by the map's edge. */
+export const LINE_LABEL_TINY = 9;
 export interface PlacedLineLabel {
   spec: LineLabelSpec; x: number; y: number; vertical: boolean; box: LabelBox;
   /** The text, in one or two lines (a vertical name may split before " (…)" or drop it). */
@@ -159,35 +163,70 @@ export function placeLineLabels(specs: readonly LineLabelSpec[], ctx: Ctx & { ro
   const keep = opts.keep ?? new Set<string>();
   const out: PlacedLineLabel[] = [];
   const widthOf = (lines: readonly string[], size: number) => Math.max(...lines.map((l) => labelWidth(l, size, px)));
-  for (const spec of specs) {
+  // Parallels' names first: a meridian's name has more room to move (along its line, either side, smaller), so it steps aside for them.
+  for (const spec of [...specs.filter((x) => !x.vertical), ...specs.filter((x) => x.vertical)]) {
     const xy = ctx.project(lineLabelPoint(spec, ctx.kind, ctx.rotateLambda));
     if (!xy) continue;
     const text = textOf(spec);
     const y = xy[1] - 5 * px;
+    // Names already placed are obstacles too, with a little room, so two line names never touch.
+    const placedBoxes = out.map((l) => grow(l.box, 2 * px));
     if (!spec.vertical) {
       const size = LINE_LABEL * px;
       const w = labelWidth(text, LINE_LABEL, px);
+      const blockers = [...avoid, ...placedBoxes.filter((_, i) => out[i]!.vertical)];
+      const hits = (x: number, ly: number) => blockers.filter((a) => overlaps(textBox(x, ly, w, size, 'start'), a));
       let x = xy[0] + 4 * px;
+      let ly = y;
       if (ctx.kind === 'flat') {
         const minX = EDGE_LEFT * px, maxX = ctx.width - w - 4 * px;
         if (minX <= maxX) {
           x = Math.max(minX, Math.min(maxX, x));
           for (let tries = 0; tries < 4; tries++) {
-            const hit = avoid.filter((a) => overlaps(textBox(x, y, w, size, 'start'), a));
+            const hit = hits(x, y);
             if (!hit.length) break;
             const next = Math.max(...hit.map((a) => a.right)) + 6 * px;
             if (next > maxX) break;
             x = next;
           }
+          // Still covered (e.g. by a run of school badges): the clear spot nearest the usual one, anywhere along the line.
+          if (hits(x, y).length) {
+            const from = Math.max(minX, Math.min(maxX, xy[0] + 4 * px));
+            const spots: number[] = [];
+            for (let d = 8 * px; from - d >= minX || from + d <= maxX; d += 8 * px) {
+              if (from + d <= maxX) spots.push(from + d);
+              if (from - d >= minX) spots.push(from - d);
+            }
+            // No clear spot at all: the one that covers the least of what is in the way (nearest first on a tie).
+            const cover = (sx: number) => { const b = textBox(sx, y, w, size, 'start'); return blockers.reduce((sum, a) => sum + Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top)), 0); };
+            let best = x, bestCover = cover(x);
+            for (const sx of spots) {
+              const c = cover(sx);
+              if (c < bestCover - 1e-9) { best = sx; bestCover = c; }
+              if (c === 0) break;
+            }
+            x = best;
+          }
+        }
+      } else if (hits(x, y).length) {
+        // On the globe the name follows the visible middle: try a little further along the parallel instead.
+        const at = lineLabelPoint(spec, ctx.kind, ctx.rotateLambda);
+        for (const d of [-20, 20, -40, 40, -55]) {
+          const q = ctx.project({ lat: at.lat, lon: at.lon + d });
+          if (!q) continue;
+          const qx = q[0] + 4 * px, qy = q[1] - 5 * px;
+          const b = textBox(qx, qy, w, size, 'start');
+          if (b.left < 0 || b.right > ctx.width || b.top < 0 || b.bottom > ctx.height) continue;
+          if (!hits(qx, qy).length) { x = qx; ly = qy; break; }
         }
       }
-      const box = textBox(x, y, w, size, 'start');
+      const box = textBox(x, ly, w, size, 'start');
       // On a small map the tropics' and polar circles' names would pile onto the equator's: a later one that touches an earlier name is left out.
       if (!keep.has(spec.id) && out.some((l) => !l.vertical && overlaps(box, l.box))) continue;
-      out.push({ spec, x, y, vertical: false, box, lines: [text], size: LINE_LABEL, lineStep: 0 });
+      out.push({ spec, x, y: ly, vertical: false, box, lines: [text], size: LINE_LABEL, lineStep: 0 });
       continue;
     }
-    const obstacles = [...avoid, ...(opts.edge ?? [])];
+    const obstacles = [...avoid, ...(opts.edge ?? []), ...placedBoxes];
     // The block of lines rotated −90° around (x, vy): glyph tops point left, later lines step right.
     const block = (lines: readonly string[], size: number, side: 'near' | 'far', vy: number) => {
       const s = size * px, step = size * 1.15 * px, depth = (lines.length - 1) * step, w = widthOf(lines, size);
@@ -200,10 +239,34 @@ export function placeLineLabels(specs: readonly LineLabelSpec[], ctx: Ctx & { ro
     // takes the narrower one-line form first, leaving more room beside the line for other labels.
     const variants = lineLabelVariants(text);
     const ordered = keep.has(spec.id) ? variants : [variants[0]!, ...variants.slice(1).reverse()];
-    const forms = [LINE_LABEL, 10.5, LINE_LABEL_MIN].flatMap((size) => ordered.map((lines) => ({ lines, size })));
+    const sizes = [LINE_LABEL, 10.5, LINE_LABEL_MIN];
+    // A name the scene is about tries every size with its parenthesis before any size without it, and its short form down to LINE_LABEL_TINY.
+    const forms = keep.has(spec.id) && variants.length > 2
+      ? [...sizes.flatMap((size) => variants.slice(0, 2).map((lines) => ({ lines, size }))), ...[...sizes, LINE_LABEL_TINY].map((size) => ({ lines: variants[2]!, size }))]
+      : sizes.flatMap((size) => ordered.map((lines) => ({ lines, size })));
     if (ctx.kind !== 'flat') {
-      const options = [block([text], LINE_LABEL, 'near', y), block([text], LINE_LABEL, 'far', y)];
-      const pick = options.find((o) => !obstacles.some((a) => overlaps(o.box, a))) ?? (keep.has(spec.id) || !obstacles.length ? options[0] : undefined);
+      // On the globe: beside the meridian at its usual latitude, then a little further along it (on the visible
+      // side), in the same forms and sizes as on a flat map; inside the view.
+      const along = [0, 15, -15, 30, -30, 45, 60].flatMap((d) => {
+        if (d === 0) return [xy];
+        const q = ctx.project({ lat: spec.labelAt.lat + d, lon: spec.labelAt.lon });
+        return q ? [q] : [];
+      });
+      const at = (lines: readonly string[], size: number, side: 'near' | 'far', q: [number, number]) => {
+        const b = block(lines, size, side, q[1] - 5 * px);
+        const dx = q[0] - xy[0];
+        return { ...b, x: b.x + dx, box: { ...b.box, left: b.box.left + dx, right: b.box.right + dx } };
+      };
+      const inView = (o: PlacedLineLabel) => o.box.top >= 0 && o.box.bottom <= ctx.height && o.box.left >= 0 && o.box.right <= ctx.width;
+      let pick: PlacedLineLabel | undefined;
+      for (const { lines, size } of forms) {
+        for (const q of along) {
+          pick = (['near', 'far'] as const).map((side) => at(lines, size, side, q)).find((o) => inView(o) && !obstacles.some((a) => overlaps(o.box, a)));
+          if (pick) break;
+        }
+        if (pick) break;
+      }
+      if (!pick && (keep.has(spec.id) || !obstacles.length)) pick = block([text], LINE_LABEL, 'near', y);
       if (pick) out.push(pick);
       continue;
     }
@@ -237,7 +300,7 @@ export function placeLineLabels(specs: readonly LineLabelSpec[], ctx: Ctx & { ro
     if (!placed && keep.has(spec.id)) placed = leastCovering?.label ?? block([text], LINE_LABEL, 'near', y);
     if (placed) out.push(placed);
   }
-  return out;
+  return out.sort((a, b) => specs.indexOf(a.spec) - specs.indexOf(b.spec));
 }
 
 /** The flat map's latitude numbers down its left edge (drawn by EdgeLabels.svelte), as boxes. */
@@ -285,5 +348,41 @@ export function hemisphereLabelSpots(ctx: Pick<ViewCtx, 'kind' | 'projection' | 
     const at = ctx.kind === 'globe' ? { lat: HEMI_AT[r].lat > 0 ? 35 : -35, lon: r === 'E' || r === 'W' ? (r === 'E' ? 90 : -90) : -ctx.projection.rotate()[0] } : HEMI_AT[r];
     const xy = ctx.project(at);
     return xy ? [{ r, xy }] : [];
+  });
+}
+
+/** Smallest size (CSS px) a hemisphere name shrinks to on a small flat map. */
+export const HEMI_LABEL_MIN = 10.5;
+/** Room (CSS px) a flat map's eastern and western hemisphere names leave beside the prime meridian, for its name. */
+export const HEMI_GUTTER = 22;
+export interface HemisphereLabel { r: 'N' | 'S' | 'E' | 'W'; x: number; y: number; size: number; box: LabelBox }
+
+/**
+ * The hemisphere names as drawn (Hemispheres.svelte) and kept clear of (the special-line names). On the globe
+ * they sit at `hemisphereLabelSpots` at 15 px. On a flat map the eastern and western names each stay inside
+ * their own half, leaving `HEMI_GUTTER` px beside the prime meridian so its name fits between them, and shrink
+ * (down to `HEMI_LABEL_MIN`) where the half is too narrow — a 320 px phone — instead of running into each other.
+ */
+export function hemisphereLabels(ctx: Pick<ViewCtx, 'kind' | 'projection' | 'project' | 'width' | 'px'>, hemispheres: 'none' | 'ns' | 'ew', textOf: (r: 'N' | 'S' | 'E' | 'W') => string): HemisphereLabel[] {
+  const px = ctx.px;
+  const spots = hemisphereLabelSpots(ctx, hemispheres);
+  const prime = ctx.project({ lat: 0, lon: 0 });
+  // Where each eastern/western name may go on a flat map, and the size that fits it there.
+  const span = (r: 'N' | 'S' | 'E' | 'W'): [number, number] | null => {
+    if (ctx.kind !== 'flat' || (r !== 'E' && r !== 'W')) return null;
+    const edge = 4 * px, gutter = HEMI_GUTTER * px;
+    const [from, to] = prime ? (r === 'W' ? [edge, prime[0] - gutter] : [prime[0] + gutter, ctx.width - edge]) : [edge, ctx.width - edge];
+    return to > from ? [from, to] : null;
+  };
+  const fits = spots.map(({ r }) => { const sp = span(r); return sp ? Math.max(HEMI_LABEL_MIN, Math.min(HEMI_LABEL, (sp[1] - sp[0]) / labelWidth(textOf(r), 1, px))) : HEMI_LABEL; });
+  // Both names at one size: the smaller of the two, so the pair reads as a pair.
+  const size = Math.min(HEMI_LABEL, ...fits);
+  return spots.map(({ r, xy }) => {
+    const text = textOf(r);
+    const sp = span(r);
+    const w = labelWidth(text, sp ? size : HEMI_LABEL, px);
+    const x = sp ? Math.max(sp[0] + w / 2, Math.min(sp[1] - w / 2, xy[0])) : xy[0];
+    const s = sp ? size : HEMI_LABEL;
+    return { r, x, y: xy[1], size: s, box: textBox(x, xy[1], w, s * px, 'middle') };
   });
 }

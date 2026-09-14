@@ -3,10 +3,12 @@
   import { POLAR, TROPIC, meridianLine, parallelLine, type ViewCtx } from '../geometry';
   import { lineLabelSpecs, type LineLabelSpec } from '../lineLabels';
   import { useMapState } from '../mapStateContext';
+  import type { LabelBox } from '../labelLayout';
   import { sceneLineLabels } from '../overlayText';
   const mapState = useMapState();
   // `part`: 'lines' draws the lines, 'labels' their names — drawn later, above the noon meridian and the point's guides.
-  let { ctx, part = 'all' }: { ctx: ViewCtx; part?: 'all' | 'lines' | 'labels' } = $props();
+  // `lineAvoid`: school badges and the chosen school (see Layers.svelte), which the names keep clear of.
+  let { ctx, part = 'all', lineAvoid = [] }: { ctx: ViewCtx; part?: 'all' | 'lines' | 'labels'; lineAvoid?: LabelBox[] } = $props();
 
   interface Line extends LineLabelSpec { geo: GeoJSON.LineString }
   const GEO: Record<string, () => GeoJSON.LineString> = {
@@ -18,7 +20,7 @@
     return lineLabelSpecs(mapState.layers).map((spec) => ({ ...spec, geo: GEO[spec.id]!() }));
   });
   // Labels share their placement with Places.svelte and Overlays.svelte (see `sceneLineLabels`).
-  const labels = $derived.by(() => { void i18n.lang; return part === 'lines' ? [] : sceneLineLabels(ctx, mapState.layers, mapState.overlays); });
+  const labels = $derived.by(() => { void i18n.lang; return part === 'lines' ? [] : sceneLineLabels(ctx, mapState.layers, mapState.overlays, lineAvoid); });
 </script>
 
 {#if part !== 'labels'}

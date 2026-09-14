@@ -12,7 +12,8 @@
   import { LABELLED_RIVERS, REGION_DETAIL_ZOOM, regionActive, riverLabelPoints } from '../world';
   const mapState = useMapState();
   // `chosenBoxes`: the chosen school's name and square (drawn on top by Schools.svelte), kept clear by every name here.
-  let { ctx, schoolClusters = [], chosenBoxes = [] }: { ctx: ViewCtx; schoolClusters?: SchoolCluster[]; chosenBoxes?: LabelBox[] } = $props();
+  // `lineAvoid`: what the special-line names keep clear of beyond the overlays (Layers.svelte), so the names placed here agree with SpecialLines.svelte.
+  let { ctx, schoolClusters = [], chosenBoxes = [], lineAvoid = [] }: { ctx: ViewCtx; schoolClusters?: SchoolCluster[]; chosenBoxes?: LabelBox[]; lineAvoid?: LabelBox[] } = $props();
 
   // Which place labels were visible the *previous* time this ran, for the hysteresis bonus in
   // `visibleIds` — per scene: a new scene (MapState.sceneVersion) starts without any bonus. Plain,
@@ -39,10 +40,10 @@
     const brackets = bracketBoxes(mapState.overlays, ctx, bracketFmt, m.room);
     const out = [...m.symbols, ...m.labels, ...brackets];
     const date = mapState.overlays.some((o) => o.kind === 'noon-meridian') ? mapState.sunDate() : null;
-    const noon = date ? noonLabel(ctx, meanSunPoint(date).lon, labelWidth(noonText(), NOON_LABEL, ctx.px), [...out, ...lineObstacles]) : null;
+    const noon = date ? noonLabel(ctx, meanSunPoint(date).lon, labelWidth(noonText(), NOON_LABEL, ctx.px), [...out, ...lineObstacles, ...lineAvoid]) : null;
     return noon ? [...out, noon.box] : out;
   });
-  const lineObstacles = $derived.by<LabelBox[]>(() => { void i18n.lang; return sceneLineLabels(ctx, mapState.layers, mapState.overlays).map((l) => l.box); });
+  const lineObstacles = $derived.by<LabelBox[]>(() => { void i18n.lang; return sceneLineLabels(ctx, mapState.layers, mapState.overlays, lineAvoid).map((l) => l.box); });
   // Continent and ocean names that fit (see `fitMapNames`): inside the view and, on the globe, its disc;
   // clear of overlay texts, the point's ring and the special-line names (a marker's "Greenland" label wins over "Arctic Ocean").
   const continents = $derived.by(() => {
