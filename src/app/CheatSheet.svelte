@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import { formatLat, formatLatLon, formatLon } from '../geo/format';
   import { i18n, t } from '../i18n/i18n.svelte';
   import { AUTHOR } from './credits';
@@ -27,6 +28,19 @@
   // Grid diagram: a 2:1 world grid, 30° between lines.
   const gx = (lonDeg: number) => 4 + ((lonDeg + 180) / 360) * 142;
   const gy = (latDeg: number) => 4 + ((90 - latDeg) / 180) * 71;
+  // The prime meridian's name sits between the frame (x 4) and the meridian, 3 units from each; a long name
+  // («нульовий меридіан») is measured once drawn and squeezed to that room, whatever the system font's widths.
+  const PRIME_ROOM = gx(0) - 3 - 7;
+  let primeLabel = $state<SVGTextElement>();
+  let primeFit = $state<number | null>(null);
+  $effect(() => {
+    void t('cheat.fig.prime');
+    primeFit = null;
+    void tick().then(() => {
+      const w = primeLabel?.getComputedTextLength() ?? 0;
+      primeFit = w > PRIME_ROOM ? PRIME_ROOM : null;
+    });
+  });
 </script>
 
 <PrintTools />
@@ -68,8 +82,9 @@
                 <text x={gx(0) + 3} y="11.5">{lat(90)}</text>
                 <text x={gx(0) + 3} y="72">{lat(-90)}</text>
                 <text x="6" y={gy(0) - 2.5}>0° · {t('cheat.fig.equator')}</text>
-                <!-- Shrunk to fit between the frame and the meridian («нульовий меридіан» is long); ≈0.56 em per character. -->
-                <text x={gx(0) - 3} y="11.5" text-anchor="end" font-size={Math.min(7, (gx(0) - 9) / (t('cheat.fig.prime').length * 0.56))}>{t('cheat.fig.prime')}</text>
+                <!-- A little smaller for a long name, then squeezed to the measured room if still too wide (see primeFit). -->
+                <text bind:this={primeLabel} class="prime-label" x={gx(0) - 3} y="11.5" text-anchor="end" font-size={Math.min(7, PRIME_ROOM / (t('cheat.fig.prime').length * 0.56))}
+                  textLength={primeFit ?? undefined} lengthAdjust={primeFit === null ? undefined : 'spacingAndGlyphs'}>{t('cheat.fig.prime')}</text>
                 <text x={gx(-90)} y={gy(0) + 9} text-anchor="middle">{lon(-90)}</text>
                 <text x={gx(90)} y={gy(0) + 9} text-anchor="middle">{lon(90)}</text>
               </g>
