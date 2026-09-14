@@ -118,7 +118,7 @@ test('worksheet: choosing no topic explains why there is no sheet', async ({ pag
   await expect(page.locator('.paper')).toHaveCount(0);
 });
 
-test('worksheet: a highlighted 180° meridian prints inside the map frame, and crowded markers print as text only', async ({ page }) => {
+test('worksheet: a highlighted 180° meridian prints inside the map frame, and markers print apart', async ({ page }) => {
   await openPage(page, 'en/worksheet');
   await page.locator('input[name="ws-difficulty"][value="hard"]').check();
   await makeSheet(page, 'rev24');
@@ -132,8 +132,13 @@ test('worksheet: a highlighted 180° meridian prints inside the map frame, and c
   expect(Math.abs(centre - (world!.x + world!.width))).toBeLessThan(1.5);
   // A clear gap between the line's casing and the frame (the casing is 9 CSS px wide).
   expect(frame!.x + frame!.width - centre).toBeGreaterThan(6);
-  // Question 5 (a "further" question whose markers would overlap on the world map) prints without a map.
+  // Question 5 (a "further" question whose markers would overlap on the world map) prints its map zoomed to the markers,
+  // every two of them at least 20 CSS px apart (the print size of the sheet on screen).
   const q5 = page.locator('.questions > li').nth(4);
-  await expect(q5.locator('svg')).toHaveCount(0);
+  await expect(q5).toContainText(/lies furthest/);
   await expect(q5.locator('.options li')).not.toHaveCount(0);
+  const centres = await q5.locator('g.marker path').evaluateAll((els) => els.map((e) => { const b = e.getBoundingClientRect(); return [b.x + b.width / 2, b.y + b.height / 2]; }));
+  expect(centres.length).toBeGreaterThanOrEqual(2);
+  const gaps = centres.flatMap((a, i) => centres.slice(i + 1).map((b) => Math.hypot(a[0]! - b[0]!, a[1]! - b[1]!)));
+  expect(Math.min(...gaps)).toBeGreaterThanOrEqual(20);
 });

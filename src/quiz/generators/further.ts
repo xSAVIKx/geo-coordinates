@@ -4,10 +4,11 @@ import type { LatLon, Precision } from '../../geo/types';
 import type { Text, TextParam } from '../../i18n/text';
 import type { Overlay } from '../../map/types';
 import { checkChoice, choiceText } from '../check';
-import { LABELS, TONES, gridInt, signed, withMinutes } from '../values';
+import { LABELS, MARKER_GAP_PX, TONES, fitFlatView, gridInt, gridStepFor, minGapPx, signed, withMinutes } from '../values';
 import type { Question, QuestionModule, Rng, Difficulty, TopicId } from '../types';
 
 type Dir = 'N' | 'S' | 'E' | 'W';
+const MINUTE_ROW_STEP = 2;
 const OPPOSITE: Record<Dir, Dir> = { N: 'S', S: 'N', E: 'W', W: 'E' };
 
 function values(rng: Rng, difficulty: Difficulty, axis: 'lat' | 'lon', n: number, minutes: boolean): number[] | null {
@@ -63,15 +64,20 @@ export const further: QuestionModule = {
         const lons = vals.map(normalizeLon);
         if (spansAntimeridian(vals) || Math.max(...lons) - Math.min(...lons) >= 180) continue;
       }
+      // With minutes the values differ by less than a degree, so the markers stand in a row 2° apart along the other axis
+      // (far enough apart at the fitted zoom of 12 to tell them apart).
       const otherBase = minutes ? (axis === 'lat' ? rng.int(-170, 170) : rng.int(-60, 60)) : 0;
       const points: LatLon[] = vals.map((v, i) => {
-        const other = minutes ? otherBase + i * 0.6 : axis === 'lat' ? rng.int(-160, 160) : rng.int(-60, 60);
+        const other = minutes ? otherBase + i * MINUTE_ROW_STEP : axis === 'lat' ? rng.int(-160, 160) : rng.int(-60, 60);
         return axis === 'lat' ? { lat: v, lon: other } : { lat: other, lon: v };
       });
       const answer = extremeIndex(points, dir);
       const opposite = extremeIndex(points, OPPOSITE[dir]);
+      // The view fits the markers, so markers a few degrees apart are drawn apart on a phone and on paper; a set still too
+      // crowded at that zoom is drawn again.
+      const flatView = fitFlatView(points, 'markers');
+      if (minGapPx(points, flatView.zoom) < MARKER_GAP_PX) continue;
       const overlays: Overlay[] = points.map((p, i) => ({ kind: 'marker', p, tone: TONES[i]!, label: LABELS[i] }));
-      const centre = points.reduce((acc, p) => ({ lat: acc.lat + p.lat / n, lon: acc.lon + p.lon / n }), { lat: 0, lon: 0 });
       const winner = points[answer]!;
       return {
         id: '', type: 'further', topic, difficulty,
@@ -80,9 +86,9 @@ export const further: QuestionModule = {
         answer: { kind: 'choice', index: answer },
         explanation: explanationFor(vals, answer, axis, { label: LABELS[answer]!, coord: { coord: winner, axis, precision }, dir: { text: { key: `q.dirWord.${dir}` } } }),
         scene: {
-          views: ['flat'], point: null,
-          layers: { specialLines: true, places: false, graticuleStep: minutes ? 1 : 10 },
-          flatView: minutes ? { center: centre, zoom: 12 } : undefined,
+          views: ['flat'], point: null, flatProjection: 'grid',
+          layers: { specialLines: true, places: false, graticuleStep: minutes ? 1 : gridStepFor(flatView.zoom) },
+          flatView,
           overlays,
         },
         solution: [{ kind: 'marker', p: winner, tone: 'answer' }],

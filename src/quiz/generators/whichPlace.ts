@@ -3,7 +3,7 @@ import type { LatLon } from '../../geo/types';
 import type { Text } from '../../i18n/text';
 import { PLACES } from '../../map/places';
 import { checkChoice, choiceText } from '../check';
-import { LABELS, TONES, signed } from '../values';
+import { LABELS, MARKER_GAP_PX, TONES, fitFlatView, gridStepFor, minGapPx, signed } from '../values';
 import type { Question, QuestionModule, Rng, Difficulty } from '../types';
 
 type Kind = 'answer' | 'ns' | 'ew' | 'both' | 'swap' | 'random';
@@ -48,6 +48,10 @@ export const whichPlace: QuestionModule = {
       if (Math.abs(p.lat) < 5 || Math.abs(p.lon) < 5 || Math.abs(p.lon) > 175) continue; // mirrors would be ambiguous
       const others = distractors(rng, difficulty, p);
       if (!others) continue;
+      // The view fits the four markers (with room for their labels and the edge numbers), so markers a few degrees apart are
+      // drawn apart on a phone and on paper; a set still too crowded at that zoom is drawn again.
+      const flatView = fitFlatView([p, ...others.map((o) => o.p)], 'markers');
+      if (minGapPx([p, ...others.map((o) => o.p)], flatView.zoom) < MARKER_GAP_PX) continue;
       const all = rng.shuffle([{ p, kind: 'answer' as Kind }, ...others]);
       const index = all.findIndex((x) => x.kind === 'answer');
       const meta: Record<string, string | number> = { placeId: place.id };
@@ -58,7 +62,7 @@ export const whichPlace: QuestionModule = {
         input: { kind: 'choice', options: all.map((_, i): Text => ({ key: 'q.which.option', params: { label: LABELS[i]! } })) },
         answer: { kind: 'choice', index },
         explanation: { key: 'q.which.explain', params: { label: LABELS[index]!, coords: { coord: p }, place: { place: place.id } } },
-        scene: { views: ['flat'], point: null, layers: { specialLines: true, places: false }, overlays: all.map((x, i) => ({ kind: 'marker' as const, p: x.p, tone: TONES[i]!, label: LABELS[i] })) },
+        scene: { views: ['flat'], point: null, flatView, flatProjection: 'grid', layers: { specialLines: true, places: false, graticuleStep: gridStepFor(flatView.zoom) }, overlays: all.map((x, i) => ({ kind: 'marker' as const, p: x.p, tone: TONES[i]!, label: LABELS[i] })) },
         solution: [{ kind: 'marker', p, tone: 'answer' }],
         meta,
       };

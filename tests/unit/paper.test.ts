@@ -81,10 +81,13 @@ describe('questions on paper', () => {
   test('markers that would print on top of each other leave a text-answerable question without its map', () => {
     const further = MODULES.find((m) => m.type === 'further')!;
     const qs = DIFFS.flatMap((d) => ([2, 5] as const).flatMap((topic) => Array.from({ length: 80 }, (_, s) => further.generate(createRng(`crowd:${d}:${topic}:${s}`), d, topic))));
-    const crowded = qs.filter((q) => markersCrowded(paperScene(q)));
-    expect(crowded.length).toBeGreaterThan(0);
+    // The generators keep their markers apart (see markerSpacing.test.ts), so a crowded set is made by hand: the same
+    // question with its markers pulled together, as a generator without a fitted view could have drawn it.
+    const crowded = qs.slice(0, 20).map((q) => ({ ...q, scene: { ...q.scene, overlays: (q.scene.overlays ?? []).map((o, i) => (o.kind === 'marker' ? { ...o, p: { lat: 10 + i * 0.5, lon: 20 } } : o)) } }));
+    for (const q of crowded) expect(markersCrowded(paperScene(q))).toBe(true);
     for (const q of crowded) expect(needsMap(q)).toBe(false);
-    for (const q of qs.filter((x) => !markersCrowded(paperScene(x)))) expect(needsMap(q)).toBe(true);
+    for (const q of qs) expect(markersCrowded(paperScene(q))).toBe(false);
+    for (const q of qs) expect(needsMap(q)).toBe(true);
     // Measured on the paper projection: every printed map keeps its markers at least 12 CSS px apart.
     const all = MODULES.flatMap((m) => m.topics.flatMap((topic) => DIFFS.flatMap((d) => Array.from({ length: 30 }, (_, s) => m.generate(createRng(`gap:${m.type}:${topic}:${d}:${s}`), d, topic)))));
     for (const q of all.filter((x) => needsMap(x) && x.type !== 'which-place' && x.type !== 'name-line')) {
