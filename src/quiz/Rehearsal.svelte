@@ -207,7 +207,7 @@
   .mistake { font-weight: var(--weight-strong); color: var(--bad); }
   .answer { font-weight: var(--weight-heavy); }
   .links { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-2); margin-top: var(--space-1) !important; margin-left: calc(-1 * var(--space-3)) !important; }
-  .links .btn { color: var(--accent); font-size: var(--step--1); padding: 0 var(--space-3); }
+  .links .btn { color: var(--accent); font-size: var(--step--1); padding: 0 var(--space-3); justify-content: flex-start; text-align: left; }
   @media (max-width: 599px) {
     .card { padding: var(--space-4); }
     /* As in Practice: the levels share one full-width row, the "Difficulty" word stays for screen readers. */

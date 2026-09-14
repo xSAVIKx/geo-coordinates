@@ -12,7 +12,7 @@
   import type { TopicDef } from '../topics/types';
   import Celebration from './Celebration.svelte';
   import QuestionCard from './QuestionCard.svelte';
-  import { checkAnswer, generateSet } from './registry';
+  import { checkAnswer, describeAnswer, generateSet } from './registry';
   import { randomSeed } from './rng';
   import { bestScore, recordScore, scoreId } from './scores';
   import type { Answer, CheckResult, Difficulty } from './types';
@@ -190,7 +190,9 @@
           <li class:ok={results[i]?.correct}>
             <span class="mark" aria-hidden="true">{#if results[i]?.correct}<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>{:else}<svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17" /></svg>{/if}</span>
             <span class="visually-hidden">{results[i]?.correct ? t('practice.resultCorrect') : t('practice.resultWrong')}: </span>
-            <span class="prompt-text">{renderText(q.prompt)}{#if hints[i]} <span class="hint-tag">{t('practice.hintTag')}</span>{/if}</span>
+            <span class="prompt-text">{renderText(q.prompt)}{#if hints[i]} <span class="hint-tag">{t('practice.hintTag')}</span>{/if}
+              <!-- A missed question also says its answer, so the review is more than a list of (often identical) prompts. -->
+              {#if !results[i]?.correct}<span class="answer-text">{t('practice.correctAnswer', { answer: renderText(describeAnswer(q)) })}</span>{/if}</span>
           </li>
         {/each}
       </ol>
@@ -250,6 +252,7 @@
   .mark { flex: none; display: grid; place-items: center; width: 1.6rem; height: 1.6rem; margin-top: 0.05rem; border-radius: 50%; background: var(--bad); color: var(--surface); }
   .ok .mark { background: var(--ok); }
   .mark svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+  .answer-text { display: block; margin-top: 0.1rem; font-weight: var(--weight-strong); }
   .hint-tag { display: inline-block; margin-left: var(--space-1); padding: 0 var(--space-2); border-radius: var(--radius-pill); background: var(--warm-soft); color: var(--warm-text); font-size: var(--step--1); font-weight: var(--weight-strong); white-space: nowrap; }
   .actions { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; margin-top: var(--space-6); }
   /* A very narrow phone (or larger text on one): the level names alone, wrapping to a second row rather than overlapping. */

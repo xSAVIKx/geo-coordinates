@@ -29,3 +29,20 @@ test('phone practice: the map and the question share the first screen; the diffi
   const before = await page.evaluate(() => document.querySelector('fieldset.difficulty')!.compareDocumentPosition(document.querySelector('form.card')!) & Node.DOCUMENT_POSITION_FOLLOWING);
   expect(before).toBeTruthy();
 });
+
+test('practice summary: a missed question also shows its answer', async ({ page }) => {
+  await openPage(page, 'en/topic-2/practice', '?test');
+  const card = page.locator('form.card');
+  for (let i = 0; i < 10; i++) {
+    const index = await page.evaluate(() => (window as unknown as { __practice: { answer: { index: number } } }).__practice.answer.index);
+    const n = await card.locator('label.choice').count();
+    await card.locator('label.choice').nth(i === 0 ? (index + 1) % n : index).click();
+    await card.locator('button[type=submit]').click();
+    await card.locator('button[type=submit]').click();
+  }
+  const rows = page.locator('.summary ol.review > li');
+  await expect(rows).toHaveCount(10);
+  await expect(rows.first()).toContainText(/Correct answer: Point [A-D]/);
+  await expect(rows.nth(1).locator('.answer-text')).toHaveCount(0);
+  await expectNoAxeViolations(page, 'summary with answers');
+});
