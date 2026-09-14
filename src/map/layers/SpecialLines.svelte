@@ -1,9 +1,13 @@
 <script lang="ts">
   import { i18n, t } from '../../i18n/i18n.svelte';
+  import { labelWidth } from '../brackets';
   import { POLAR, TROPIC, meridianLine, parallelLine, type ViewCtx } from '../geometry';
-  import { lineLabelPoint, lineLabelSpecs, type LineLabelSpec } from '../lineLabels';
+  import { lineLabelSpecs, type LineLabelSpec } from '../lineLabels';
   import { mapState } from '../mapState.svelte';
-  let { ctx }: { ctx: ViewCtx } = $props();
+  import { bracketBoxes, LINE_LABEL, markerLayout, placeLineLabels } from '../overlayLayout';
+  import { bracketFmt, markerText } from '../overlayText';
+  // `part`: 'lines' draws the lines, 'labels' their names — drawn later, above the noon meridian and the point's guides.
+  let { ctx, part = 'all' }: { ctx: ViewCtx; part?: 'all' | 'lines' | 'labels' } = $props();
 
   interface Line extends LineLabelSpec { geo: GeoJSON.LineString }
   const GEO: Record<string, () => GeoJSON.LineString> = {
@@ -14,26 +18,29 @@
     void i18n.lang;
     return lineLabelSpecs(mapState.layers).map((spec) => ({ ...spec, geo: GEO[spec.id]!() }));
   });
+  // Labels share their placement with Places.svelte (which keeps names clear of them): inside a flat
+  // map's view, and a vertical one beside its meridian on the side that no bracket or marker label takes.
+  const avoid = $derived.by(() => {
+    const m = markerLayout(mapState.overlays, ctx, markerText);
+    return [...bracketBoxes(mapState.overlays, ctx, bracketFmt, m.room), ...m.labels];
+  });
+  const labels = $derived(part === 'lines' ? [] : placeLineLabels(lines, { kind: ctx.kind, width: ctx.width, height: ctx.height, px: ctx.px, project: (p) => ctx.project(p), rotateLambda: ctx.projection.rotate()[0] }, (spec) => labelWidth(t(spec.labelKey), LINE_LABEL, ctx.px), avoid));
 </script>
 
-{#each lines as line (line.id)}
-  {@const d = ctx.path(line.geo) ?? ''}
-  <path class="casing" {d} />
-  <path class="line {line.cls}" {d} />
-{/each}
-{#each lines as line (line.id)}
-  {@const xy = ctx.project(lineLabelPoint(line, ctx.kind, ctx.projection.rotate()[0]))}
-  {#if xy}
-    <!-- Vertical labels run up the meridian beside it, not across it: rotate(-90) turns the glyphs'
-         height to the left of the anchor, so the prime meridian's label anchors to the right of the
-         line and the 180° label (often at the flat map's right edge) sits to its left. -->
-    {@const vertical = line.vertical}
-    {@const lx = vertical ? xy[0] + (line.cls === 'prime' ? 15 : -5) * ctx.px : xy[0] + 4 * ctx.px}
-    {@const ly = xy[1] - 5 * ctx.px}
-    <text class="label halo {line.cls}" x={lx} y={ly} font-size={12 * ctx.px}
-      transform={vertical ? `rotate(-90 ${lx} ${ly})` : undefined}>{t(line.labelKey)}</text>
-  {/if}
-{/each}
+{#if part !== 'labels'}
+  {#each lines as line (line.id)}
+    {@const d = ctx.path(line.geo) ?? ''}
+    <path class="casing" {d} />
+    <path class="line {line.cls}" {d} />
+  {/each}
+{/if}
+<!-- Vertical labels run up the meridian beside it, not across it: rotate(-90) turns the glyphs' height to the left of the anchor. -->
+{#if part !== 'lines'}
+  {#each labels as l (l.spec.id)}
+    <text class="label halo {l.spec.cls}" x={l.x} y={l.y} font-size={LINE_LABEL * ctx.px}
+      transform={l.vertical ? `rotate(-90 ${l.x} ${l.y})` : undefined}>{t(l.spec.labelKey)}</text>
+  {/each}
+{/if}
 
 <style>
   .casing { fill: none; stroke: var(--halo); stroke-width: 6; stroke-opacity: 0.55; vector-effect: non-scaling-stroke; pointer-events: none; }
@@ -43,7 +50,8 @@
   path.antimeridian { stroke: var(--antimeridian); stroke-width: 3; stroke-dasharray: 3 5 12 5; }
   path.tropic { stroke: var(--tropics); stroke-width: 2; stroke-dasharray: 2 4; }
   path.polar { stroke: var(--tropics); stroke-width: 2; stroke-dasharray: 8 4 2 4; }
-  .label { font-weight: 750; letter-spacing: 0.01em; }
-  text.equator { fill: var(--equator); } text.prime { fill: var(--prime); } text.antimeridian { fill: var(--antimeridian); }
-  text.tropic, text.polar { fill: var(--tropics); }
+  /* A full-strength, slightly wider halo than other map text: line names often sit on night shading or hemisphere tints. */
+  .label { font-weight: 750; letter-spacing: 0.01em; stroke-width: var(--line-halo-width); stroke-opacity: 1; }
+  text.equator { fill: var(--equator-text); } text.prime { fill: var(--prime-text); } text.antimeridian { fill: var(--antimeridian-text); }
+  text.tropic, text.polar { fill: var(--tropics-text); }
 </style>

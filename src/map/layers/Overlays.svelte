@@ -1,26 +1,36 @@
 <script lang="ts">
-  import { i18n, t } from '../../i18n/i18n.svelte';
-  import { formatNumber } from '../../i18n/text';
-  import { bracketModel, labelWidth, type BracketUnit } from '../brackets';
+  import { bracketModel, labelWidth } from '../brackets';
   import { hemisphere, meridianLine, parallelLine, type ViewCtx } from '../geometry';
   import { meanSunPoint } from '../../geo/sun';
   import { mapState } from '../mapState.svelte';
-  import { labelPlaces, localizeLabel } from '../markerLabel';
+  import { t } from '../../i18n/i18n.svelte';
+  import { lineLabelSpecs } from '../lineLabels';
+  import { bracketBoxes, LINE_LABEL, markerLayout, noonLabel, NOON_LABEL, placeLineLabels } from '../overlayLayout';
+  import { bracketFmt as fmt, markerText, noonText } from '../overlayText';
   import type { MarkerTone } from '../types';
-  let { ctx }: { ctx: ViewCtx } = $props();
+  // `part`: 'lines' draws only the noon meridian's line (under place names, so it never strikes through
+  // one); 'marks' draws everything else (markers, brackets, highlights and the noon label) above them.
+  let { ctx, part = 'all' }: { ctx: ViewCtx; part?: 'all' | 'lines' | 'marks' } = $props();
+  const lines = $derived(part !== 'marks');
+  const marks = $derived(part !== 'lines');
 
-  const MARKER_LABEL = 15;
-  /** A marker's label text: a translated `labelKey`, or `label` in the language's notation. */
-  const markerText = (o: { label?: string; labelKey?: string }): string => (o.labelKey ? t(o.labelKey) : o.label ? localizeLabel(o.label, i18n.lang) : '');
-  const fmt = (value: number, unit: BracketUnit) => (unit === 'km' ? t('unit.km', { n: formatNumber(value, i18n.lang) }) : `${formatNumber(value, i18n.lang)}°`);
-  // Widest marker label (CSS px), so a bracket that must sit right of the markers clears their labels.
   // Per overlay index: where its marker label goes, clear of earlier labels and of the marker symbols.
-  const places = $derived(labelPlaces(mapState.overlays.map((o) => {
-    if (o.kind !== 'marker' || !markerText(o)) return null;
-    const xy = ctx.project(o.p);
-    return xy ? { x: xy[0], y: xy[1], width: labelWidth(markerText(o), MARKER_LABEL, ctx.px) } : null;
-  }), MARKER_LABEL, ctx.px, ctx.kind === 'flat' ? ctx.width : Infinity));
-  const labelRoom = $derived(Math.max(16, ...mapState.overlays.map((o) => (o.kind === 'marker' && markerText(o) ? labelWidth(markerText(o), MARKER_LABEL, 1) : 0))));
+  const markers = $derived(markerLayout(mapState.overlays, ctx, markerText));
+  const MARKER_LABEL = $derived(markers.size);
+  const places = $derived(markers.places);
+  // Widest marker label (CSS px), so a bracket that must sit right of the markers clears their labels.
+  const labelRoom = $derived(markers.room);
+  // "Noon 12:00" keeps clear of the markers, their labels and the brackets.
+  const noon = $derived.by(() => {
+    if (!marks || !mapState.overlays.some((o) => o.kind === 'noon-meridian')) return null;
+    const date = mapState.sunDate();
+    if (!date) return null;
+    const brackets = bracketBoxes(mapState.overlays, ctx, fmt, labelRoom);
+    const lineLabels = placeLineLabels(lineLabelSpecs(mapState.layers), { kind: ctx.kind, width: ctx.width, height: ctx.height, px: ctx.px, project: (p) => ctx.project(p), rotateLambda: ctx.projection.rotate()[0] },
+      (spec) => labelWidth(t(spec.labelKey), LINE_LABEL, ctx.px), [...brackets, ...markers.labels]).map((l) => l.box);
+    const obstacles = [...markers.symbols, ...markers.labels, ...brackets, ...lineLabels];
+    return noonLabel(ctx, meanSunPoint(date).lon, labelWidth(noonText(), NOON_LABEL, ctx.px), obstacles);
+  });
 
   function shape(tone: MarkerTone, r: number): string {
     switch (tone) {
@@ -35,7 +45,9 @@
 </script>
 
 {#each mapState.overlays as o, i (`${i}:${o.kind}`)}
-  {#if o.kind === 'highlight-region'}
+  {#if o.kind !== 'noon-meridian' && !marks}
+    <!-- drawn by the 'marks' pass -->
+  {:else if o.kind === 'highlight-region'}
     <path class="hl-region" d={ctx.path(hemisphere(o.region)) ?? ''} />
   {:else if o.kind === 'highlight-line'}
     {@const d = ctx.path(o.axis === 'lat' ? parallelLine(o.value) : meridianLine(o.value)) ?? ''}
@@ -44,14 +56,13 @@
   {:else if o.kind === 'noon-meridian'}
     {@const date = mapState.sunDate()}
     {#if date}
-      {@const lon = meanSunPoint(date).lon}
-      {@const d = ctx.path(meridianLine(lon)) ?? ''}
-      <path class="noon-casing" {d} />
-      <path class="noon" {d} />
-      {@const xy = [35, 15, 55, 0, -20].map((lat) => ctx.project({ lat, lon })).find((p) => p && p[1] > 24 * ctx.px && p[1] < ctx.height - 12 * ctx.px)}
-      {#if xy}
-        {@const flip = xy[0] > ctx.width - 110 * ctx.px}
-        <text class="halo noon-t" x={xy[0] + (flip ? -8 : 8) * ctx.px} y={xy[1]} text-anchor={flip ? 'end' : 'start'} font-size={15 * ctx.px}>{t('lab.noon')} 12:00</text>
+      {#if lines}
+        {@const d = ctx.path(meridianLine(meanSunPoint(date).lon)) ?? ''}
+        <path class="noon-casing" {d} />
+        <path class="noon" {d} />
+      {/if}
+      {#if noon}
+        <text class="halo noon-t" x={noon.x} y={noon.y} text-anchor={noon.anchor} font-size={NOON_LABEL * ctx.px}>{noonText()}</text>
       {/if}
     {/if}
   {:else if o.kind === 'marker'}

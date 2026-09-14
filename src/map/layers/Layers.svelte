@@ -44,13 +44,17 @@
 <Graticule {ctx} />
 <!-- Night shading dims land and the grid but not the equator/meridian lines and their names, nor places and overlays. -->
 <Daylight {ctx} />
-<SpecialLines {ctx} />
+<SpecialLines {ctx} part="lines" />
 <!-- A school's square goes under a city's dot and name; count badges and the chosen school go over them, so the digits stay readable. -->
 {#if mapState.layers.schools}<Schools {ctx} clusters={schoolClusters} part="squares" />{/if}
+<!-- The noon meridian and the point's dashed guides run under line, place and river names: a name keeps its halo instead of being struck through. -->
+<Overlays {ctx} part="lines" />
+<PointMarker {ctx} part="guides" />
+<SpecialLines {ctx} part="labels" />
 <Places {ctx} {schoolClusters} {chosenBoxes} />
 {#if schools}<Schools {ctx} clusters={schoolClusters} chosen={schools.chosen} label={schools.label} part="badges" />{/if}
-<Overlays {ctx} />
-<PointMarker {ctx} />
+<Overlays {ctx} part="marks" />
+<PointMarker {ctx} part="handle" />
 {#if schools?.label}<Schools {ctx} clusters={[]} label={schools.label} part="label" />{/if}
 </g>
 <!-- Degree numbers last so guides and overlays never cover them; they ignore the pointer, so the point handle stays grabbable. -->

@@ -1,7 +1,9 @@
 <script lang="ts">
   import { meridianLine, parallelLine, type ViewCtx } from '../geometry';
   import { mapState } from '../mapState.svelte';
-  let { ctx }: { ctx: ViewCtx } = $props();
+  // `part`: 'guides' draws the dashed parallel and meridian (under place names, so they never strike
+  // through one); 'handle' draws the point itself, on top of everything.
+  let { ctx, part = 'all' }: { ctx: ViewCtx; part?: 'all' | 'guides' | 'handle' } = $props();
   const p = $derived(mapState.point);
   const xy = $derived(p ? ctx.project(p) : null);
   // A highlight-line overlay on the same parallel/meridian is the lesson's focus; the dashed guide
@@ -11,7 +13,7 @@
 </script>
 
 {#if p}
-  {#if mapState.layers.pointGuides}
+  {#if part !== 'handle' && mapState.layers.pointGuides}
     {@const lat = highlighted('lat', p.lat) ? '' : (ctx.path(parallelLine(p.lat)) ?? '')}
     {@const lon = highlighted('lon', p.lon) ? '' : (ctx.path(meridianLine(p.lon)) ?? '')}
     {#if lat}<path class="guide-casing" d={lat} />{/if}
@@ -19,7 +21,7 @@
     {#if lat}<path class="guide" d={lat} />{/if}
     {#if lon}<path class="guide" d={lon} />{/if}
   {/if}
-  {#if xy}
+  {#if part !== 'guides' && xy}
     <g class="point" class:editable={mapState.pointEditable} data-point-handle transform="translate({xy[0]} {xy[1]})">
       <circle class="hit" r={22 * ctx.px} />
       <circle class="halo-ring" r={9 * ctx.px} />

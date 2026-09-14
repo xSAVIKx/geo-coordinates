@@ -150,3 +150,41 @@ export function createLabelMemory(): { previous(sceneKey: number): ReadonlySet<s
     },
   };
 }
+
+export type PlaceSide = 'right' | 'left' | 'above' | 'below';
+export interface PlaceLabelOption { side: PlaceSide; x: number; y: number; anchor: 'start' | 'middle' | 'end'; box: LabelBox }
+
+/**
+ * Where a place name `width` wide and `size` tall (viewBox units) may go beside its dot at `xy`, in order
+ * of preference: right of the dot, left of it, then centred above or below it — each about 6 CSS px
+ * clear of the dot, so a name never drifts off towards a neighbour's dot. When one of the `marks` (the
+ * movable point's ring, a school's square or count badge) is centred on the dot, the same four sides are
+ * also offered just past that mark's edge, after the near ones.
+ */
+export function placeLabelOptions(xy: [number, number], width: number, size: number, px: number, marks: readonly LabelBox[] = []): PlaceLabelOption[] {
+  const [x, y] = xy;
+  const gap = 6 * px;
+  const at = (side: PlaceSide, reach: { right: number; left: number; top: number; bottom: number }): PlaceLabelOption => {
+    switch (side) {
+      case 'right': return { side, x: reach.right, y: y + 4 * px, anchor: 'start', box: textBox(reach.right, y + 4 * px, width, size, 'start') };
+      case 'left': return { side, x: reach.left, y: y + 4 * px, anchor: 'end', box: textBox(reach.left, y + 4 * px, width, size, 'end') };
+      case 'above': return { side, x, y: reach.top - size * 0.25, anchor: 'middle', box: textBox(x, reach.top - size * 0.25, width, size, 'middle') };
+      case 'below': return { side, x, y: reach.bottom + size * 0.8, anchor: 'middle', box: textBox(x, reach.bottom + size * 0.8, width, size, 'middle') };
+    }
+  };
+  const SIDES: readonly PlaceSide[] = ['right', 'left', 'above', 'below'];
+  const near = { right: x + gap, left: x - gap, top: y - gap, bottom: y + gap };
+  const options = SIDES.map((side) => at(side, near));
+  // Only a mark centred on the dot (the point placed on this very city, the city's own school badge)
+  // earns the far sides; past a mark merely near the dot, a name would read as a neighbour's.
+  const under = marks.filter((m) => Math.hypot((m.left + m.right) / 2 - x, (m.top + m.bottom) / 2 - y) <= 5 * px);
+  if (under.length) {
+    const past = 3 * px;
+    const far = {
+      right: Math.max(...under.map((m) => m.right)) + past, left: Math.min(...under.map((m) => m.left)) - past,
+      top: Math.min(...under.map((m) => m.top)) - past, bottom: Math.max(...under.map((m) => m.bottom)) + past,
+    };
+    for (const side of SIDES) options.push(at(side, far));
+  }
+  return options;
+}

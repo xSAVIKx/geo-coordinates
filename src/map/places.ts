@@ -53,3 +53,12 @@ export const MAP_LABELS: readonly MapLabel[] = [
   { id: 'pacific', lat: -10, lon: -140, kind: 'ocean' }, { id: 'atlantic', lat: 25, lon: -40, kind: 'ocean' },
   { id: 'indian', lat: -20, lon: 80, kind: 'ocean' }, { id: 'arctic', lat: 82, lon: 0, kind: 'ocean' },
 ];
+
+/**
+ * The zoom a map counts as for `tierVisible`: a map drawn narrower than 640 CSS px counts as zoomed out
+ * in proportion (down to half), so a phone's Poland view shows the region's cities but not every town,
+ * and a phone's Europe view shows no region dots at all.
+ */
+export function tierZoom(zoom: number, cssWidth: number): number {
+  return zoom * Math.max(0.5, Math.min(1, cssWidth / 640));
+}
