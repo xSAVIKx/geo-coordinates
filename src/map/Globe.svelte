@@ -199,9 +199,9 @@
       <button type="button" class="btn icon" onclick={() => mapState.zoomGlobe(1 / 1.5)} aria-label={t('map.globeZoomOut')} title={t('map.globeZoomOut')}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" /></svg></button>
     </div>
     {#if mapState.point}
-      <button type="button" class="btn show-point" onclick={() => mapState.point && mapState.centerGlobeOn(mapState.point)}>
+      <button type="button" class="btn show-point" title={t('map.showPoint')} onclick={() => mapState.point && mapState.centerGlobeOn(mapState.point)}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6.5" /><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3" /></svg>
-        {t('map.showPoint')}
+        <span class="label">{t('map.showPoint')}</span>
       </button>
     {/if}
     <SchoolsToggle />
@@ -210,7 +210,8 @@
 </figure>
 
 <style>
-  .globe { position: relative; margin: 0; display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+  /* A size container: the toolbar adapts to the globe's column, not the window (see the @container rules). */
+  .globe { position: relative; margin: 0; display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; container-type: inline-size; }
   .frame { max-width: min(100%, 70vh); margin-inline: auto; width: 100%; }
   svg { display: block; width: 100%; height: auto; touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; overflow: visible; }
   svg:active { cursor: grabbing; }
@@ -220,6 +221,19 @@
   .toolbar .btn.icon { padding: 0; }
   .toolbar .zoom-start { border-left-width: 3px; border-left-style: double; }
   .show-point svg { width: 1.1rem; height: 1.1rem; }
-  @media (max-width: 1439px) { .show-point svg { display: none; } }
+  /* "Show the point" keeps its word only where it fits beside the arrows (≈431px); in a narrower column
+     it becomes a 44px crosshair button (its text stays the accessible name, and a tooltip), so the arrows,
+     zoom and the button share one row instead of the label dropping to a row of its own. */
+  @container (max-width: 30rem) { .show-point svg { display: none; } }
+  @container (max-width: 26.9rem) {
+    .show-point { width: var(--tap); padding: 0; }
+    .toolbar .show-point svg { display: block; width: 1.25rem; height: 1.25rem; }
+    .show-point .label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  }
+  /* Narrower than the six joined buttons (a tablet's globe column): zoom drops under the arrows. */
+  @container (max-width: 16.4rem) {
+    .toolbar .btn-group { flex-wrap: wrap; justify-content: center; width: calc(4 * var(--tap) - 3px); }
+    .toolbar .zoom-start { border-left-width: 1px; border-left-style: solid; margin-left: 0; }
+  }
   .toolbar svg { width: 1.25rem; height: 1.25rem; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 </style>

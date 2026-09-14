@@ -16,7 +16,7 @@
 {#if mapState.schoolsToggle}
   <button type="button" class="btn schools-toggle" aria-pressed={mapState.layers.schools} aria-describedby="{uid}-hint" onclick={toggle}>
     <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="3" width="10" height="10" rx="2.5" /></svg>
-    {t('map.schools')}
+    <span class="label">{t('map.schools')}</span>
   </button>
   <p id="{uid}-hint" class="visually-hidden">{t('map.schools.hint')}</p>
 {/if}

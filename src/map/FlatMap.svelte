@@ -246,6 +246,16 @@
   .toolbar .btn.icon { padding: 0; }
   .toolbar svg { fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
   .projection-group { margin-left: auto; }
-  /* Three map types wrap on a phone: rows of evenly stretched buttons rather than a ragged group. */
-  @media (max-width: 599px) { .projection-group { margin-left: 0; display: flex; width: 100%; } .projection-group .btn { flex: 1 1 auto; } }
+  /* On a phone the tools are one row that scrolls sideways (every button stays in reach, none hidden),
+     instead of three wrapped rows pushing the question or step text a screen lower. The fade at the
+     right edge says there is more; the end padding lets the last button scroll clear of it. */
+  @media (max-width: 599px) {
+    .toolbar { flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; margin: -4px calc(-1 * var(--space-3)) 0; padding: 4px var(--space-8) 4px var(--space-3); scroll-padding-inline: var(--space-3);
+      -webkit-mask-image: linear-gradient(90deg, transparent, #000 var(--space-3), #000 calc(100% - var(--space-8)), transparent);
+      mask-image: linear-gradient(90deg, transparent, #000 var(--space-3), #000 calc(100% - var(--space-8)), transparent); }
+    .toolbar::-webkit-scrollbar { display: none; }
+    .toolbar > :global(*) { flex: none; }
+    .toolbar :global(.btn) { white-space: nowrap; }
+    .projection-group { margin-left: 0; flex-wrap: nowrap; }
+  }
 </style>

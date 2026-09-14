@@ -199,7 +199,13 @@
     .layout { grid-template-columns: minmax(0, 1fr) clamp(22rem, 22vw, 27rem); gap: var(--space-5); align-items: start; }
     .panel { position: sticky; top: calc(var(--header-h) + var(--space-4)); }
   }
-  @media (max-width: 599px) { .best { margin-left: 0; } }
+  /* Phones: the pips and level names speak for themselves, so the "Difficulty" word is kept for screen readers only and the levels share one full-width row. */
+  @media (max-width: 599px) {
+    .best { margin-left: 0; }
+    .difficulty legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .levels { display: flex; flex-wrap: nowrap; width: 100%; }
+    .levels label { flex: 1 1 0; min-width: 0; padding: 0 var(--space-2); }
+  }
   .summary { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-2); padding: var(--space-6); max-width: 56rem; }
   .summary-head { display: flex; align-items: center; gap: var(--space-5); }
   .summary h2 { margin: 0; font-size: var(--step-3); }

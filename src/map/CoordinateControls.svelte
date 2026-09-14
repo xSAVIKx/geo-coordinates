@@ -43,7 +43,7 @@
   .controls { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-1); padding: var(--space-3) var(--space-5) var(--space-4); }
   .readout { margin: 0 0 var(--space-2); font-size: var(--step-4); font-weight: var(--weight-heavy); letter-spacing: -0.01em; line-height: 1.15; font-variant-numeric: tabular-nums; text-align: center; }
   .readout:last-child { margin: 0; }
-  .readouts { display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: var(--space-1) var(--space-8); margin: 0 0 var(--space-3); }
+  .readouts { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-end; gap: var(--space-1) var(--space-8); margin: 0 0 var(--space-3); }
   .readouts:last-child { margin: 0; }
   .readouts .readout { margin: 0; display: flex; flex-direction: column; align-items: center; }
   .readouts .label { font-size: var(--step--1); font-weight: var(--weight-strong); color: var(--text-muted); letter-spacing: 0; }
