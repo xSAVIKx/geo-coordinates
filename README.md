@@ -45,6 +45,8 @@ same set of keys.
 
 ## Develop
 
+Requires Node 24 or newer.
+
     npm install
     npm run dev      # local dev server
     npm run check    # svelte-check (types)
@@ -73,6 +75,8 @@ Author details for the page footer live in `src/app/credits.ts`.
 
 - Map data: [Natural Earth](https://www.naturalearthdata.com/) (public domain), via
   [world-atlas](https://github.com/topojson/world-atlas).
+- Map rendering libraries: [world-atlas](https://github.com/topojson/world-atlas),
+  [d3-geo](https://github.com/d3/d3-geo) and [topojson-client](https://github.com/topojson/topojson-client) (all ISC licensed).
 - Maple Bear school locations: collected from publicly published Maple Bear school websites;
   see [`LICENSE-CONTENT.md`](LICENSE-CONTENT.md) for the trademark and affiliation note.
 - Author: Yurii Serhiichuk — [serhiichuk.dev](https://serhiichuk.dev) ·

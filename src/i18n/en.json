@@ -179,7 +179,7 @@
   "topic.9.step.dms.title": "Degrees, minutes, seconds",
   "topic.9.step.dms.body": "One degree has 60 minutes and one minute has 60 seconds. 50.2649° = 50°15′54″N. Move the point and compare both ways of writing it.",
   "topic.9.step.find.title": "Find coordinates in a map app",
-  "topic.9.step.find.body": "In Google Maps, press and hold a spot on the map (on a computer: right-click). The coordinates appear. You can also type coordinates into the search box to find a place.",
+  "topic.9.step.find.body": "In Google Maps, press and hold a spot on the map (on a computer: right-click). The coordinates appear. You can also type coordinates into the search box to find a place. This page is not affiliated with Google.",
   "topic.9.step.mercator.title": "Why Greenland looks huge",
   "topic.9.step.mercator.body": "Most map apps use a map called Mercator. It keeps shapes and directions right in small areas, but stretches everything near the poles. On Mercator, Greenland looks about as big as Africa; in reality Africa is 14 times bigger. Compare with Equal Earth and the globe.",
   "topic.9.step.swap.title": "Careful with the order",

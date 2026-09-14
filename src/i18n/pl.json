@@ -183,7 +183,7 @@
   "topic.9.step.dms.title": "Stopnie, minuty, sekundy",
   "topic.9.step.dms.body": "Jeden stopień ma 60 minut, a jedna minuta ma 60 sekund. 50.2649° = 50°15′54″N. Przesuń punkt i porównaj oba zapisy.",
   "topic.9.step.find.title": "Znajdź współrzędne w aplikacji",
-  "topic.9.step.find.body": "W Mapach Google naciśnij i przytrzymaj miejsce na mapie (na komputerze: kliknij prawym przyciskiem myszy). Pojawią się współrzędne. Możesz też wpisać współrzędne w wyszukiwarkę, żeby znaleźć miejsce.",
+  "topic.9.step.find.body": "W Mapach Google naciśnij i przytrzymaj miejsce na mapie (na komputerze: kliknij prawym przyciskiem myszy). Pojawią się współrzędne. Możesz też wpisać współrzędne w wyszukiwarkę, żeby znaleźć miejsce. Ta strona nie jest powiązana z Google.",
   "topic.9.step.mercator.title": "Dlaczego Grenlandia wydaje się ogromna",
   "topic.9.step.mercator.body": "Większość aplikacji z mapami używa mapy Merkatora. Zachowuje ona prawidłowe kształty i kierunki na małych obszarach, ale rozciąga wszystko blisko biegunów. Na mapie Merkatora Grenlandia wygląda na mniej więcej tak dużą jak Afryka, a naprawdę Afryka jest 14 razy większa. Porównaj z mapą Equal Earth i z globusem.",
   "topic.9.step.swap.title": "Uważaj na kolejność",
