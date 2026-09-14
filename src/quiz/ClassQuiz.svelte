@@ -145,11 +145,14 @@
   </form>
 {:else if question}
   <section class="run" aria-labelledby="cq-prompt">
+    <!-- The countdown sits beside the position and the prompt, not on a row of its own, so the map and the answer get the height. -->
     <div class="top">
-      <p class="progress eyebrow">{t('practice.progress', { n: index + 1, total: questions.length })}</p>
+      <div class="head">
+        <p class="progress eyebrow">{t('practice.progress', { n: index + 1, total: questions.length })}</p>
+        <h2 id="cq-prompt" class="prompt" tabindex="-1" bind:this={prompt}>{renderText(question.prompt)}</h2>
+      </div>
       {#if timer > 0}{#key index}<Countdown seconds={timer} running={!revealed} ondone={() => (timeUp = true)} />{/key}{/if}
     </div>
-    <h2 id="cq-prompt" class="prompt" tabindex="-1" bind:this={prompt}>{renderText(question.prompt)}</h2>
     {#if timeUp && !revealed}<p class="timeup">{t('classQuiz.timeUp')}</p>{/if}
     <div class="body">
       <div class="map"><MapStage /></div>
@@ -212,7 +215,8 @@
    * Sizes follow the viewport (clamp + vw), so the same layout reads from the back of a classroom on a
    * 1920×1080 projector and on a 3840×2160 screen; the run also asks the shell for the whole window width (`layout.wide`). */
   .run { display: flex; flex-direction: column; gap: clamp(0.75rem, 0.4rem + 0.6vw, 2rem); }
-  .top { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); }
+  .top { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-3) clamp(1rem, 0.5rem + 1vw, 3rem); }
+  .head { display: flex; flex-direction: column; gap: clamp(0.25rem, 0.1rem + 0.4vw, 1rem); min-width: 0; }
   .progress { margin: 0; font-size: clamp(1rem, 0.6rem + 0.8vw, 2.2rem); }
   .prompt { font-size: clamp(1.6rem, 0.9rem + 2.6vw, 7rem); line-height: 1.12; margin: 0; font-weight: var(--weight-heavy); max-width: 40ch; }
   .prompt:focus { outline: none; }

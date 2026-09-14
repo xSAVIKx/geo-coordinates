@@ -121,12 +121,16 @@
   // sticky side panel instead. Only one of the two ever actually renders the snippet below, so
   // there is never more than one QuestionCard mounted at once.
   let wide = $state(typeof matchMedia === 'function' ? matchMedia('(min-width: 1024px)').matches : true);
+  let phone = $state(typeof matchMedia === 'function' ? matchMedia('(max-width: 599px)').matches : false);
   $effect(() => {
     if (typeof matchMedia !== 'function') return;
     const mq = matchMedia('(min-width: 1024px)');
+    const mqPhone = matchMedia('(max-width: 599px)');
     const onChange = (e: MediaQueryListEvent) => (wide = e.matches);
+    const onPhone = (e: MediaQueryListEvent) => (phone = e.matches);
     mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
+    mqPhone.addEventListener('change', onPhone);
+    return () => { mq.removeEventListener('change', onChange); mqPhone.removeEventListener('change', onPhone); };
   });
 </script>
 
@@ -137,7 +141,7 @@
     bind:value={draft.value} bind:coordsDraft={draft.coordsText} bind:numberDraft={draft.numberText} bind:clockDraft={draft.clockText} />
 {/snippet}
 
-<div class="practice">
+{#snippet difficultyRow()}
   <fieldset class="difficulty">
     <legend>{t('practice.difficulty')}</legend>
     <div class="seg levels">
@@ -149,6 +153,12 @@
       <span class="best"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20h7" /></svg>{t('practice.best', { best: currentBest, total: ROUND })}</span>
     {/if}
   </fieldset>
+{/snippet}
+
+<div class="practice">
+  <!-- On a phone the level row comes after the map and the question (in the DOM too, so the focus order matches),
+       so a question's map and its prompt share the first screen; on wider screens it heads the page. -->
+  {#if !phone}{@render difficultyRow()}{/if}
 
   {#if !finished}
     <div class="layout">
@@ -193,6 +203,7 @@
       </div>
     </section>
   {/if}
+  {#if phone}{@render difficultyRow()}{/if}
 </div>
 
 <style>
@@ -211,10 +222,11 @@
     .layout { grid-template-columns: minmax(0, 1fr) clamp(22rem, 22vw, 27rem); gap: var(--space-5); align-items: start; }
     .panel { position: sticky; top: calc(var(--header-h) + var(--space-4)); }
   }
-  /* Phones: the pips and level names speak for themselves, so the "Difficulty" word is kept for screen readers only and the levels share one full-width row. */
+  /* Phones: the row sits below the question (see the markup), with its "Difficulty" word above the levels, which share one full-width row. */
   @media (max-width: 599px) {
     .best { margin-left: 0; }
-    .difficulty legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .difficulty { margin-top: var(--space-2); }
+    .difficulty legend { float: none; margin: 0 0 var(--space-2); }
     .levels { display: flex; flex-wrap: nowrap; width: 100%; }
     .levels label { flex: 1 1 0; min-width: 0; padding: 0 var(--space-2); }
   }
