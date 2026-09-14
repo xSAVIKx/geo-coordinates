@@ -48,13 +48,24 @@
   let heading = $state<HTMLHeadingElement>();
   $effect(() => { if (phase === 'results') queueMicrotask(() => heading?.focus()); });
 
+  // Set for a moment when Start (which then disappears) brings up the first question, so its heading takes focus;
+  // not on a later remount (a rotation across the 1024px layout switch), which would pull focus out of an answer.
+  let focusQuestion = $state(false);
   function start() {
+    focusQuestion = true;
+    setTimeout(() => (focusQuestion = false), 0);
     seed = randomSeed();
     index = 0;
     answers = [];
     results = [];
     applied = '';
     phase = 'run';
+  }
+
+  // Back to the setup: the button pressed is gone, so the page's heading takes focus.
+  function again() {
+    phase = 'setup';
+    queueMicrotask(() => document.querySelector<HTMLElement>('#main h1')?.focus());
   }
 
   function submit(a: Answer) {
@@ -84,7 +95,7 @@
 
 {#snippet questionCard()}
   <QuestionCard {question} number={index + 1} total={COUNT} result={results[index] ?? null} showFeedback={false}
-    onsubmit={submit} onnext={next} nextLabel={index < COUNT - 1 ? t('rehearsal.submitNext') : t('rehearsal.finish')} {roundKey} />
+    onsubmit={submit} onnext={next} nextLabel={index < COUNT - 1 ? t('rehearsal.submitNext') : t('rehearsal.finish')} {roundKey} focusOnMount={focusQuestion} />
 {/snippet}
 
 {#if phase === 'setup'}
@@ -146,7 +157,7 @@
         </li>
       {/each}
     </ol>
-    <button type="button" class="btn primary lg" onclick={() => (phase = 'setup')}>{t('rehearsal.again')}</button>
+    <button type="button" class="btn primary lg" onclick={again}>{t('rehearsal.again')}</button>
   </section>
 {/if}
 
@@ -177,10 +188,12 @@
   .meter-t { fill: var(--text); font-size: 22px; font-weight: 800; font-family: var(--font); }
   h2 { margin: 0; font-size: var(--step-3); font-weight: var(--weight-heavy); }
   h2:focus { outline: none; }
-  h2:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; border-radius: 4px; }
+  /* Focused by the page itself (a new step, question or result) for screen readers: a quiet bar at the side, not a frame round the heading. */
+  h2:focus-visible { outline: none; box-shadow: -0.35rem 0 0 var(--focus); }
+  @media (forced-colors: active) { h2:focus-visible { outline: 2px solid Highlight; } }
   .score { font-size: var(--step-2); font-weight: var(--weight-heavy); margin: var(--space-1) 0 0; }
 
-  .review { display: grid; gap: var(--space-2); padding: 0; margin: 0 0 var(--space-6); list-style: none; }
+  .review { display: grid; gap: var(--space-2); padding: 0; margin: 0 0 var(--space-6); list-style: none; grid-template-columns: minmax(0, 1fr); overflow-wrap: anywhere; }
   .review li { padding: var(--space-3) var(--space-4); border-radius: var(--radius); background: var(--bad-soft); border: 1px solid color-mix(in srgb, var(--bad) 25%, transparent); }
   .review li.ok { background: transparent; border-color: transparent; box-shadow: inset 0 -1px 0 var(--border); border-radius: 0; padding-block: var(--space-2); }
   .review p { margin: 0; }
@@ -206,4 +219,9 @@
     .summary-head { gap: var(--space-4); }
     .setup .btn.lg { align-self: stretch; }
   }
+  /* A very narrow phone (or larger text on one): the level names alone, wrapping to a second row rather than overlapping. */
+  @media (max-width: 399px) { .levels .pips { display: none; } .levels { flex-wrap: wrap; } .levels label { flex: 1 1 auto; padding: 0 var(--space-2); } }
+  /* The score ring and the heading share a row while the heading fits beside it; a long word moves the text under the ring. */
+  .summary-head { flex-wrap: wrap; }
+  .summary-head > div { flex: 1 1 11rem; min-width: 0; }
 </style>

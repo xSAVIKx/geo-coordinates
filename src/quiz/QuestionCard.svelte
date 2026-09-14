@@ -22,7 +22,7 @@
   let {
     question, number, total, result, onsubmit, onnext, nextLabel, roundKey,
     value = $bindable(null), coordsDraft = $bindable({ lat: '', lon: '' }), numberDraft = $bindable(''), clockDraft = $bindable(''),
-    showFeedback = true, big = false, hint = false, hinted = false, onhint,
+    showFeedback = true, big = false, hint = false, hinted = false, onhint, focusOnMount = false,
   }: {
     question: Question; number: number; total: number; result: CheckResult | null;
     onsubmit: (a: Answer) => void; onnext: () => void; nextLabel: string; roundKey: string;
@@ -31,6 +31,8 @@
     // `hint` offers the Hint button (Practice only). Whether it was used is owned by Practice (like the
     // draft), so the hint stays shown when the phone/desktop switch recreates this card.
     hint?: boolean; hinted?: boolean; onhint?: () => void;
+    // `focusOnMount`: the control that brought this card up is gone (Start, New round), so the question's heading takes focus.
+    focusOnMount?: boolean;
   } = $props();
 
   let invalid = $state(false);
@@ -42,14 +44,18 @@
 
   // Resetting `value`/the drafts for a new question is Practice's job (it owns them and must do
   // it before this component even mounts on the very first question); this only handles moving
-  // focus to the heading on every question after the first.
+  // focus to the heading when the round moves on to its next question. A new round started from the
+  // difficulty levels keeps focus on the levels (arrow keys go on choosing); on mount, `focusOnMount` decides.
+  // (The round is everything in `roundKey` before its last `:`, the question's index.)
   let lastKey = '';
+  const roundOf = (k: string) => k.slice(0, k.lastIndexOf(':'));
   $effect(() => {
     if (roundKey === lastKey) return;
     const first = lastKey === '';
+    const nextInRound = !first && roundOf(roundKey) === roundOf(lastKey);
     lastKey = roundKey;
     invalid = false;
-    if (!first) queueMicrotask(() => heading?.focus());
+    if (nextInRound || (first && focusOnMount)) queueMicrotask(() => heading?.focus());
   });
 
   $effect(() => {
@@ -163,7 +169,9 @@
   .steps li.now { background: var(--accent); box-shadow: none; }
   h2 { margin: 0; font-size: var(--step-2); font-weight: var(--weight-heavy); line-height: 1.25; }
   h2:focus { outline: none; }
-  h2:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; border-radius: 4px; }
+  /* Focused by the page itself (a new step, question or result) for screen readers: a quiet bar at the side, not a frame round the heading. */
+  h2:focus-visible { outline: none; box-shadow: -0.35rem 0 0 var(--focus); }
+  @media (forced-colors: active) { h2:focus-visible { outline: 2px solid Highlight; } }
   .big h2 { font-size: clamp(1.6rem, 1rem + 3vw, 4rem); }
   .primary { align-self: flex-start; }
   .buttons { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }

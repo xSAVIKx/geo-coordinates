@@ -42,6 +42,8 @@
   .choice:hover { border-color: var(--border-strong); box-shadow: var(--shadow-1); }
   .big .choice { font-size: clamp(1.2rem, 0.9rem + 1.4vw, 2.2rem); padding: var(--space-4); }
   .choice.checked { border-color: var(--accent); background: var(--accent-soft); box-shadow: none; }
+  /* Forced colours: the chosen card keeps a visible mark (its hidden radio and tinted background do not show). */
+  @media (forced-colors: active) { .choice.checked { border-color: Highlight; border-width: 4px; } .choice.checked .letter { background: Highlight; color: HighlightText; forced-color-adjust: none; } }
   .choice:has(input:focus-visible) { outline: 3px solid var(--focus); outline-offset: 2px; }
   .choice input { position: absolute; opacity: 0; width: 1px; height: 1px; }
   .letter { flex: none; width: 2.25rem; height: 2.25rem; border-radius: var(--radius-sm); display: grid; place-items: center; background: var(--surface-2); border: 1px solid var(--border-strong); font-weight: var(--weight-heavy); font-size: var(--step--1); transition: background-color var(--dur) var(--ease); }

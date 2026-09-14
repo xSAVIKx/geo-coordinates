@@ -173,6 +173,8 @@
 :root[data-presenter="true"] {
   --stroke-scale: max(1.5, var(--ui-scale, 1.5));
   --tap: 2.75rem;
+  /* 1880 / 1920: the share of a 1920px screen the normal page takes (--page-max 1880px), kept at every width,
+     so a 3840px screen shows the 1920px layout twice as big. */
   --page-max: 97.9vw;
   --text: #0b0f14; --text-muted: #374351; --border: #aab3bf; --border-strong: #56616e;
   --accent: #0842a0; --accent-hover: #06357f; --accent-soft: #e5edfb; --accent-contrast: #ffffff; --focus: #0842a0;

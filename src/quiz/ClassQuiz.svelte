@@ -50,15 +50,12 @@
     mapState.applyScene({ ...question.scene, pointEditable: false });
     revealed = false;
     timeUp = false;
-    // The first question of a run gets focus from the normal flow (the Start button click, or the
-    // page's own route-change focus handling); only a later navigation needs to move focus and
-    // announce the new position explicitly.
+    // Every question's prompt takes focus, the first one too (the Start button it replaces is gone); a
+    // later question also announces its position.
     const first = lastIndex === -1;
     lastIndex = index;
-    if (!first) {
-      queueMicrotask(() => prompt?.focus());
-      announce(t('practice.progress', { n: index + 1, total: questions.length }), 'polite');
-    }
+    queueMicrotask(() => prompt?.focus());
+    if (!first) announce(t('practice.progress', { n: index + 1, total: questions.length }), 'polite');
   });
 
   function start(e: SubmitEvent) {
@@ -71,6 +68,12 @@
     index = 0;
     lastIndex = -1;
     phase = 'run';
+  }
+
+  // Back to the setup: the page's heading takes focus (the End button, or the question, is gone).
+  function end() {
+    phase = 'setup';
+    queueMicrotask(() => document.querySelector<HTMLElement>('#main h1')?.focus());
   }
 
   function reveal() {
@@ -93,7 +96,7 @@
       if (e.key === ' ' || e.key === 'Enter') { if (el?.closest('button, a')) return; e.preventDefault(); reveal(); }
       else if (e.key === 'ArrowRight') { e.preventDefault(); go(1); }
       else if (e.key === 'ArrowLeft') { e.preventDefault(); go(-1); }
-      else if (e.key === 'Escape') { e.preventDefault(); phase = 'setup'; }
+      else if (e.key === 'Escape') { e.preventDefault(); end(); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -173,7 +176,7 @@
       <button type="button" class="btn lg" onclick={() => go(-1)} disabled={index === 0}>← {t('classQuiz.prev')}</button>
       <button type="button" class="btn primary lg" onclick={reveal} disabled={revealed}>{t('classQuiz.reveal')}</button>
       <button type="button" class="btn lg" onclick={() => go(1)} disabled={index === questions.length - 1}>{t('classQuiz.next')} →</button>
-      <button type="button" class="btn quiet lg end" onclick={() => (phase = 'setup')}>{t('classQuiz.end')}</button>
+      <button type="button" class="btn quiet lg end" onclick={end}>{t('classQuiz.end')}</button>
     </div>
     <p class="keys">{t('classQuiz.keys')}</p>
   </section>
@@ -213,7 +216,9 @@
   .progress { margin: 0; font-size: clamp(1rem, 0.6rem + 0.8vw, 2.2rem); }
   .prompt { font-size: clamp(1.6rem, 0.9rem + 2.6vw, 7rem); line-height: 1.12; margin: 0; font-weight: var(--weight-heavy); max-width: 40ch; }
   .prompt:focus { outline: none; }
-  .prompt:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; border-radius: 4px; }
+  /* The prompt takes focus on every question (for screen readers); on a projector a ring round the question would read as a frame, so a keyboard user sees a quiet bar at its side instead (as every heading the page focuses itself). */
+  .prompt:focus-visible { outline: none; box-shadow: -0.35rem 0 0 var(--focus); }
+  @media (forced-colors: active) { .prompt:focus-visible { outline: 2px solid Highlight; } }
   .timeup { align-self: flex-start; display: inline-flex; align-items: center; color: var(--bad); background: var(--bad-soft); border-radius: var(--radius-pill); padding: 0.2em 0.8em; font-weight: var(--weight-heavy); font-size: clamp(1.1rem, 0.6rem + 1.2vw, 3rem); margin: 0; animation: pop 300ms var(--ease) both; }
   @keyframes pop { from { transform: scale(0.9); opacity: 0; } to { transform: none; opacity: 1; } }
   .body { display: grid; gap: clamp(1rem, 0.5rem + 1vw, 3rem); grid-template-columns: minmax(0, 1fr); }

@@ -50,7 +50,8 @@
 
 <style>
   .head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-6); margin: var(--space-1) 0 var(--space-4); }
-  h1 { display: flex; gap: var(--space-3); align-items: center; font-size: var(--step-3); font-weight: var(--weight-heavy); margin: 0; min-width: 0; }
+  /* A long word ("współrzędnych") breaks rather than widening a 320 px page with larger text. */
+  h1 { display: flex; gap: var(--space-3); align-items: center; font-size: var(--step-3); font-weight: var(--weight-heavy); margin: 0; min-width: 0; overflow-wrap: anywhere; hyphens: auto; }
   h1 .badge { width: 2.75rem; height: 2.75rem; font-size: var(--step-1); letter-spacing: 0; }
   .tabs { display: inline-flex; gap: 2px; padding: 3px; background: var(--surface-2); border: 1px solid var(--border); border-radius: calc(var(--radius-sm) + 3px); }
   .tabs a { display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--tap); padding: 0 var(--space-5); color: var(--text); text-decoration: none; font-weight: var(--weight-strong); border-radius: var(--radius-sm); border: 1px solid transparent; transition: background-color var(--dur) var(--ease); }
@@ -58,6 +59,7 @@
   .tabs svg { width: 1.25rem; height: 1.25rem; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; opacity: 0.8; }
   .tabs a[aria-current='page'] { background: var(--surface); border-color: var(--border-strong); box-shadow: var(--shadow-1), inset 0 -3px 0 var(--accent); }
   .tabs a[aria-current='page'] svg { stroke: var(--accent); opacity: 1; }
+  @media (forced-colors: active) { .tabs a[aria-current='page'] { background: Highlight; color: HighlightText; forced-color-adjust: none; } .tabs a[aria-current='page'] svg { stroke: HighlightText; } }
   @media (max-width: 599px) {
     .head { gap: var(--space-3); margin-bottom: var(--space-3); }
     .tabs { display: flex; width: 100%; }

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { formatDecimal, formatDMS, formatLat, formatLatLon, formatLon } from '../geo/format';
   import { i18n, t } from '../i18n/i18n.svelte';
-  import { spokenLat, spokenLon } from '../i18n/spoken';
+  import { spokenAxis } from '../i18n/spoken';
   import { mapState } from './mapState.svelte';
   import Slider from './Slider.svelte';
 
@@ -28,11 +28,11 @@
       <div class="sliders">
         <Slider label={t('controls.latitude')} min={-90} max={90} value={p.lat}
           step={mapState.stepSize(false)} bigStep={mapState.stepSize(true)}
-          display={formatLat(p.lat, i18n.lang, prec)} valueText={spokenLat(p.lat, i18n.lang, prec)}
+          display={formatLat(p.lat, i18n.lang, prec)} valueText={spokenAxis(p.lat, 'lat', i18n.lang, prec, mapState.readout)}
           onchange={(v) => mapState.userSetPoint({ lat: v, lon: p.lon }, 'slider')} />
         <Slider label={t('controls.longitude')} min={-180} max={180} value={p.lon} wrap
           step={mapState.stepSize(false)} bigStep={mapState.stepSize(true)}
-          display={formatLon(p.lon, i18n.lang, prec)} valueText={spokenLon(p.lon, i18n.lang, prec)}
+          display={formatLon(p.lon, i18n.lang, prec)} valueText={spokenAxis(p.lon, 'lon', i18n.lang, prec, mapState.readout)}
           onchange={(v) => mapState.userSetPoint({ lat: p.lat, lon: v }, 'slider')} />
       </div>
     {/if}

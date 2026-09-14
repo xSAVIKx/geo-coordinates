@@ -97,7 +97,11 @@
     currentBest = recordScore(scoreId(topic.id, difficulty), score);
   }
 
-  function newRound(d: Difficulty = difficulty) {
+  // Set for a moment when a round starts from the summary's buttons (which then disappear), so the new
+  // question's heading takes focus instead of it falling back to the page.
+  let focusQuestion = $state(false);
+  function newRound(d: Difficulty = difficulty, fromSummary = false) {
+    if (fromSummary) { focusQuestion = true; setTimeout(() => (focusQuestion = false), 0); }
     difficulty = d;
     writeString('geo-coords:difficulty', d);
     seed = randomSeed();
@@ -129,7 +133,7 @@
 {#snippet questionCard()}
   <QuestionCard {question} number={index + 1} total={ROUND} {result} onsubmit={submit} onnext={next}
     nextLabel={index < ROUND - 1 ? t('practice.next') : t('practice.results')} {roundKey}
-    hint hinted={hints[index] === true} onhint={() => (hints[index] = true)}
+    hint hinted={hints[index] === true} onhint={() => (hints[index] = true)} focusOnMount={focusQuestion}
     bind:value={draft.value} bind:coordsDraft={draft.coordsText} bind:numberDraft={draft.numberText} bind:clockDraft={draft.clockText} />
 {/snippet}
 
@@ -181,9 +185,9 @@
         {/each}
       </ol>
       <div class="actions">
-        <button type="button" class="btn primary" onclick={() => newRound()}>{t('practice.newRound')}</button>
+        <button type="button" class="btn primary" onclick={() => newRound(difficulty, true)}>{t('practice.newRound')}</button>
         {#if difficulty !== 'hard'}
-          <button type="button" class="btn" onclick={() => newRound(difficulty === 'easy' ? 'medium' : 'hard')}>{t('practice.harder')}</button>
+          <button type="button" class="btn" onclick={() => newRound(difficulty === 'easy' ? 'medium' : 'hard', true)}>{t('practice.harder')}</button>
         {/if}
         <a class="btn quiet" href={formatRoute({ name: 'explore', lang: i18n.lang, topic: topic.id, step: 0 })}>{t('practice.backToLearn')}</a>
       </div>
@@ -218,7 +222,9 @@
   .summary-head { display: flex; align-items: center; gap: var(--space-5); }
   .summary h2 { margin: 0; font-size: var(--step-3); }
   .summary h2:focus { outline: none; }
-  .summary h2:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; border-radius: 4px; }
+  /* Focused by the page itself (a new step, question or result) for screen readers: a quiet bar at the side, not a frame round the heading. */
+  .summary h2:focus-visible { outline: none; box-shadow: -0.35rem 0 0 var(--focus); }
+  @media (forced-colors: active) { .summary h2:focus-visible { outline: 2px solid Highlight; } }
   .meter { flex: none; width: clamp(5rem, 10vw, 7rem); height: auto; }
   .meter-track { fill: none; stroke: var(--surface-2); stroke-width: 7; }
   .meter-fill { fill: none; stroke: var(--ok); stroke-width: 7; stroke-linecap: round; transform: rotate(-90deg); transform-origin: center; transition: stroke-dasharray 600ms var(--ease); }
@@ -226,7 +232,7 @@
   .score { font-size: var(--step-2); font-weight: var(--weight-heavy); margin: var(--space-1) 0 0; }
   .best-line { margin: var(--space-1) 0 0; color: var(--text-muted); }
   .summary h3 { font-size: var(--step-1); margin: var(--space-6) 0 var(--space-2); }
-  .review { display: grid; gap: var(--space-1); padding: 0; margin: 0; list-style: none; }
+  .review { display: grid; gap: var(--space-1); padding: 0; margin: 0; list-style: none; grid-template-columns: minmax(0, 1fr); overflow-wrap: anywhere; }
   .review li { display: flex; gap: var(--space-3); align-items: flex-start; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--bad-soft); }
   .review li.ok { background: transparent; box-shadow: inset 0 -1px 0 var(--border); border-radius: 0; }
   .mark { flex: none; display: grid; place-items: center; width: 1.6rem; height: 1.6rem; margin-top: 0.05rem; border-radius: 50%; background: var(--bad); color: var(--surface); }
@@ -234,4 +240,9 @@
   .mark svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
   .hint-tag { display: inline-block; margin-left: var(--space-1); padding: 0 var(--space-2); border-radius: var(--radius-pill); background: var(--warm-soft); color: var(--warm-text); font-size: var(--step--1); font-weight: var(--weight-strong); white-space: nowrap; }
   .actions { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; margin-top: var(--space-6); }
+  /* A very narrow phone (or larger text on one): the level names alone, wrapping to a second row rather than overlapping. */
+  @media (max-width: 399px) { .levels .pips { display: none; } .levels { flex-wrap: wrap; } .levels label { flex: 1 1 auto; padding: 0 var(--space-2); } }
+  /* The score ring and the heading share a row while the heading fits beside it; a long word moves the text under the ring. */
+  .summary-head { flex-wrap: wrap; }
+  .summary-head > div { flex: 1 1 11rem; min-width: 0; }
 </style>

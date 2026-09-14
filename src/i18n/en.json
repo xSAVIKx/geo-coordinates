@@ -6,6 +6,8 @@
   "unit.degree#other": "{count} degrees",
   "unit.minute#one": "{count} minute",
   "unit.minute#other": "{count} minutes",
+  "unit.second#one": "{count} second",
+  "unit.second#other": "{count} seconds",
   "dir.north": "north",
   "dir.south": "south",
   "dir.east": "east",

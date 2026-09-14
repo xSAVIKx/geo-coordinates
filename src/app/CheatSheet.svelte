@@ -141,7 +141,8 @@
   .num { display: inline-grid; place-items: center; flex: none; width: 1.45em; height: 1.45em; border-radius: 50%; background: var(--ink); color: #ffffff; font-size: 0.85em; }
   .body { display: flow-root; }
   ul { margin: 0; padding-left: 1.1em; font-size: 0.92rem; line-height: 1.38; }
-  li { margin: 0 0 0.15em; }
+  /* Formulas keep their parts together with no-break spaces; on a very narrow screen with larger text one may still break rather than widen the page. */
+  li { margin: 0 0 0.15em; overflow-wrap: anywhere; }
   li::marker { color: var(--muted); }
   .fig { display: block; }
   .fig text { font-family: var(--font); }

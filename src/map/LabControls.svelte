@@ -243,8 +243,10 @@
     .digits { font-size: var(--step-1); }
   }
   @container (max-width: 21rem) {
-    thead th { letter-spacing: 0; text-transform: none; }
-    .state { white-space: normal; }
+    .clocks { font-size: var(--step--1); }
+    thead th { letter-spacing: 0; text-transform: none; overflow-wrap: anywhere; }
+    th, td { padding-inline: 2px; }
+    .state { white-space: normal; font-size: var(--step--1); }
     .light-icon { display: block; margin: 0 0 2px; width: 1.3rem; height: 1.3rem; }
     .digits { font-size: var(--step-0); }
     .lon { display: block; }

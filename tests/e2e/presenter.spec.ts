@@ -183,3 +183,63 @@ test('presenter mode on a phone and a tablet keeps the page within the screen, w
     await expect(page.locator('html')).toHaveAttribute('data-presenter', 'false');
   }
 });
+
+/**
+ * A stand-in Fullscreen API the test controls: whether a request is refused, how long requests take, and whether the
+ * user leaves fullscreen (Esc, the browser's own UI) the moment it is granted — before our request has settled.
+ */
+async function fakeFullscreen(page: Page, opts: { refuse?: boolean; delay?: number; exitRightAfterGrant?: boolean }) {
+  await page.addInitScript((o) => {
+    let el: Element | null = null;
+    const change = () => document.dispatchEvent(new Event('fullscreenchange'));
+    Object.defineProperty(Document.prototype, 'fullscreenElement', { configurable: true, get: () => el });
+    Object.defineProperty(Document.prototype, 'fullscreenEnabled', { configurable: true, get: () => true });
+    Element.prototype.requestFullscreen = function (this: Element) {
+      if (o.refuse) return Promise.reject(new TypeError('Permissions check failed'));
+      return new Promise<void>((resolve) => setTimeout(() => {
+        el = this; change(); resolve();
+        if (o.exitRightAfterGrant) { el = null; change(); }
+      }, o.delay ?? 0));
+    };
+    Document.prototype.exitFullscreen = () => new Promise<void>((resolve) => setTimeout(() => { el = null; change(); resolve(); }, o.delay ?? 0));
+  }, opts);
+}
+
+test('a refused fullscreen request keeps presenter mode on (without fullscreen) until Esc', async ({ page }) => {
+  await fakeFullscreen(page, { refuse: true });
+  await openPage(page, 'en/topic-1/explore');
+  await press(page, 'p');
+  await expect(page.locator('html')).toHaveAttribute('data-presenter', 'true');
+  await page.waitForTimeout(300);
+  await expect(page.locator('html')).toHaveAttribute('data-presenter', 'true');
+  expect(await page.evaluate(() => document.fullscreenElement)).toBeNull();
+  await press(page, 'Escape');
+  await expect(page.locator('html')).toHaveAttribute('data-presenter', 'false');
+  expect(pageErrors(page)).toEqual([]);
+});
+
+test('leaving fullscreen while our request is still settling ends presenter mode', async ({ page }) => {
+  await fakeFullscreen(page, { delay: 120, exitRightAfterGrant: true });
+  await openPage(page, 'en/topic-1/explore');
+  await press(page, 'p');
+  await expect(page.locator('html')).toHaveAttribute('data-presenter', 'true');
+  // Granted, then left at once (before the request settled): presenter mode follows fullscreen out.
+  await expect(page.locator('html')).toHaveAttribute('data-presenter', 'false');
+  await expect(page.getByRole('button', { name: 'Presenter mode' })).toHaveAttribute('aria-pressed', 'false');
+  expect(pageErrors(page)).toEqual([]);
+});
+
+test('P pressed off and on quickly ends in presenter mode and fullscreen, in step', async ({ page }) => {
+  await fakeFullscreen(page, { delay: 80 });
+  await openPage(page, 'en/topic-1/explore');
+  await press(page, 'p');
+  await expect.poll(() => page.evaluate(() => !!document.fullscreenElement)).toBe(true);
+  await press(page, 'p');
+  await press(page, 'p');
+  await page.waitForTimeout(500);
+  await expect(page.locator('html')).toHaveAttribute('data-presenter', 'true');
+  expect(await page.evaluate(() => !!document.fullscreenElement)).toBe(true);
+  // The browser's own way out (no key reaches the page) still ends presenter mode.
+  await page.evaluate(() => document.exitFullscreen());
+  await expect(page.locator('html')).toHaveAttribute('data-presenter', 'false');
+});

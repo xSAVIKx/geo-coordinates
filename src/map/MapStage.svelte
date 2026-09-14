@@ -2,7 +2,7 @@
   import type { Snippet } from 'svelte';
   import { announceThrottled } from '../app/announcer.svelte';
   import { i18n, t } from '../i18n/i18n.svelte';
-  import { spokenLat, spokenLon } from '../i18n/spoken';
+  import { spokenAxis } from '../i18n/spoken';
   import CoordinateControls from './CoordinateControls.svelte';
   import CrossSection from './CrossSection.svelte';
   import FlatMap from './FlatMap.svelte';
@@ -26,7 +26,9 @@
   $effect(() => {
     const p = mapState.point;
     if (!p || mapState.lastChange !== 'map' || !mapState.showReadout) return;
-    const spoken = `${spokenLat(p.lat, i18n.lang, mapState.precision)}, ${spokenLon(p.lon, i18n.lang, mapState.precision)}`;
+    // Said the way the readout shows the point: letters, or decimal degrees with their degrees and minutes (seconds).
+    const sep = mapState.readout === 'letters' ? ', ' : '; ';
+    const spoken = `${spokenAxis(p.lat, 'lat', i18n.lang, mapState.precision, mapState.readout)}${sep}${spokenAxis(p.lon, 'lon', i18n.lang, mapState.precision, mapState.readout)}`;
     if (spoken === lastAnnounced) return;
     lastAnnounced = spoken;
     announceThrottled('point', spoken, 700);

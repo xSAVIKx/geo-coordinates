@@ -1,4 +1,4 @@
-import { DIALOG_SELECTOR, presenterAction, TYPING_SELECTOR } from './presenterKeys';
+import { DIALOG_SELECTOR, leavesPresenter, presenterAction, TYPING_SELECTOR } from './presenterKeys';
 
 /**
  * Presenter mode (spec §3.4): fullscreen when the browser allows it, viewport-based type, AAA contrast
@@ -36,7 +36,7 @@ function measure(): void {
 
 function setOn(on: boolean): void {
   presenter.on = on;
-  if (!on) presenter.laser = false;
+  if (!on) { presenter.laser = false; granted = false; }
   apply();
 }
 
@@ -45,21 +45,31 @@ function setOn(on: boolean): void {
 // leaving fullscreen (P pressed twice quickly must not end with presenter mode switched off).
 let pending = 0;
 let queue: Promise<void> = Promise.resolve();
+/** Whether fullscreen was granted since presenter mode last came on (a refused request leaves this false). */
+let granted = false;
 
 async function syncFullscreen(): Promise<void> {
   try {
-    if (presenter.on && !document.fullscreenElement && document.fullscreenEnabled) await document.documentElement.requestFullscreen();
-    else if (!presenter.on && document.fullscreenElement) await document.exitFullscreen();
+    if (presenter.on && !document.fullscreenElement && document.fullscreenEnabled) {
+      await document.documentElement.requestFullscreen();
+      if (presenter.on) granted = true;
+    } else if (!presenter.on && document.fullscreenElement) await document.exitFullscreen();
   } catch {
-    // Fullscreen refused (a headless browser, an iframe without permission, no user gesture): the
-    // presenter look still applies.
+    // Fullscreen refused (an iframe without permission, no user gesture, a browser without it): the
+    // presenter look still applies, and presenter mode does not end for want of fullscreen.
   }
+}
+
+/** Ends presenter mode when fullscreen has gone by some route other than our own requests (see `leavesPresenter`). */
+function reconcile(): void {
+  if (leavesPresenter({ on: presenter.on, granted, fullscreen: !!document.fullscreenElement, pending })) setOn(false);
 }
 
 export function togglePresenter(): Promise<void> {
   setOn(!presenter.on);
   pending++;
-  queue = queue.then(syncFullscreen).finally(() => { pending--; });
+  // Each request is checked again once it has settled: a `fullscreenchange` that arrived meanwhile was not acted on.
+  queue = queue.then(syncFullscreen).finally(() => { pending--; reconcile(); });
   return queue;
 }
 
@@ -85,7 +95,7 @@ export function installPresenter(): () => void {
     else toggleLaser();
   };
   // Leaving fullscreen by any route (Esc, the browser's own UI) leaves presenter mode.
-  const onFullscreen = () => { if (pending === 0 && !document.fullscreenElement && presenter.on) setOn(false); };
+  const onFullscreen = () => reconcile();
   const observer = new MutationObserver(measure);
   observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-large-text', 'data-presenter'] });
   window.addEventListener('keydown', onKey, true);

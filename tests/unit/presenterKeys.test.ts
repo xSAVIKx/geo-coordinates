@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { presenterAction, type KeyLike } from '../../src/app/presenterKeys';
+import { leavesPresenter, presenterAction, type KeyLike } from '../../src/app/presenterKeys';
 
 const idle = { presenting: false, inTyping: false, inDialog: false };
 const on = { presenting: true, inTyping: false, inDialog: false };
@@ -37,13 +37,27 @@ describe('presenterAction', () => {
 
   test.each<KeyLike>([
     { key: 'p', ctrlKey: true }, { key: 'p', altKey: true }, { key: 'p', metaKey: true },
-    { key: 'p', repeat: true }, { key: 'p', isComposing: true }, { key: 'p', defaultPrevented: true },
-    { key: 'Escape', defaultPrevented: true },
-  ])('modified, repeated or already handled keys do nothing: %o', (e) => {
+    { key: 'p', repeat: true }, { key: 'p', isComposing: true },
+  ])('modified or repeated keys do nothing: %o', (e) => {
     expect(presenterAction(e, on)).toBeNull();
   });
 
   test('other keys (arrows, Space) are left to Explore and the class quiz', () => {
     for (const key of ['ArrowLeft', 'ArrowRight', ' ', 'Enter', 'q']) expect(presenterAction({ key }, on)).toBeNull();
+  });
+});
+
+describe('leavesPresenter', () => {
+  const base = { on: true, granted: true, fullscreen: false, pending: 0 };
+  test('fullscreen left by the browser (Esc, its own UI) ends presenter mode once no request of ours is settling', () => {
+    expect(leavesPresenter(base)).toBe(true);
+    expect(leavesPresenter({ ...base, pending: 1 })).toBe(false); // checked again when that request settles
+  });
+  test('a refused fullscreen request keeps presenter mode on without fullscreen', () => {
+    expect(leavesPresenter({ ...base, granted: false })).toBe(false);
+  });
+  test('nothing to do while still in fullscreen or already off', () => {
+    expect(leavesPresenter({ ...base, fullscreen: true })).toBe(false);
+    expect(leavesPresenter({ ...base, on: false })).toBe(false);
   });
 });

@@ -94,7 +94,9 @@
   .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-2); padding: var(--space-5) var(--space-6) var(--space-4); }
   h2 { margin: var(--space-1) 0 var(--space-3); font-size: var(--step-3); font-weight: var(--weight-heavy); }
   h2:focus { outline: none; }
-  h2:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; border-radius: 4px; }
+  /* Focused by the page itself (a new step, question or result) for screen readers: a quiet bar at the side, not a frame round the heading. */
+  h2:focus-visible { outline: none; box-shadow: -0.35rem 0 0 var(--focus); }
+  @media (forced-colors: active) { h2:focus-visible { outline: 2px solid Highlight; } }
   .body { margin: 0 0 var(--space-5); font-size: var(--step-1); line-height: 1.55; max-width: var(--measure); animation: rise 260ms var(--ease) both; }
   @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
   .illustration { display: block; width: min(100%, 15rem); height: auto; margin: 0 0 var(--space-5); }
@@ -111,6 +113,7 @@
   .dots button:hover { border-color: var(--border-strong); color: var(--text); }
   .dots button.done { background: var(--accent-soft); color: var(--text); border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); }
   .dots button[aria-current='step'] { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  @media (forced-colors: active) { .dots button[aria-current='step'] { background: Highlight; color: HighlightText; forced-color-adjust: none; } }
   .hint { color: var(--text-muted); font-size: var(--step--1); margin: var(--space-3) 0 0; }
   @media (hover: none) { .hint { display: none; } }
   @media (max-width: 599px) { .panel { padding: var(--space-4); } }

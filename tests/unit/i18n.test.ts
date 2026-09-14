@@ -4,7 +4,7 @@ import pl from '../../src/i18n/pl.json';
 import uk from '../../src/i18n/uk.json';
 import { detectLang, i18n, messages, t, tn } from '../../src/i18n/i18n.svelte';
 import { renderText } from '../../src/i18n/text';
-import { spokenLat, spokenLon } from '../../src/i18n/spoken';
+import { spokenAxis, spokenDMS, spokenLat, spokenLon } from '../../src/i18n/spoken';
 import { findSuspicious } from '../../scripts/translation-review-lib';
 
 const files = { en, pl, uk } as Record<string, Record<string, string>>;
@@ -72,6 +72,16 @@ describe('runtime', () => {
     expect(spokenLat(0, 'en')).toBe('0 degrees');
     expect(spokenLon(-1, 'pl')).toBe('1 stopień na zachód');
     expect(spokenLat(52 + 14 / 60, 'uk', 'minute')).toBe('52 градуси 14 хвилин північної широти');
+  });
+  test('spokenAxis says what the readout shows: letters, or decimals with minutes, or decimals with seconds', () => {
+    expect(spokenAxis(52, 'lat', 'en', 'degree', 'letters')).toBe('52 degrees north');
+    expect(spokenAxis(50.2649, 'lat', 'en', 'minute', 'decimal')).toBe('50.2649, 50 degrees 16 minutes north');
+    expect(spokenAxis(-33.8688, 'lat', 'en', 'degree', 'decimal')).toBe('-33.8688, 33 degrees 52 minutes south');
+    expect(spokenAxis(19.0238, 'lon', 'pl', 'minute', 'both')).toBe('19.0238, 19 stopni 1 minuta 26 sekund na wschód');
+    expect(spokenAxis(-180, 'lon', 'en', 'minute', 'decimal')).toBe('180.0000, 180 degrees');
+    expect(spokenAxis(0.00001, 'lat', 'en', 'minute', 'both')).toBe('0.0000, 0 degrees');
+    expect(spokenDMS(50.265, 'lat', 'uk')).toBe('50 градусів 15 хвилин 54 секунди північної широти');
+    expect(spokenDMS(50.25, 'lat', 'en')).toBe('50 degrees 15 minutes north');
   });
   test('spokenLon reads the spoken.lon message, not spoken.lat', () => {
     const original = messages.en['spoken.lon']!;
