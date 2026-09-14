@@ -18,11 +18,24 @@ test('lab: the Maple Bear schools layer starts off; the switch shows count badge
 
   await toggle.click();
   await expect(page.locator('.schools-toggle[aria-pressed="true"]')).toHaveCount(2);
-  const badges = flat.locator('.school-cluster');
-  await expect(badges.first()).toBeVisible();
-  const counts = (await flat.locator('.school-cluster text.count').allTextContents()).map(Number);
-  const singles = await flat.locator('rect.school').count();
-  expect(counts.reduce((a, b) => a + b, 0) + singles).toBe(487);
+  await expect(flat.locator('.school-cluster').first()).toBeVisible();
+  for (const projection of ['Grid map', 'Equal Earth', 'Map app (Mercator)']) {
+    await flat.getByRole('button', { name: projection, exact: true }).click();
+    await expect(flat.getByRole('button', { name: projection, exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect.poll(async () => {
+      const counts = (await flat.locator('.school-cluster text.count').allTextContents()).map(Number);
+      return counts.reduce((a, b) => a + b, 0) + (await flat.locator('rect.school').count());
+    }, { message: projection }).toBe(487);
+  }
+  // Count badges are drawn above city dots and continent names.
+  const order = await flat.locator('svg[role="group"]').evaluate((svg) => {
+    const all = [...svg.querySelectorAll('circle.place, text.map-label, .school-cluster, rect.school:not(.school-chosen)')];
+    const last = (sel: string) => Math.max(...all.map((e, i) => (e.matches(sel) ? i : -1)));
+    const first = (sel: string) => all.findIndex((e) => e.matches(sel));
+    return { placesEnd: last('circle.place, text.map-label'), badgesStart: first('.school-cluster'), squaresEnd: last('rect.school'), placesStart: first('circle.place') };
+  });
+  expect(order.badgesStart).toBeGreaterThan(order.placesEnd);
+  if (order.squaresEnd >= 0) expect(order.squaresEnd).toBeLessThan(order.placesStart);
   await expect(page.locator('.view-globe .school-cluster').first()).toBeVisible();
   await expect(page.locator('details.schools > summary')).toContainText('487 schools');
   await expectNoAxeViolations(page, 'schools layer on');
@@ -33,7 +46,7 @@ test('lab: choosing Maple Bear Katowice in the Schools list centres the map on i
   await openPage(page, 'en/lab', '?test');
   await page.locator('.view-flat').getByRole('button', { name: 'Maple Bear schools' }).click();
   await page.locator('details.schools > summary').click();
-  await expect(page.locator('details.schools')).toContainText('not connected with Maple Bear');
+  await expect(page.locator('details.schools')).toContainText('This page is not affiliated with Maple Bear.');
   await page.locator('details.country > summary', { hasText: 'Poland' }).click();
   await page.getByRole('button', { name: 'Move the point to Maple Bear Katowice' }).click();
   const s = await state(page);
@@ -43,10 +56,10 @@ test('lab: choosing Maple Bear Katowice in the Schools list centres the map on i
   expect(Math.abs(s.point!.lat - 50.2604)).toBeLessThan(1 / 60);
   expect(Math.abs(s.point!.lon - 19.0185)).toBeLessThan(1 / 60);
   const flat = page.locator('.view-flat');
-  await expect(flat.locator('rect.school[data-school="pl-katowice"]')).toHaveCount(1);
+  await expect(flat.locator('rect.school-chosen[data-school="pl-katowice"]')).toHaveCount(1);
   await expect(flat.locator('text.school-name', { hasText: 'Maple Bear Katowice' })).toBeVisible();
+  await expect(page.locator('#live-polite, [aria-live="polite"]').first()).toContainText('Showing Maple Bear Katowice on the map');
   await expect(page.locator('.view-globe text.school-name', { hasText: 'Maple Bear Katowice' })).toBeVisible();
-  await page.evaluate(() => window.scrollTo(0, 0)); // see the list test below: nothing under the sticky header
   await expectNoAxeViolations(page, 'schools list open');
   expect(pageErrors(page)).toEqual([]);
 });
@@ -122,7 +135,9 @@ for (const [lang, n] of [['pl', { toggle: 'Szkoły Maple Bear', country: 'Polska
     await expect(poland).toContainText(n.three);
     await poland.click();
     await expect(page.locator('details.country[open] button')).toHaveCount(3);
-    // Opening the list scrolls the page; axe counts a toolbar button under the sticky header as too small.
+    // Opening the list scrolls the page, which can leave the globe's "Show the point" button partly under
+    // the sticky header; axe's target-size rule then flags it. That happens on the lab page with the
+    // schools layer off too (task-23b report, fix round 1), so the check runs with nothing under the header.
     await page.evaluate(() => window.scrollTo(0, 0));
     await expectNoAxeViolations(page, `schools list ${lang}`);
     expect(pageErrors(page)).toEqual([]);
@@ -131,5 +146,101 @@ for (const [lang, n] of [['pl', { toggle: 'Szkoły Maple Bear', country: 'Polska
 
 test('footer: school locations note in English', async ({ page }) => {
   await openPage(page, 'en/');
-  await expect(page.locator('footer')).toContainText('School locations: Maple Bear websites (retrieved September 13, 2026), approximate');
+  await expect(page.locator('footer')).toContainText('School locations: Maple Bear websites (retrieved September 13, 2026), approximate. This page is not affiliated with Maple Bear.');
+});
+
+test('every one of the 487 schools, once chosen, shows on the flat map as its own named square', async ({ page }) => {
+  test.setTimeout(120_000);
+  await openPage(page, 'en/lab', '?test');
+  const failures = await page.evaluate(async () => {
+    const s = (window as unknown as { __mapState: { chooseSchool(id: string): { id: string; name: string } | null } }).__mapState;
+    const out: string[] = [];
+    const frame = () => new Promise((r) => requestAnimationFrame(() => r(null)));
+    const flat = document.querySelector('.view-flat svg[role="group"]')!;
+    const all = (window as unknown as { __schoolIds: string[] }).__schoolIds;
+    for (const id of all) {
+      const school = s.chooseSchool(id)!;
+      await frame();
+      const square = flat.querySelector(`rect.school-chosen[data-school="${id}"]`);
+      const name = flat.querySelector(`text.school-name.chosen[data-school="${id}"]`);
+      if (!square) out.push(`${id}: no square`);
+      else if (!name || name.textContent !== school.name) out.push(`${id}: no name`);
+      else {
+        const r = square.getBoundingClientRect(), m = flat.getBoundingClientRect();
+        if (r.left < m.left || r.right > m.right || r.top < m.top || r.bottom > m.bottom) out.push(`${id}: out of view`);
+        if (flat.querySelectorAll(`[data-school="${id}"]`).length !== 2) out.push(`${id}: drawn twice`);
+      }
+    }
+    return { count: all.length, out };
+  });
+  expect(failures.out).toEqual([]);
+  expect(failures.count).toBe(487);
+  expect(pageErrors(page)).toEqual([]);
+});
+
+for (const [country, name] of [['Singapore', 'MapleBear Adam'], ['India', 'Maple Bear Canadian Pre-school, Jakkur, Bengaluru'], ['Brazil', 'Maple Bear São Paulo - Alphaville']] as const) {
+  test(`list: ${name} (${country}) shows alone and named on the flat map and the globe`, async ({ page }) => {
+    await openPage(page, 'en/lab', '?test');
+    await page.locator('.view-flat').getByRole('button', { name: 'Maple Bear schools' }).click();
+    await page.locator('details.schools > summary').click();
+    await page.locator('details.country > summary', { hasText: new RegExp(`^${country}`) }).click();
+    const button = page.locator('details.country[open] button', { hasText: name }).first();
+    const label = (await button.textContent())!.trim();
+    await button.click();
+    for (const view of ['.view-flat', '.view-globe']) {
+      await expect(page.locator(`${view} rect.school-chosen`)).toHaveCount(1);
+      await expect(page.locator(`${view} text.school-name.chosen`)).toHaveText(label);
+    }
+    expect(pageErrors(page)).toEqual([]);
+  });
+}
+
+test('a badge that zooming cannot pull apart lists its schools; Escape and a press outside close the list', async ({ page }) => {
+  await openPage(page, 'en/lab', '?test');
+  await page.locator('.view-flat').getByRole('button', { name: 'Maple Bear schools' }).click();
+  // Bengaluru's city-level entries share one spot, and the map is as close as it goes.
+  await page.evaluate(() => (window as unknown as { __mapState: { setFlatView(c: unknown, z: number): void } }).__mapState.setFlatView({ lat: 12.9716, lon: 77.5946 }, 80));
+  const flat = page.locator('.view-flat');
+  const badges = flat.locator('.school-cluster');
+  const counts = (await badges.locator('text.count').allTextContents()).map(Number);
+  const badge = badges.nth(counts.indexOf(Math.max(...counts))).locator('rect.school-badge');
+  const zoomBefore = (await state(page)).flat.zoom;
+  const open = async () => {
+    const b = (await badge.boundingBox())!;
+    await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
+  };
+  await open();
+  const dialog = flat.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText(`${Math.max(...counts)} schools`);
+  await expect(dialog.locator('button.pick').first()).toBeFocused();
+  expect((await state(page)).flat.zoom).toBe(zoomBefore);
+  await expectNoAxeViolations(page, 'badge list open');
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(flat.locator('svg[role="group"]')).toBeFocused();
+  await open();
+  await expect(dialog).toBeVisible();
+  await page.locator('h1').click();
+  await expect(dialog).toHaveCount(0);
+  await open();
+  const pick = dialog.locator('button.pick').nth(1);
+  const name = (await pick.textContent())!.trim();
+  await pick.click();
+  await expect(dialog).toHaveCount(0);
+  await expect(flat.locator('text.school-name.chosen')).toHaveText(name);
+  await expect(badges.locator('text.count', { hasText: new RegExp(`^${Math.max(...counts) - 1}$`) })).toHaveCount(1);
+  expect(pageErrors(page)).toEqual([]);
+});
+
+test('no schools switch on a practice question or in the class quiz', async ({ page }) => {
+  await openPage(page, 'en/topic-3/practice', '?test');
+  await expect(page.locator('svg[role="group"]').first()).toBeVisible();
+  await expect(page.locator('.schools-toggle')).toHaveCount(0);
+  await openPage(page, 'en/class-quiz?seed=5b');
+  await page.getByRole('button', { name: 'Start the quiz' }).click();
+  await expect(page.locator('#cq-prompt')).toBeVisible();
+  await expect(page.locator('svg[role="group"]').first()).toBeVisible();
+  await expect(page.locator('.schools-toggle')).toHaveCount(0);
+  expect(pageErrors(page)).toEqual([]);
 });

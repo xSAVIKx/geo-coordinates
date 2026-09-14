@@ -5,7 +5,8 @@
   import { makeGlobeCtx } from './geometry';
   import Layers from './layers/Layers.svelte';
   import { GLOBE_MAX_ZOOM, mapState } from './mapState.svelte';
-  import { clusterTargetByKey } from './schools';
+  import { clusterClick, type School } from './schools';
+  import SchoolPopover from './SchoolPopover.svelte';
   import SchoolsToggle from './SchoolsToggle.svelte';
 
   const SIZE = 500;
@@ -16,7 +17,10 @@
   const px = $derived((SIZE / Math.max(1, clientWidth)) * uiScale);
   const ctx = $derived(makeGlobeCtx(SIZE, mapState.rotate, px, mapState.globeZoom));
   // For choosing a school from the list: how close to zoom in depends on how big the globe is drawn.
-  $effect(() => { mapState.viewPx.globe = px; });
+  $effect(() => {
+    mapState.viewPx.globe = px;
+    return () => { mapState.viewPx.globe = null; };
+  });
 
   // `cluster`: the key of the school count badge the press began on — a click on it zooms in on the group.
   type Drag = { mode: 'point' | 'rotate' | 'maybe-click'; startX: number; startY: number; lastX: number; lastY: number; cluster?: string };
@@ -24,6 +28,23 @@
   let frame = 0;
   let pinch = new Map<number, { x: number; y: number }>();
   let pinchDist = 0;
+
+  // The list of a count badge that zooming in cannot pull apart (see SchoolPopover.svelte), placed
+  // below the press, in the figure's CSS px. It closes when the view moves or the scene changes.
+  let figure: HTMLElement;
+  let popover = $state<{ members: School[]; x: number; y: number } | null>(null);
+  function openPopover(clientX: number, clientY: number, members: School[]) {
+    const r = figure.getBoundingClientRect();
+    popover = { members, x: clientX - r.left, y: clientY - r.top + 14 };
+  }
+  function closePopover(refocus: boolean) {
+    popover = null;
+    if (refocus) svg.focus();
+  }
+  $effect(() => {
+    void [mapState.rotate, mapState.globeZoom, mapState.sceneVersion, mapState.layers.schools];
+    untrack(() => { popover = null; });
+  });
 
   function toView(clientX: number, clientY: number): [number, number] {
     const m = svg.getScreenCTM();
@@ -91,10 +112,12 @@
       drag = { mode: 'rotate', startX: pos.x, startY: pos.y, lastX: pos.x, lastY: pos.y };
       return;
     }
-    const target = drag?.mode === 'maybe-click' && drag.cluster ? clusterTargetByKey(ctx, drag.cluster, GLOBE_MAX_ZOOM) : null;
-    if (target) {
-      mapState.centerGlobeOn(target.center);
-      mapState.setGlobeZoom(target.zoom);
+    const hit = drag?.mode === 'maybe-click' && drag.cluster ? clusterClick(ctx, drag.cluster, GLOBE_MAX_ZOOM, mapState.chosenSchool) : null;
+    if (hit?.kind === 'list') {
+      openPopover(e.clientX, e.clientY, hit.members);
+    } else if (hit) {
+      mapState.centerGlobeOn(hit.center);
+      mapState.setGlobeZoom(hit.zoom);
     } else if (drag?.mode === 'maybe-click' && mapState.pointEditable) {
       const ll = ctx.invert(toView(e.clientX, e.clientY));
       if (ll) mapState.userSetPoint(ll, 'map');
@@ -146,7 +169,7 @@
   });
 </script>
 
-<figure class="globe">
+<figure class="globe" bind:this={figure}>
   <div class="frame" bind:clientWidth>
     <!-- svelte-ignore a11y_no_noninteractive_tabindex -- keyboard-operable globe (spec §7): the SVG is a compound control (rotate/point/zoom), not static content -->
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -- pointer/keyboard handlers drive globe rotation, point editing and zoom per spec §7 -->
@@ -182,10 +205,11 @@
     {/if}
     <SchoolsToggle />
   </div>
+  {#if popover}<SchoolPopover members={popover.members} x={popover.x} y={popover.y} onclose={closePopover} />{/if}
 </figure>
 
 <style>
-  .globe { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+  .globe { position: relative; margin: 0; display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
   .frame { max-width: min(100%, 70vh); margin-inline: auto; width: 100%; }
   svg { display: block; width: 100%; height: auto; touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; overflow: visible; }
   svg:active { cursor: grabbing; }

@@ -1,12 +1,13 @@
 <script lang="ts">
   import { i18n, t, tn } from '../i18n/i18n.svelte';
-  import { FLAT_MAX_ZOOM, GLOBE_MAX_ZOOM, mapState } from './mapState.svelte';
-  import { isolatingFlatZoom, isolatingGlobeZoom, SCHOOLS, type School } from './schools';
+  import { mapState } from './mapState.svelte';
+  import { SCHOOLS, type School } from './schools';
+  import { showSchool } from './showSchool';
 
   // The accessible way to the Maple Bear schools (the map's squares and badges are not focusable):
   // a disclosure like the Places list, with one inner disclosure per country (names from
-  // Intl.DisplayNames in the page's language). A school's button centres both maps on it, zoomed in
-  // far enough for it to stand alone with its name, and moves the point there when it can move.
+  // Intl.DisplayNames in the page's language). A school's button shows it on both maps, alone and
+  // named, and moves the point there when it can move (MapState.chooseSchool).
   const groups = $derived.by(() => {
     const collator = new Intl.Collator(i18n.lang);
     let regions: Intl.DisplayNames | null = null;
@@ -24,13 +25,6 @@
     })).sort((a, b) => collator.compare(a.name, b.name));
   });
 
-  function choose(s: School) {
-    mapState.setFlatView(s, isolatingFlatZoom(s, mapState.flatProjection, mapState.viewPx.flat, FLAT_MAX_ZOOM));
-    mapState.setGlobeZoom(isolatingGlobeZoom(s, mapState.viewPx.globe, GLOBE_MAX_ZOOM));
-    mapState.centerGlobeOn(s);
-    // After the zoom, so a free-play scene's point snaps to minutes at this closer view.
-    mapState.userSetPoint(s, 'slider');
-  }
 </script>
 
 <details class="schools">
@@ -45,7 +39,7 @@
             <ul class="list">
               {#each g.schools as s (s.id)}
                 <li>
-                  <button type="button" onclick={() => choose(s)} aria-label={mapState.pointEditable ? t('places.goTo', { place: s.name }) : t('schools.show', { school: s.name })}>
+                  <button type="button" onclick={() => showSchool(s.id)} aria-label={mapState.pointEditable ? t('places.goTo', { place: s.name }) : t('schools.show', { school: s.name })}>
                     <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="3" width="10" height="10" rx="2.5" /></svg>
                     <span class="name">{s.name}</span>
                   </button>

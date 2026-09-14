@@ -5,6 +5,7 @@ import { clampLat, normalizeLon, roundTo } from '../geo/format';
 import { dateFromDayAndMinutes, dayOfYear, daysInYear } from '../geo/sun';
 import type { LatLon, Precision } from '../geo/types';
 import { clampFlatCenter, flatMinZoom, panFlatCenter } from './geometry';
+import { isolatingFlatZoom, isolatingGlobeZoom, schoolById, type School } from './schools';
 import type { FlatPreset, FlatProjection, LabControl, LayerFlags, Overlay, Readout, SceneSpec, ViewId } from './types';
 
 const PROJECTION_KEY = 'geo-coords:projection';
@@ -65,11 +66,13 @@ export class MapState {
   projectionSwitch = $state(false);
   /** Whether the scene offers the Maple Bear schools switch (`SceneSpec.schoolsToggle`). */
   schoolsToggle = $state(false);
+  /** The school chosen from the Schools list (or a badge's list): drawn on its own, named, until the next scene. */
+  chosenSchool = $state<string | null>(null);
   /**
-   * View units per CSS px as the flat map and the globe last drew them (plain, not reactive: set by
-   * the views, read only when a school is chosen from the list to work out how close to zoom in).
+   * View units per CSS px of the flat map and the globe while they are drawn, null while not (a phone
+   * shows one view at a time). Plain, not reactive: set by the views, read only by `chooseSchool`.
    */
-  viewPx: { flat: number; globe: number } = { flat: 1, globe: 1 };
+  viewPx: { flat: number | null; globe: number | null } = { flat: null, globe: null };
   /** Bumped by every `applyScene`, so layers can drop per-scene memory (e.g. label hysteresis). */
   sceneVersion = $state(0);
 
@@ -167,6 +170,7 @@ export class MapState {
     this.sun = scene.sun ? { ...scene.sun, year: new Date().getUTCFullYear() } : null;
     this.labControls = [...(scene.labControls ?? [])];
     this.schoolsToggle = scene.schoolsToggle ?? false;
+    this.chosenSchool = null;
     this.phoneView = scene.phoneView && scene.views.includes(scene.phoneView) ? scene.phoneView : scene.views.includes('flat') ? 'flat' : (scene.views[0] ?? 'flat');
     this.lastChange = 'program';
   }
@@ -221,6 +225,28 @@ export class MapState {
 
   centerGlobeOn(p: LatLon): void {
     this.rotate = [-p.lon, -Math.max(-60, Math.min(60, p.lat))];
+  }
+
+  /**
+   * Shows a Maple Bear school: both maps centred on it, zoomed in until schools elsewhere no longer
+   * crowd it, the school marked as chosen (drawn alone with its name) and the point moved there when
+   * it can move. A view that is not drawn right now is sized like the other one would be (a phone
+   * shows the flat map and the globe at the same width). Returns the school, or null for an unknown id.
+   */
+  chooseSchool(id: string): School | null {
+    const school = schoolById(id);
+    if (!school) return null;
+    // Same CSS width: the flat map is 960 units wide, the globe 500.
+    const flatPx = this.viewPx.flat ?? (this.viewPx.globe !== null ? (this.viewPx.globe * 960) / 500 : 2);
+    const globePx = this.viewPx.globe ?? (flatPx * 500) / 960;
+    this.setFlatView(school, isolatingFlatZoom(school, this.flatProjection, flatPx, FLAT_MAX_ZOOM));
+    this.setGlobeZoom(isolatingGlobeZoom(school, globePx, GLOBE_MAX_ZOOM));
+    this.centerGlobeOn(school);
+    this.chosenSchool = school.id;
+    this.layers.schools = true;
+    // After the zoom, so a free-play scene's point snaps to minutes at this closer view.
+    this.userSetPoint(school, 'slider');
+    return school;
   }
 
   setGlobeZoom(zoom: number): void {

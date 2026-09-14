@@ -8,7 +8,7 @@
   import Land from './Land.svelte';
   import Overlays from './Overlays.svelte';
   import { mapState } from '../mapState.svelte';
-  import { clusterSchools } from '../schools';
+  import { chosenSchoolMark, clearOfChosen, clusterSchools } from '../schools';
   import Places from './Places.svelte';
   import PointMarker from './PointMarker.svelte';
   import Schools from './Schools.svelte';
@@ -19,7 +19,10 @@
   const sphereD = $derived(ctx.kind === 'globe' ? (ctx.path(sphere) ?? '') : '');
   // Grouped in the drawing's coordinates, so the badges slide with everything else while the flat
   // map is dragged; the flat grouping itself is cached per zoom (see schools.ts), so a pan never regroups.
-  const schoolClusters = $derived(mapState.layers.schools ? clusterSchools(ctx) : []);
+  // The school chosen from a list is left out of the groups and drawn alone, named.
+  const chosenId = $derived(mapState.layers.schools ? mapState.chosenSchool : null);
+  const chosenMark = $derived(chosenSchoolMark(ctx, chosenId));
+  const schoolClusters = $derived(mapState.layers.schools ? clearOfChosen(clusterSchools(ctx, chosenId), chosenMark, ctx.px) : []);
 </script>
 
 <g class="geo" transform={offset ? `translate(${offset[0]} ${offset[1]})` : undefined}>
@@ -41,9 +44,10 @@
 <!-- Night shading dims land and the grid but not the equator/meridian lines and their names, nor places and overlays. -->
 <Daylight {ctx} />
 <SpecialLines {ctx} />
-<!-- Schools under places: a city's dot and name stay on top of a school's square and badge. -->
-{#if schoolClusters.length}<Schools {ctx} clusters={schoolClusters} />{/if}
-<Places {ctx} {schoolClusters} />
+<!-- A school's square goes under a city's dot and name; count badges and the chosen school go over them, so the digits stay readable. -->
+{#if mapState.layers.schools}<Schools {ctx} clusters={schoolClusters} part="squares" />{/if}
+<Places {ctx} {schoolClusters} {chosenMark} />
+{#if mapState.layers.schools}<Schools {ctx} clusters={schoolClusters} chosen={chosenMark} part="badges" />{/if}
 <Overlays {ctx} />
 <PointMarker {ctx} />
 </g>

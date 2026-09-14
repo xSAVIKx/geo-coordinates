@@ -1,11 +1,13 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { t } from '../i18n/i18n.svelte';
   import { settings } from '../app/settings.svelte';
   import type { LatLon } from '../geo/types';
   import { CLIP_PAD, makeFlatCtx } from './geometry';
   import Layers from './layers/Layers.svelte';
   import { FLAT_MAX_ZOOM, mapState } from './mapState.svelte';
-  import { clusterTargetByKey } from './schools';
+  import { clusterClick, type School } from './schools';
+  import SchoolPopover from './SchoolPopover.svelte';
   import SchoolsToggle from './SchoolsToggle.svelte';
   import type { FlatPreset, FlatProjection } from './types';
 
@@ -18,7 +20,10 @@
   // The live view: pointer and keyboard maths, and the edge numbers.
   const ctx = $derived(makeFlatCtx(W, H, mapState.flat.center, mapState.flat.zoom, px, mapState.flatProjection));
   // For choosing a school from the list: how close to zoom in depends on how big the map is drawn.
-  $effect(() => { mapState.viewPx.flat = px; });
+  $effect(() => {
+    mapState.viewPx.flat = px;
+    return () => { mapState.viewPx.flat = null; };
+  });
 
   // Cheap pans. d3's `center()` only shifts a projection (no rotation), so on every flat map a pan
   // just slides the picture: a drag draws the map once around where it began (with a wide pad) and
@@ -43,6 +48,23 @@
   let drag: Drag | null = null;
   let pinch = new Map<number, { x: number; y: number }>();
   let pinchDist = 0;
+
+  // The list of a count badge that zooming in cannot pull apart (see SchoolPopover.svelte), placed
+  // below the press, in the figure's CSS px. It closes when the view moves or the scene changes.
+  let figure: HTMLElement;
+  let popover = $state<{ members: School[]; x: number; y: number } | null>(null);
+  function openPopover(clientX: number, clientY: number, members: School[]) {
+    const r = figure.getBoundingClientRect();
+    popover = { members, x: clientX - r.left, y: clientY - r.top + 14 };
+  }
+  function closePopover(refocus: boolean) {
+    popover = null;
+    if (refocus) svg.focus();
+  }
+  $effect(() => {
+    void [mapState.flat, mapState.flatProjection, mapState.sceneVersion, mapState.layers.schools];
+    untrack(() => { popover = null; });
+  });
 
   function toView(clientX: number, clientY: number): [number, number] {
     const m = svg.getScreenCTM();
@@ -107,9 +129,11 @@
       if (drag.mode === 'pan') startPanBase();
       return;
     }
-    const target = drag?.mode === 'maybe-click' && drag.cluster ? clusterTargetByKey(ctx, drag.cluster, FLAT_MAX_ZOOM) : null;
-    if (target) {
-      mapState.setFlatView(target.center, target.zoom);
+    const hit = drag?.mode === 'maybe-click' && drag.cluster ? clusterClick(ctx, drag.cluster, FLAT_MAX_ZOOM, mapState.chosenSchool) : null;
+    if (hit?.kind === 'list') {
+      openPopover(e.clientX, e.clientY, hit.members);
+    } else if (hit) {
+      mapState.setFlatView(hit.center, hit.zoom);
     } else if (drag?.mode === 'maybe-click' && mapState.pointEditable) {
       const ll = ctx.invert(toView(e.clientX, e.clientY));
       if (ll) mapState.userSetPoint(ll, 'map');
@@ -158,7 +182,7 @@
   const PROJECTIONS: FlatProjection[] = ['grid', 'equal-earth', 'mercator'];
 </script>
 
-<figure class="flat">
+<figure class="flat" bind:this={figure}>
   <div class="frame" bind:clientWidth>
     <!-- svelte-ignore a11y_no_noninteractive_tabindex -- keyboard-operable map (spec §7): the SVG is a compound control (pan/zoom/point), not static content -->
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -- pointer/keyboard handlers drive map pan/zoom/point editing per spec §7 -->
@@ -208,10 +232,11 @@
       <p id="{uid}-projection-hint" class="visually-hidden">{t('map.projection.hint')}</p>
     {/if}
   </div>
+  {#if popover}<SchoolPopover members={popover.members} x={popover.x} y={popover.y} onclose={closePopover} />{/if}
 </figure>
 
 <style>
-  .flat { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+  .flat { position: relative; margin: 0; display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
   .frame { border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; background: var(--ocean); box-shadow: var(--shadow-2); }
   svg { display: block; width: 100%; height: auto; user-select: none; -webkit-user-select: none; }
   svg:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
