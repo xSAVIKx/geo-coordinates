@@ -19,9 +19,11 @@ Open `dist/geo-coordinates.html` in any modern browser (double-click works — n
   with a hint button for unanswered questions and a celebration on a perfect round.
 - **Test rehearsal**: 15 mixed questions with a review at the end.
 - **Class quiz**: big-screen questions; the same quiz code gives the same questions.
-- **Day and night lab**: real sun position and local solar time.
+- **Day and night lab**: day and night, the Sun's position and local solar time, set from the clock (or
+  moved by hand through the day and the year). A simplified mean-Sun model: the Sun stands over the meridian where
+  local solar time is 12:00, so it can differ from the real Sun by up to about 4°.
 - **Maps**: Grid, Equal Earth and Mercator (map-app style) flat projections, plus a globe with
-  zoom; a detailed Central Europe view with deep zoom for street-level practice.
+  zoom; a detailed map of Poland and its neighbours with deep zoom (down to minutes of latitude and longitude).
 - **Maple Bear schools layer**: an optional map layer showing Maple Bear school locations
   around the world, for a real-world "find the coordinates" exercise.
 - **Presenter mode**: press `P` (fullscreen, larger text, higher contrast); `L` toggles a
@@ -53,7 +55,12 @@ Requires Node 24 or newer.
     npm test         # unit tests (geography math, generators, i18n)
     npm run build    # dist/geo-coordinates.html + dist/translation-review.html
     npm run e2e      # Playwright + axe accessibility tests against the built file
-    npm run shot     # take reference screenshots (used for docs/screenshots)
+    npm run shot -- en/lab lab   # full-page screenshots of one route: shots/lab-375x667.png, shots/lab-1366x768.png
+    npm run shots:readme         # the README screenshots, docs/screenshots/{home,lesson,lab}.png (after a build)
+
+`npm run shots:readme` captures the first 1366×768 screen of `en/`, `en/topic-6/explore/5` and `en/lab`, and
+reduces each PNG to 256 colours when `python3` with Pillow is installed (otherwise it keeps full-colour PNGs and
+says so).
 
 ## Author
 
@@ -77,10 +84,19 @@ Author details for the page footer live in `src/app/credits.ts`.
   [world-atlas](https://github.com/topojson/world-atlas).
 - Map rendering libraries: [world-atlas](https://github.com/topojson/world-atlas),
   [d3-geo](https://github.com/d3/d3-geo) and [topojson-client](https://github.com/topojson/topojson-client) (all ISC licensed).
+- Interface framework: [Svelte](https://svelte.dev) (MIT licensed).
 - Maple Bear school locations: collected from publicly published Maple Bear school websites;
   see [`LICENSE-CONTENT.md`](LICENSE-CONTENT.md) for the trademark and affiliation note.
 - Author: Yurii Serhiichuk — [serhiichuk.dev](https://serhiichuk.dev) ·
   [GitHub](https://github.com/xSAVIKx).
+
+## Third-party licences
+
+The built page bundles Svelte and clsx (MIT), d3-geo, d3-array, topojson-client and world-atlas (ISC), and map
+data from Natural Earth (public domain). Their copyright and licence notices are written into
+`dist/geo-coordinates.html` itself, as a comment right after `<!doctype html>`, by the build
+(`scripts/licence-notices.ts`, which lists the packages whose code is actually in the bundle); `npm run build`
+fails if they are missing.
 
 ## Publishing
 

@@ -18,6 +18,7 @@
     "test": "vitest run",
     "e2e": "playwright test",
     "shot": "node --experimental-strip-types scripts/shot.ts",
+    "shots:readme": "node --experimental-strip-types scripts/readme-shots.ts",
     "data:regional": "node --experimental-strip-types scripts/build-regional-data.ts"
   },
   "devDependencies": {
