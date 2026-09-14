@@ -76,11 +76,16 @@ const onlySymbols = (s: string) => s.replace(/\{\w+\}/g, '').replace(/[\s\d°′
 //                       is listed for when the Latin spelling is used instead
 //                       of the transliterated "Меркатор")
 //  - GitHub              the GitHub brand name (footer.github link text)
-// "N", "S", "E", "W", "P", "L" were pruned: no real message contains them as a
+//  - P, L               the presenter-mode keys in presenter.hint ("P: режим
+//                       презентації · L: указка"). They name physical keys and
+//                       are printed in Latin on Ukrainian keyboards too (the
+//                       shortcut also answers to those keys on a Cyrillic
+//                       layout, see src/app/presenterKeys.ts).
+// "N", "S", "E", "W" were pruned: no real message contains them as a
 // standalone Latin token, and Ukrainian coordinate text must never use Latin
 // compass letters (it uses «пн. ш.» / «пд. ш.» / «сх. д.» / «зх. д.»). "km" is
 // deliberately NOT here either: Ukrainian uses "км", not the Latin spelling.
-const LATIN_OK = new Set(['A', 'B', 'UTC', 'Esc', 'Shift', 'Ctrl', 'Google', 'GPS', 'WGS', 'Maple', 'Bear', 'Mercator', 'Equal', 'Earth', 'GitHub']);
+const LATIN_OK = new Set(['A', 'B', 'P', 'L', 'UTC', 'Esc', 'Shift', 'Ctrl', 'Google', 'GPS', 'WGS', 'Maple', 'Bear', 'Mercator', 'Equal', 'Earth', 'GitHub']);
 
 const LATIN_TOKEN = /[A-Za-z]+/g;
 

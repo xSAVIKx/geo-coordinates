@@ -4,6 +4,7 @@
   import { formatRoute } from './router';
   import { switchLang } from './router.svelte';
   import SettingsDialog from './SettingsDialog.svelte';
+  import { presenter, toggleLaser, togglePresenter } from './presenter.svelte';
 
   const NAMES: Record<LangCode, string> = { en: 'English', pl: 'Polski', uk: 'Українська' };
   const SHORT: Record<LangCode, string> = { en: 'EN', pl: 'PL', uk: 'УК' };
@@ -34,6 +35,16 @@
           </button>
         {/each}
       </div>
+      {#if presenter.on}
+        <button type="button" class="btn quiet tool laser-btn" aria-pressed={presenter.laser} aria-keyshortcuts="L" title="{t('header.laser')} (L)" onclick={toggleLaser}>
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="12" r="9" class="laser-glow" /><circle cx="12" cy="12" r="4" class="laser-dot" /></svg>
+          <span class="label">{t('header.laser')}</span>
+        </button>
+      {/if}
+      <button type="button" class="btn quiet tool presenter-btn" class:presenting={presenter.on} aria-pressed={presenter.on} aria-keyshortcuts="P" title="{t('header.presenter')} (P)" onclick={() => togglePresenter()}>
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M3.5 4.5h17v11h-17zM12 15.5V20M8 20h8" /><path fill="currentColor" d="M10 7.5v5l4.3-2.5z" /></svg>
+        <span class="label">{t('header.presenter')}</span>
+      </button>
       <button type="button" class="btn quiet settings" aria-haspopup="dialog" onclick={() => (settingsOpen = true)}>
         <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.5 7.5 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-1.7-1L15 3.5h-4L10.7 6a7 7 0 0 0-1.7 1l-2.4-1-2 3.4L6.6 11a7.5 7.5 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.3 2.5h4l.3-2.5a7 7 0 0 0 1.7-1l2.4 1 2-3.4zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"/></svg>
         <span class="label">{t('header.settings')}</span>
@@ -58,8 +69,26 @@
   .logo-pt { fill: var(--warm); stroke: var(--surface); stroke-width: 2; }
   .actions { display: flex; gap: var(--space-2); align-items: center; flex: none; }
   .langs .btn { min-width: 2.75rem; padding: 0 var(--space-3); font-size: var(--step--1); letter-spacing: 0.03em; }
-  .settings { padding: 0 var(--space-3); }
+  .settings, .tool { padding: 0 var(--space-3); }
+  /* Icons in rem, so they grow with the big-screen and presenter type instead of staying 22px. */
+  .settings svg, .tool svg { width: 1.375rem; height: 1.375rem; flex: none; }
+  .laser-glow { fill: rgb(220 38 38 / 0.28); }
+  .laser-dot { fill: #c81e1e; }
   @media (max-width: 899px) { .brand { font-size: var(--step-0); } }
+  /* Where the title, languages and Settings leave no room for two more words, the presenter and pointer
+     buttons keep only their icons (the text stays their accessible name and tooltip). Presenter type is
+     bigger, so there they go icon-only on wider screens too. */
+  @media (max-width: 1279px) {
+    .tool { width: var(--tap); padding: 0; }
+    .tool .label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  }
+  @media (max-width: 1799px) {
+    :global(:root[data-presenter='true']) .tool { width: var(--tap); padding: 0; }
+    :global(:root[data-presenter='true']) .tool .label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  }
+  /* A phone has no room (or keyboard) for presenting: the button shows only to leave presenter mode, and
+     there is no pointer to highlight. */
+  @media (max-width: 599px) { .presenter-btn:not(.presenting), .laser-btn { display: none; } }
   @media (max-width: 599px) {
     .inner { padding: var(--space-2) var(--space-3); gap: var(--space-2); }
     .settings { width: var(--tap); padding: 0; }
