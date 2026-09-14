@@ -36,7 +36,7 @@ export function sceneLatEdgeBoxes(ctx: ViewCtx, layers: Pick<LayerFlags, 'gratic
  */
 export function sceneLineLabels(ctx: ViewCtx, layers: LayerFlags, overlays: readonly Overlay[], extra: readonly LabelBox[] = []): PlacedLineLabel[] {
   const m = markerLayout(overlays, ctx, markerText);
-  const hemis = hemisphereLabels(ctx, layers.hemispheres, (r) => t(`hemi.${r}`)).map((h) => h.box);
+  const hemis = hemisphereLabels(ctx, layers.hemispheres, (r) => t(`hemi.${r}`), sceneLatEdgeBoxes(ctx, layers)).map((h) => h.box);
   const avoid = [...bracketBoxes(overlays, ctx, bracketFmt, m.room), ...m.labels, ...hemis, ...extra];
   return placeLineLabels(lineLabelSpecs(layers), { kind: ctx.kind, width: ctx.width, height: ctx.height, px: ctx.px, project: (p) => ctx.project(p), rotateLambda: ctx.projection.rotate()[0] },
     (spec) => t(spec.labelKey), avoid, { keep: namedLines(layers, overlays), edge: sceneLatEdgeBoxes(ctx, layers) });

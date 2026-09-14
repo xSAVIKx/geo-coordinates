@@ -125,15 +125,17 @@ for (const [lang, dict] of [['en', en], ['uk', uk], ['pl', pl]] as const) {
         const ctx = makeFlatCtx(960, 480, ms.flat.center, ms.flat.zoom, px, 'grid');
         const prime = sceneLineLabels(ctx, ms.layers, ms.overlays).find((l) => l.spec.id === 'pm');
         expect(prime, `${lang} ${css}`).toBeDefined();
-        expect(prime!.size).toBeGreaterThanOrEqual(css < 320 ? 9 : 10);
+        // A map 320 px wide or less may take the short name down to 9 px (LINE_LABEL_TINY) to keep it whole and clear.
+        expect(prime!.size).toBeGreaterThanOrEqual(css <= 320 ? 9 : 10);
         expect(prime!.lines[0]!.startsWith(dict['line.prime'].split(' (')[0]!)).toBe(true);
         expect(prime!.box.top, `${lang} ${css} top`).toBeGreaterThanOrEqual(0);
         expect(prime!.box.bottom, `${lang} ${css} bottom`).toBeLessThanOrEqual(ctx.height);
         const edge = sceneLatEdgeBoxes(ctx, ms.layers);
         expect(edge.some((b) => overlaps(prime!.box, b)), `${lang} ${css} edge numbers`).toBe(false);
-        const hemis = hemisphereLabels(ctx, 'ew', (r) => dict[`hemi.${r}` as keyof typeof dict]);
+        const hemis = hemisphereLabels(ctx, 'ew', (r) => dict[`hemi.${r}` as keyof typeof dict], edge);
         expect(hemis.some((h) => overlaps(prime!.box, h.box)), `${lang} ${css} hemisphere names`).toBe(false);
-        // The two hemisphere names stay inside the map and apart, each in its own half.
+        // The two hemisphere names stay inside the map, off the latitude numbers and apart, each in its own half.
+        expect(hemis.some((h) => edge.some((b) => overlaps(h.box, b))), `${lang} ${css} hemisphere names on edge numbers`).toBe(false);
         const [e, w] = [hemis.find((h) => h.r === 'E')!, hemis.find((h) => h.r === 'W')!];
         expect(w.box.left, `${lang} ${css} west inside`).toBeGreaterThanOrEqual(0);
         expect(e.box.right, `${lang} ${css} east inside`).toBeLessThanOrEqual(ctx.width);

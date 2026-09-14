@@ -3,6 +3,7 @@
   import { hemisphere, type ViewCtx } from '../geometry';
   import { useMapState } from '../mapStateContext';
   import { hemisphereLabels } from '../overlayLayout';
+  import { sceneLatEdgeBoxes } from '../overlayText';
   const mapState = useMapState();
   let { ctx, idPrefix }: { ctx: ViewCtx; idPrefix: string } = $props();
 
@@ -10,7 +11,7 @@
     mapState.layers.hemispheres === 'ns' ? (['N', 'S'] as const) : mapState.layers.hemispheres === 'ew' ? (['E', 'W'] as const) : ([] as const),
   );
   // Shared with the special-line names, which keep clear of these (overlayLayout.ts).
-  const labels = $derived(hemisphereLabels(ctx, mapState.layers.hemispheres, (r) => t(`hemi.${r}`)));
+  const labels = $derived(hemisphereLabels(ctx, mapState.layers.hemispheres, (r) => t(`hemi.${r}`), sceneLatEdgeBoxes(ctx, mapState.layers)));
 </script>
 
 <defs>

@@ -352,37 +352,64 @@ export function hemisphereLabelSpots(ctx: Pick<ViewCtx, 'kind' | 'projection' | 
 }
 
 /** Smallest size (CSS px) a hemisphere name shrinks to on a small flat map. */
-export const HEMI_LABEL_MIN = 10.5;
+export const HEMI_LABEL_MIN = 9;
 /** Room (CSS px) a flat map's eastern and western hemisphere names leave beside the prime meridian, for its name. */
 export const HEMI_GUTTER = 22;
 export interface HemisphereLabel { r: 'N' | 'S' | 'E' | 'W'; x: number; y: number; size: number; box: LabelBox }
 
 /**
- * The hemisphere names as drawn (Hemispheres.svelte) and kept clear of (the special-line names). On the globe
- * they sit at `hemisphereLabelSpots` at 15 px. On a flat map the eastern and western names each stay inside
- * their own half, leaving `HEMI_GUTTER` px beside the prime meridian so its name fits between them, and shrink
- * (down to `HEMI_LABEL_MIN`) where the half is too narrow — a 320 px phone — instead of running into each other.
+ * The hemisphere names as drawn (Hemispheres.svelte) and kept clear of (the special-line names). The eastern and
+ * western names each stay inside their own half of the view (inside the globe's disc), leaving `HEMI_GUTTER` px
+ * beside the prime meridian so its name fits between them, and both shrink together (down to `HEMI_LABEL_MIN`) where a
+ * half is too narrow — a 320 px phone, a presenter-sized globe — instead of running into each other or past the edge.
+ * On a flat map, a row that would cover a latitude number (`latEdges`, as EdgeLabels.svelte writes them) moves just
+ * below it (or above it), both names together. The northern and southern names keep their spots at 15 px.
  */
-export function hemisphereLabels(ctx: Pick<ViewCtx, 'kind' | 'projection' | 'project' | 'width' | 'px'>, hemispheres: 'none' | 'ns' | 'ew', textOf: (r: 'N' | 'S' | 'E' | 'W') => string): HemisphereLabel[] {
+export function hemisphereLabels(ctx: Pick<ViewCtx, 'kind' | 'projection' | 'project' | 'width' | 'height' | 'px'>, hemispheres: 'none' | 'ns' | 'ew', textOf: (r: 'N' | 'S' | 'E' | 'W') => string, latEdges: readonly LabelBox[] = []): HemisphereLabel[] {
   const px = ctx.px;
   const spots = hemisphereLabelSpots(ctx, hemispheres);
-  const prime = ctx.project({ lat: 0, lon: 0 });
-  // Where each eastern/western name may go on a flat map, and the size that fits it there.
-  const span = (r: 'N' | 'S' | 'E' | 'W'): [number, number] | null => {
-    if (ctx.kind !== 'flat' || (r !== 'E' && r !== 'W')) return null;
-    const edge = 4 * px, gutter = HEMI_GUTTER * px;
-    const [from, to] = prime ? (r === 'W' ? [edge, prime[0] - gutter] : [prime[0] + gutter, ctx.width - edge]) : [edge, ctx.width - edge];
+  if (hemispheres !== 'ew') return spots.map(({ r, xy }) => ({ r, x: xy[0], y: xy[1], size: HEMI_LABEL, box: textBox(xy[0], xy[1], labelWidth(textOf(r), HEMI_LABEL, px), HEMI_LABEL * px, 'middle') }));
+  const gutter = HEMI_GUTTER * px, edge = 4 * px;
+  // Where each name may go along its row, and the size that fits it there.
+  const span = (r: 'E' | 'W', y: number): [number, number] | null => {
+    let left = edge, right = ctx.width - edge, middle = ctx.width / 2;
+    const prime = ctx.project({ lat: 0, lon: 0 });
+    if (ctx.kind === 'flat') {
+      if (prime) middle = prime[0];
+    } else {
+      // The disc's chord at this row (the text's middle, a little above its baseline).
+      const r0 = ctx.projection.scale(), [cx, cy] = ctx.projection.translate();
+      const dy = Math.abs(y - 5 * px - cy);
+      const half = dy < r0 ? Math.sqrt(r0 * r0 - dy * dy) : 0;
+      left = Math.max(left, cx - half + edge);
+      right = Math.min(right, cx + half - edge);
+      middle = prime && prime[0] > left && prime[0] < right ? prime[0] : cx;
+    }
+    const [from, to] = r === 'W' ? [left, middle - gutter] : [middle + gutter, right];
     return to > from ? [from, to] : null;
   };
-  const fits = spots.map(({ r }) => { const sp = span(r); return sp ? Math.max(HEMI_LABEL_MIN, Math.min(HEMI_LABEL, (sp[1] - sp[0]) / labelWidth(textOf(r), 1, px))) : HEMI_LABEL; });
+  const spans = spots.map(({ r, xy }) => span(r as 'E' | 'W', xy[1]));
+  const fits = spots.map(({ r }, i) => { const sp = spans[i]; return sp ? Math.max(HEMI_LABEL_MIN, Math.min(HEMI_LABEL, (sp[1] - sp[0]) / labelWidth(textOf(r), 1, px))) : HEMI_LABEL; });
   // Both names at one size: the smaller of the two, so the pair reads as a pair.
   const size = Math.min(HEMI_LABEL, ...fits);
-  return spots.map(({ r, xy }) => {
-    const text = textOf(r);
-    const sp = span(r);
-    const w = labelWidth(text, sp ? size : HEMI_LABEL, px);
+  const place = (dy: number) => spots.map(({ r, xy }, i) => {
+    const sp = spans[i];
+    const w = labelWidth(textOf(r), size, px);
     const x = sp ? Math.max(sp[0] + w / 2, Math.min(sp[1] - w / 2, xy[0])) : xy[0];
-    const s = sp ? size : HEMI_LABEL;
-    return { r, x, y: xy[1], size: s, box: textBox(x, xy[1], w, s * px, 'middle') };
+    const y = xy[1] + dy;
+    return { r, x, y, size, box: textBox(x, y, w, size * px, 'middle') };
   });
+  let labels = place(0);
+  const hit = (ls: HemisphereLabel[]) => latEdges.filter((e) => ls.some((l) => overlaps(l.box, e)));
+  const first = hit(labels);
+  if (ctx.kind === 'flat' && first.length) {
+    const gap = 2 * px, h = labels[0]!.box.bottom - labels[0]!.box.top;
+    const down = Math.max(...first.map((e) => e.bottom)) + gap - labels[0]!.box.top;
+    const up = Math.min(...first.map((e) => e.top)) - gap - labels[0]!.box.bottom;
+    for (const dy of Math.abs(up) < Math.abs(down) ? [up, down] : [down, up]) {
+      const moved = place(dy);
+      if (moved[0]!.box.top >= 0 && moved[0]!.box.top + h <= ctx.height && !hit(moved).length) { labels = moved; break; }
+    }
+  }
+  return labels;
 }
