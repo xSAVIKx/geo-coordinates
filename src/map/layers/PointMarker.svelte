@@ -32,11 +32,11 @@
 {/if}
 
 <style>
-  .guide-casing { fill: none; stroke: var(--halo); stroke-width: 4; stroke-opacity: 0.6; vector-effect: non-scaling-stroke; pointer-events: none; }
-  .guide { fill: none; stroke: var(--accent); stroke-width: 1.75; stroke-dasharray: 7 4; vector-effect: non-scaling-stroke; pointer-events: none; }
+  .guide-casing { fill: none; stroke: var(--halo); stroke-width: calc(4px * var(--stroke-scale)); stroke-opacity: 0.6; vector-effect: non-scaling-stroke; pointer-events: none; }
+  .guide { fill: none; stroke: var(--accent); stroke-width: calc(1.75px * var(--stroke-scale)); stroke-dasharray: 7 4; vector-effect: non-scaling-stroke; pointer-events: none; }
   .hit { fill: transparent; }
-  .halo-ring { fill: none; stroke: var(--halo); stroke-width: 7; vector-effect: non-scaling-stroke; }
-  .ring { fill: var(--accent); fill-opacity: 0.22; stroke: var(--accent); stroke-width: 3; vector-effect: non-scaling-stroke; }
+  .halo-ring { fill: none; stroke: var(--halo); stroke-width: calc(7px * var(--stroke-scale)); vector-effect: non-scaling-stroke; }
+  .ring { fill: var(--accent); fill-opacity: 0.22; stroke: var(--accent); stroke-width: calc(3px * var(--stroke-scale)); vector-effect: non-scaling-stroke; }
   .dot { fill: var(--accent); }
   .editable { cursor: grab; touch-action: none; }
   .editable .ring { animation: breathe 2.4s ease-in-out 2; transform-box: fill-box; transform-origin: center; }

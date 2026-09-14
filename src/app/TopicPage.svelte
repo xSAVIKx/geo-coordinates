@@ -55,7 +55,7 @@
   .tabs { display: inline-flex; gap: 2px; padding: 3px; background: var(--surface-2); border: 1px solid var(--border); border-radius: calc(var(--radius-sm) + 3px); }
   .tabs a { display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--tap); padding: 0 var(--space-5); color: var(--text); text-decoration: none; font-weight: var(--weight-strong); border-radius: var(--radius-sm); border: 1px solid transparent; transition: background-color var(--dur) var(--ease); }
   .tabs a:hover { background: var(--surface); }
-  .tabs svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; opacity: 0.8; }
+  .tabs svg { width: 1.25rem; height: 1.25rem; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; opacity: 0.8; }
   .tabs a[aria-current='page'] { background: var(--surface); border-color: var(--border-strong); box-shadow: var(--shadow-1), inset 0 -3px 0 var(--accent); }
   .tabs a[aria-current='page'] svg { stroke: var(--accent); opacity: 1; }
   @media (max-width: 599px) {

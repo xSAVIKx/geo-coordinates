@@ -87,6 +87,9 @@
   @media (min-width: 1024px) {
     .explore { grid-template-columns: minmax(0, 1fr) clamp(20rem, 20vw, 25rem); gap: var(--space-5); align-items: start; }
     .panel { position: sticky; top: calc(var(--header-h) + var(--space-4)); }
+
+    /* Presenter type is a quarter of the viewport bigger: the step panel widens with it so a title keeps to a line or two. */
+    :global(:root[data-presenter='true']) .explore { grid-template-columns: minmax(0, 1fr) min(30rem, 32vw); }
   }
   .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-2); padding: var(--space-5) var(--space-6) var(--space-4); }
   h2 { margin: var(--space-1) 0 var(--space-3); font-size: var(--step-3); font-weight: var(--weight-heavy); }

@@ -70,13 +70,13 @@
 </g>
 
 <style>
-  .school { fill: var(--school); stroke: var(--school-border); stroke-width: 2; vector-effect: non-scaling-stroke; }
-  .school-chosen { stroke-width: 2.5; }
-  .chosen-ring { fill: none; stroke: var(--school); stroke-width: 2.5; vector-effect: non-scaling-stroke; pointer-events: none; }
+  .school { fill: var(--school); stroke: var(--school-border); stroke-width: calc(2px * var(--stroke-scale)); vector-effect: non-scaling-stroke; }
+  .school-chosen { stroke-width: calc(2.5px * var(--stroke-scale)); }
+  .chosen-ring { fill: none; stroke: var(--school); stroke-width: calc(2.5px * var(--stroke-scale)); vector-effect: non-scaling-stroke; pointer-events: none; }
   .school-chosen-mark { pointer-events: none; }
   .school-cluster { cursor: pointer; }
   .school-name { fill: var(--school-text); font-weight: 800; pointer-events: none; }
   .hit { fill: transparent; }
-  .school-badge { fill: var(--school); stroke: var(--school-border); stroke-width: 2; vector-effect: non-scaling-stroke; }
+  .school-badge { fill: var(--school); stroke: var(--school-border); stroke-width: calc(2px * var(--stroke-scale)); vector-effect: non-scaling-stroke; }
   .count { fill: var(--school-contrast); font-weight: 800; font-family: var(--font); font-variant-numeric: tabular-nums; pointer-events: none; }
 </style>

@@ -63,5 +63,5 @@
 
 <style>
   .shade { pointer-events: none; }
-  .rim { fill: none; stroke: var(--grid); stroke-width: 1.5; stroke-opacity: 0.9; vector-effect: non-scaling-stroke; pointer-events: none; }
+  .rim { fill: none; stroke: var(--grid); stroke-width: calc(1.5px * var(--stroke-scale)); stroke-opacity: 0.9; vector-effect: non-scaling-stroke; pointer-events: none; }
 </style>

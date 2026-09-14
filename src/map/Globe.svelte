@@ -1,7 +1,7 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import { i18n, t } from '../i18n/i18n.svelte';
-  import { settings } from '../app/settings.svelte';
+  import { ui } from '../app/presenter.svelte';
   import { makeGlobeCtx } from './geometry';
   import Layers from './layers/Layers.svelte';
   import { GLOBE_MAX_ZOOM, mapState } from './mapState.svelte';
@@ -13,7 +13,8 @@
   const uid = `globe-${Math.random().toString(36).slice(2, 8)}`;
   let svg: SVGSVGElement;
   let clientWidth = $state(SIZE);
-  const uiScale = $derived(settings.largeText ? 1.25 : 1);
+  // Map text, markers and hit areas grow with the interface (large text, big screens, presenter mode).
+  const uiScale = $derived(ui.scale);
   const px = $derived((SIZE / Math.max(1, clientWidth)) * uiScale);
   const ctx = $derived(makeGlobeCtx(SIZE, mapState.rotate, px, mapState.globeZoom));
   // For choosing a school from the list: how close to zoom in depends on how big the globe is drawn.

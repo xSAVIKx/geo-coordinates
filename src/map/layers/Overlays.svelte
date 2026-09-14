@@ -89,24 +89,24 @@
 {/each}
 
 <style>
-  .hl-region { fill: var(--accent); fill-opacity: 0.16; stroke: var(--accent); stroke-width: 2; vector-effect: non-scaling-stroke; }
-  .hl-casing { fill: none; stroke: var(--halo); stroke-width: 9; stroke-opacity: 0.6; vector-effect: non-scaling-stroke; }
-  .noon-casing { fill: none; stroke: var(--halo); stroke-width: 8; stroke-opacity: 0.7; vector-effect: non-scaling-stroke; pointer-events: none; }
-  .noon { fill: none; stroke: var(--noon); stroke-width: 4; stroke-dasharray: 10 6; stroke-linecap: round; vector-effect: non-scaling-stroke; pointer-events: none; }
+  .hl-region { fill: var(--accent); fill-opacity: 0.16; stroke: var(--accent); stroke-width: calc(2px * var(--stroke-scale)); vector-effect: non-scaling-stroke; }
+  .hl-casing { fill: none; stroke: var(--halo); stroke-width: calc(9px * var(--stroke-scale)); stroke-opacity: 0.6; vector-effect: non-scaling-stroke; }
+  .noon-casing { fill: none; stroke: var(--halo); stroke-width: calc(8px * var(--stroke-scale)); stroke-opacity: 0.7; vector-effect: non-scaling-stroke; pointer-events: none; }
+  .noon { fill: none; stroke: var(--noon); stroke-width: calc(4px * var(--stroke-scale)); stroke-dasharray: 10 6; stroke-linecap: round; vector-effect: non-scaling-stroke; pointer-events: none; }
   .noon-t { fill: var(--text); font-weight: 800; }
-  .hl-line { fill: none; stroke: var(--accent); stroke-width: 5; stroke-opacity: 0.9; stroke-linecap: round; vector-effect: non-scaling-stroke; }
-  .marker path { stroke-width: 3; vector-effect: non-scaling-stroke; stroke: var(--halo); paint-order: stroke; stroke-linejoin: round; }
+  .hl-line { fill: none; stroke: var(--accent); stroke-width: calc(5px * var(--stroke-scale)); stroke-opacity: 0.9; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+  .marker path { stroke-width: calc(3px * var(--stroke-scale)); vector-effect: non-scaling-stroke; stroke: var(--halo); paint-order: stroke; stroke-linejoin: round; }
   .marker text { fill: var(--text); font-weight: 750; }
   .tone-a path { fill: var(--marker-a); } .tone-b path { fill: var(--marker-b); }
   .tone-c path { fill: var(--marker-c); } .tone-d path { fill: var(--marker-d); }
-  .tone-answer path { fill: color-mix(in srgb, var(--marker-answer) 18%, transparent); stroke: var(--marker-answer); stroke-width: 4; stroke-linecap: round; }
+  .tone-answer path { fill: color-mix(in srgb, var(--marker-answer) 18%, transparent); stroke: var(--marker-answer); stroke-width: calc(4px * var(--stroke-scale)); stroke-linecap: round; }
   .diff { pointer-events: none; }
-  .bracket-casing { fill: none; stroke: var(--halo); stroke-width: 8; stroke-opacity: 0.75; stroke-linecap: round; vector-effect: non-scaling-stroke; }
-  .bracket { fill: none; stroke: var(--marker-c); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
-  .split { fill: var(--surface); stroke: var(--marker-c); stroke-width: 3; vector-effect: non-scaling-stroke; }
+  .bracket-casing { fill: none; stroke: var(--halo); stroke-width: calc(8px * var(--stroke-scale)); stroke-opacity: 0.75; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+  .bracket { fill: none; stroke: var(--marker-c); stroke-width: calc(4px * var(--stroke-scale)); stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+  .split { fill: var(--surface); stroke: var(--marker-c); stroke-width: calc(3px * var(--stroke-scale)); vector-effect: non-scaling-stroke; }
   .diff .total { fill: var(--marker-c); font-weight: 800; }
   .diff .part, .diff .sub { fill: var(--text); font-weight: 700; }
-  .tone-wrong path { fill: none; stroke: var(--marker-wrong); stroke-width: 4; stroke-linecap: round; }
+  .tone-wrong path { fill: none; stroke: var(--marker-wrong); stroke-width: calc(4px * var(--stroke-scale)); stroke-linecap: round; }
 
   /* Reveal animation for overlays added with `addOverlays(o, { animate: true })` (a class-quiz
      reveal or a Practice solution): markers scale/fade in, lines and brackets draw in via

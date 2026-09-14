@@ -46,8 +46,8 @@
   .twilight { fill: var(--twilight); }
   .night { fill: var(--night); }
   .glow { fill: var(--sun); fill-opacity: 0.22; }
-  .disc { fill: var(--sun); stroke: var(--sun-stroke); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
-  .rays line { stroke: var(--sun); stroke-width: 3; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+  .disc { fill: var(--sun); stroke: var(--sun-stroke); stroke-width: calc(1.5px * var(--stroke-scale)); vector-effect: non-scaling-stroke; }
+  .rays line { stroke: var(--sun); stroke-width: calc(3px * var(--stroke-scale)); stroke-linecap: round; vector-effect: non-scaling-stroke; }
   .rays { animation: spin 24s linear infinite; transform-box: fill-box; transform-origin: center; }
   @keyframes spin { to { transform: rotate(360deg); } }
 </style>

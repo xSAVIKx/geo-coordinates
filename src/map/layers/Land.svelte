@@ -44,15 +44,15 @@
 
 <style>
   .ocean { fill: var(--ocean); stroke: none; }
-  .land { fill: var(--land); stroke: var(--land-stroke); stroke-width: 0.9; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
-  .borders { fill: none; stroke: var(--land-stroke); stroke-width: 0.5; stroke-opacity: 0.55; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+  .land { fill: var(--land); stroke: var(--land-stroke); stroke-width: calc(0.9px * var(--stroke-scale)); stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+  .borders { fill: none; stroke: var(--land-stroke); stroke-width: calc(0.5px * var(--stroke-scale)); stroke-opacity: 0.55; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
   .region { pointer-events: none; }
   .mask { fill: var(--ocean); stroke: none; }
   /* The land is clipped to the region box; its outline there is not a coast, so only `.coast` is stroked. */
   .region-land { fill: var(--land); stroke: none; }
-  .lakes { fill: var(--ocean); stroke: var(--land-stroke); stroke-width: 0.6; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
-  .coast { fill: none; stroke: var(--land-stroke); stroke-width: 0.9; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
-  .region .borders { stroke-width: 0.8; stroke-opacity: 0.7; }
-  .river { fill: none; stroke: var(--river); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
-  .voivodeships { fill: none; stroke: var(--land-stroke); stroke-width: 0.7; stroke-opacity: 0.75; stroke-dasharray: 5 3; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+  .lakes { fill: var(--ocean); stroke: var(--land-stroke); stroke-width: calc(0.6px * var(--stroke-scale)); stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+  .coast { fill: none; stroke: var(--land-stroke); stroke-width: calc(0.9px * var(--stroke-scale)); stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+  .region .borders { stroke-width: calc(0.8px * var(--stroke-scale)); stroke-opacity: 0.7; }
+  .river { fill: none; stroke: var(--river); stroke-width: calc(1.6px * var(--stroke-scale)); stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+  .voivodeships { fill: none; stroke: var(--land-stroke); stroke-width: calc(0.7px * var(--stroke-scale)); stroke-opacity: 0.75; stroke-dasharray: 5 3; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 </style>

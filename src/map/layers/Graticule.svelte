@@ -18,5 +18,5 @@
 <path class="grid" d={d} />
 
 <style>
-  .grid { fill: none; stroke: var(--grid); stroke-width: 0.75; stroke-opacity: 0.5; vector-effect: non-scaling-stroke; pointer-events: none; }
+  .grid { fill: none; stroke: var(--grid); stroke-width: calc(0.75px * var(--stroke-scale)); stroke-opacity: 0.5; vector-effect: non-scaling-stroke; pointer-events: none; }
 </style>

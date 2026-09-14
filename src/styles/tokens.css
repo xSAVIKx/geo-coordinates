@@ -165,6 +165,46 @@
     --river: #5ea8e6; --river-label: #9fd0f5;
     --school: #f9a8d4; --school-border: #161d26; --school-contrast: #0b1320; --school-text: #f9a8d4;
 }
+/* Presenter mode (spec §3.4, §7): AAA contrast (7:1 for text; see the Task 18 report for the table), sizes that
+ * follow the viewport (base.css) and thicker map lines. --ui-scale is the root font size / 16, written by
+ * src/app/presenter.svelte.ts; map text and markers use the same factor. The light block comes first with
+ * lower specificity, and both dark blocks set exactly the same tokens, so nothing light leaks into dark. */
+:root { --stroke-scale: var(--ui-zoom, 1); }
+:root[data-presenter="true"] {
+  --stroke-scale: max(1.5, var(--ui-scale, 1.5));
+  --tap: 2.75rem;
+  --page-max: 97.9vw;
+  --text: #0b0f14; --text-muted: #374351; --border: #aab3bf; --border-strong: #56616e;
+  --accent: #0842a0; --accent-hover: #06357f; --accent-soft: #e5edfb; --accent-contrast: #ffffff; --focus: #0842a0;
+  --warm-text: #6b3a00; --ok: #0f5c26; --ok-soft: #e6f4ea; --bad: #8c1d18; --bad-soft: #fdecea;
+  --grid: #4d6580; --land-stroke: #7d6c48; --map-label: #26323e; --ocean-label: #193b55; --halo: #f8fbfd;
+  --equator: #9a3412; --prime: #5b21b6; --antimeridian: #115e59; --tropics: #854d0e;
+  --equator-text: #6a2610; --prime-text: #45198a; --antimeridian-text: #0e403c; --tropics-text: #56310a;
+  --marker-a: #0842a0; --marker-b: #9a3412; --marker-c: #4c1d95; --marker-d: #115e59; --marker-answer: #0f5c26; --marker-wrong: #8c1d18;
+  --river: #2f6fae; --river-label: #113c63; --school: #831843; --school-text: #701537;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-presenter="true"]:not([data-theme="light"]) {
+  --text: #ffffff; --text-muted: #d3dce6; --border: #56657a; --border-strong: #9aa8b8;
+  --accent: #a8c8ff; --accent-hover: #c2d8ff; --accent-soft: #1b2a44; --accent-contrast: #0b1320; --focus: #b8d2ff;
+  --warm-text: #ffd59a; --ok: #8ff0a8; --ok-soft: #13271b; --bad: #ffaba3; --bad-soft: #34191a;
+  --grid: #a3b8cc; --land-stroke: #b3ae8c; --map-label: #edf1f6; --ocean-label: #cce3f4; --halo: #0f2233;
+  --equator: #fdba74; --prime: #ddd6fe; --antimeridian: #99f6e4; --tropics: #fde047;
+  --equator-text: #ffe3c2; --prime-text: #ede9fe; --antimeridian-text: #ccfbf1; --tropics-text: #fef08a;
+  --marker-a: #a8c8ff; --marker-b: #fdba74; --marker-c: #ddd6fe; --marker-d: #99f6e4; --marker-answer: #8ff0a8; --marker-wrong: #ffaba3;
+  --river: #7dbbef; --river-label: #d6ecfb; --school: #f9a8d4; --school-text: #fddcef;
+  }
+}
+:root[data-presenter="true"][data-theme="dark"] {
+  --text: #ffffff; --text-muted: #d3dce6; --border: #56657a; --border-strong: #9aa8b8;
+  --accent: #a8c8ff; --accent-hover: #c2d8ff; --accent-soft: #1b2a44; --accent-contrast: #0b1320; --focus: #b8d2ff;
+  --warm-text: #ffd59a; --ok: #8ff0a8; --ok-soft: #13271b; --bad: #ffaba3; --bad-soft: #34191a;
+  --grid: #a3b8cc; --land-stroke: #b3ae8c; --map-label: #edf1f6; --ocean-label: #cce3f4; --halo: #0f2233;
+  --equator: #fdba74; --prime: #ddd6fe; --antimeridian: #99f6e4; --tropics: #fde047;
+  --equator-text: #ffe3c2; --prime-text: #ede9fe; --antimeridian-text: #ccfbf1; --tropics-text: #fef08a;
+  --marker-a: #a8c8ff; --marker-b: #fdba74; --marker-c: #ddd6fe; --marker-d: #99f6e4; --marker-answer: #8ff0a8; --marker-wrong: #ffaba3;
+  --river: #7dbbef; --river-label: #d6ecfb; --school: #f9a8d4; --school-text: #fddcef;
+}
 :root[data-large-text="true"] { --fs-scale: 1.25; }
 /* Big screens at 100% scaling (a 3840×2160 classroom display): the whole interface steps up by half, so
  * type, spacing and 44px targets keep their proportions instead of shrinking to a strip in the middle. */

@@ -43,13 +43,13 @@
 {/if}
 
 <style>
-  .casing { fill: none; stroke: var(--halo); stroke-width: 6; stroke-opacity: 0.55; vector-effect: non-scaling-stroke; pointer-events: none; }
+  .casing { fill: none; stroke: var(--halo); stroke-width: calc(6px * var(--stroke-scale)); stroke-opacity: 0.55; vector-effect: non-scaling-stroke; pointer-events: none; }
   .line { fill: none; vector-effect: non-scaling-stroke; stroke-linecap: butt; }
-  path.equator { stroke: var(--equator); stroke-width: 3; }
-  path.prime { stroke: var(--prime); stroke-width: 3; stroke-dasharray: 12 5; }
-  path.antimeridian { stroke: var(--antimeridian); stroke-width: 3; stroke-dasharray: 3 5 12 5; }
-  path.tropic { stroke: var(--tropics); stroke-width: 2; stroke-dasharray: 2 4; }
-  path.polar { stroke: var(--tropics); stroke-width: 2; stroke-dasharray: 8 4 2 4; }
+  path.equator { stroke: var(--equator); stroke-width: calc(3px * var(--stroke-scale)); }
+  path.prime { stroke: var(--prime); stroke-width: calc(3px * var(--stroke-scale)); stroke-dasharray: 12 5; }
+  path.antimeridian { stroke: var(--antimeridian); stroke-width: calc(3px * var(--stroke-scale)); stroke-dasharray: 3 5 12 5; }
+  path.tropic { stroke: var(--tropics); stroke-width: calc(2px * var(--stroke-scale)); stroke-dasharray: 2 4; }
+  path.polar { stroke: var(--tropics); stroke-width: calc(2px * var(--stroke-scale)); stroke-dasharray: 8 4 2 4; }
   /* A full-strength, slightly wider halo than other map text: line names often sit on night shading or hemisphere tints. */
   .label { font-weight: 750; letter-spacing: 0.01em; stroke-width: var(--line-halo-width); stroke-opacity: 1; }
   text.equator { fill: var(--equator-text); } text.prime { fill: var(--prime-text); } text.antimeridian { fill: var(--antimeridian-text); }
