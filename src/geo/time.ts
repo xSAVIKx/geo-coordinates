@@ -20,10 +20,6 @@ export function formatClock(minutes: number): string {
   return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 }
 
-export function lonDifferenceForMinutes(minutes: number): number {
-  return minutes / MINUTES_PER_DEGREE;
-}
-
 /** Minutes after midnight for a typed time: `H:MM`, `HH:MM`, `HH.MM` (also a comma or space), or `HMM`/`HHMM` from a phone keypad. `24:00` means 00:00. */
 export function parseClock(text: string): number | null {
   const m = /^\s*(?:(\d{1,2})\s*[:.,\s]\s*(\d{2})|(\d{1,2})(\d{2}))\s*$/.exec(text);

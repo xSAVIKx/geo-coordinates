@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { antisolarPoint, dateFromDayAndMinutes, dayLightMinutes, dayOfYear, daysInYear, elevationFrom, meanSunPoint, solarElevationDeg, subsolarPoint } from '../../src/geo/sun';
+import { dateFromDayAndMinutes, dayLightMinutes, dayOfYear, daysInYear, elevationFrom, meanSunPoint, subsolarPoint } from '../../src/geo/sun';
 
 const close = (a: number, b: number, tol: number) => expect(Math.abs(a - b)).toBeLessThanOrEqual(tol);
 
@@ -20,20 +20,14 @@ describe('subsolar point (NOAA approximation)', () => {
 });
 
 describe('derived', () => {
-  test('antisolar is opposite', () => {
-    const d = new Date('2024-06-01T10:00:00Z');
-    const s = subsolarPoint(d); const a = antisolarPoint(d);
-    close(a.lat, -s.lat, 1e-9);
-    close(Math.abs(((a.lon - s.lon + 540) % 360) - 180), 180, 1e-9);
-  });
-  test('elevation is 90 at subsolar and -90 at antisolar', () => {
-    const d = new Date('2024-06-01T10:00:00Z');
-    close(solarElevationDeg(d, subsolarPoint(d)), 90, 1e-6);
-    close(solarElevationDeg(d, antisolarPoint(d)), -90, 1e-6);
+  test('elevation is 90 under the Sun and -90 on the opposite side of the Earth', () => {
+    const s = subsolarPoint(new Date('2024-06-01T10:00:00Z'));
+    close(elevationFrom(s, s), 90, 1e-6);
+    close(elevationFrom(s, { lat: -s.lat, lon: s.lon > 0 ? s.lon - 180 : s.lon + 180 }), -90, 1e-6);
   });
   test('polar day at north pole in June, polar night in December', () => {
-    expect(solarElevationDeg(new Date('2024-06-21T00:00:00Z'), { lat: 89, lon: 0 })).toBeGreaterThan(0);
-    expect(solarElevationDeg(new Date('2024-12-21T12:00:00Z'), { lat: 89, lon: 0 })).toBeLessThan(0);
+    expect(elevationFrom(subsolarPoint(new Date('2024-06-21T00:00:00Z')), { lat: 89, lon: 0 })).toBeGreaterThan(0);
+    expect(elevationFrom(subsolarPoint(new Date('2024-12-21T12:00:00Z')), { lat: 89, lon: 0 })).toBeLessThan(0);
   });
   test('day of year helpers', () => {
     expect(dayOfYear(new Date('2024-01-01T00:00:00Z'))).toBe(1);
@@ -59,10 +53,6 @@ describe('the Sun as the lesson clocks see it', () => {
       const diff = Math.abs(((meanSunPoint(d).lon - subsolarPoint(d).lon + 540) % 360) - 180);
       expect(diff).toBeLessThan(4.5);
     }
-  });
-  test('elevationFrom matches solarElevationDeg for the real sun', () => {
-    const d = new Date('2024-06-01T10:00:00Z');
-    close(elevationFrom(subsolarPoint(d), { lat: 52, lon: 21 }), solarElevationDeg(d, { lat: 52, lon: 21 }), 1e-9);
   });
   test('day length: 12 h at the equator, polar day and polar night, longer summer days', () => {
     close(dayLightMinutes(0, 10), 720, 1e-6);

@@ -5,10 +5,8 @@
 
   let { seconds, running, ondone }: { seconds: number; running: boolean; ondone: () => void } = $props();
   let left = $state(0);
-  let key = $state(0);
 
   $effect(() => {
-    void seconds; void key;
     left = seconds;
   });
 
@@ -21,7 +19,6 @@
     return () => clearInterval(id);
   });
 
-  export function restart() { key += 1; }
   const frac = $derived(seconds > 0 ? left / seconds : 0);
 </script>
 

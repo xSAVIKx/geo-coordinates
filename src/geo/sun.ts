@@ -36,15 +36,6 @@ export function subsolarPoint(date: Date): LatLon {
   return { lat: declination, lon: normalizeLon(-15 * (utcHours - 12 + eqTimeMin / 60)) };
 }
 
-export function antisolarPoint(date: Date): LatLon {
-  const s = subsolarPoint(date);
-  return { lat: -s.lat, lon: normalizeLon(s.lon + 180) };
-}
-
-export function solarElevationDeg(date: Date, p: LatLon): number {
-  return elevationFrom(subsolarPoint(date), p);
-}
-
 /**
  * The Sun as the lesson's clocks see it: the real declination, but standing over the meridian where
  * local solar time (UTC + longitude × 4 min) is 12:00. It differs from the real subsolar point only by the
