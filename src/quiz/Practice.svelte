@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { announce } from '../app/announcer.svelte';
   import type { TopicId } from '../app/ids';
   import { formatRoute } from '../app/router';
   import { readString, writeString } from '../app/storage';
@@ -88,7 +87,7 @@
     mapState.pointEditable = false;
     const extra: Overlay[] = !res.correct && answer.kind === 'coords' ? [{ kind: 'marker', p: answer.value, tone: 'wrong' }] : [];
     mapState.addOverlays([...question.solution, ...extra], { animate: true });
-    announce(res.correct ? t('practice.correct') : t('practice.incorrect'), 'assertive');
+    // No live announcement of the verdict: the question card moves focus to its feedback, which reads it out (once).
   }
 
   function next() {

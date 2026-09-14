@@ -8,8 +8,7 @@ for (const topic of [1, 2, 3, 4, 5, 6, 7, 8]) {
     await openPage(page, `en/topic-${topic}/practice`, '?test');
     for (let i = 0; i < 10; i++) {
       await answerCorrectlyWithKeyboard(page);
-      // "Correct!" also appears in the assertive live region announcement; scope to the
-      // card's own feedback so the assertion targets the visible verdict, not the announcement.
+      // Scoped to the card's own feedback, the visible verdict.
       await expect(card(page).getByText('Correct!', { exact: true })).toBeVisible();
       if (i === 0) await expectNoAxeViolations(page, `topic ${topic} feedback`);
       await page.keyboard.press('Enter');
@@ -28,11 +27,13 @@ test('a wrong answer shows the mistake and the correct answer', async ({ page })
   await inputs.nth(0).fill(`${Math.abs(v.lat)}${v.lat > 0 ? 'S' : 'N'}`);
   await inputs.nth(1).fill(`${Math.abs(v.lon)}${v.lon > 0 ? 'E' : 'W'}`);
   await page.getByRole('button', { name: 'Check' }).click();
-  // "Not quite" (and the mistake/answer text) is also announced via the live region, so
-  // scope to the card's own feedback to avoid a strict-mode double match.
   await expect(card(page).getByText('Not quite')).toBeVisible();
   await expect(card(page).getByText(/Check the letter: N means north/)).toBeVisible();
   await expect(card(page).getByText(/^Correct answer:/)).toBeVisible();
+  // The verdict is read out once: focus moves to the feedback, and nothing is also announced in a live region.
+  await expect(card(page).locator('.fb')).toBeFocused();
+  await page.waitForTimeout(200);
+  await expect(page.locator('[aria-live]').filter({ hasText: 'Not quite' })).toHaveCount(0);
 });
 
 test('reduced motion: the solution overlays render without the reveal animation classes', async ({ page }) => {
