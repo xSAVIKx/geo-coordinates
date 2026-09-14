@@ -13,6 +13,14 @@ export function formatNumber(n: number, lang: LangCode = i18n.lang): string {
   return f.format(n);
 }
 
+/**
+ * A coordinate in running text never breaks inside itself: the Ukrainian `52° пн. ш.` keeps its number and both
+ * parts of its letters on one line (no-break spaces); a line may still break after the comma between two coordinates.
+ */
+export function keepTogether(coord: string): string {
+  return coord.replace(/ (?=(?:пн|пд|сх|зх)\.)/g, '\u00a0').replace(/(пн|пд|сх|зх)\. (?=[шд]\.)/g, '$1.\u00a0');
+}
+
 export function renderText(text: Text, lang: LangCode = i18n.lang): string {
   const resolved: Record<string, string | number> = {};
   for (const [name, p] of Object.entries(text.params ?? {})) {
@@ -20,7 +28,7 @@ export function renderText(text: Text, lang: LangCode = i18n.lang): string {
     else if (typeof p === 'number') resolved[name] = formatNumber(p, lang);
     else if ('coord' in p) {
       const axis = p.axis ?? 'both';
-      resolved[name] = axis === 'lat' ? formatLat(p.coord.lat, lang, p.precision) : axis === 'lon' ? formatLon(p.coord.lon, lang, p.precision) : formatLatLon(p.coord, lang, p.precision);
+      resolved[name] = keepTogether(axis === 'lat' ? formatLat(p.coord.lat, lang, p.precision) : axis === 'lon' ? formatLon(p.coord.lon, lang, p.precision) : formatLatLon(p.coord, lang, p.precision));
     } else if ('place' in p) resolved[name] = t(`place.${p.place}`, undefined, lang);
     else resolved[name] = renderText(p.text, lang);
   }

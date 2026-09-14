@@ -15,7 +15,7 @@ test('numbers use locale separators and units', () => {
 
 test('responses render per input kind', () => {
   expect(renderText(responseText(q({ kind: 'coords', precision: 'degree', fields: 'both', mapPick: false }), { kind: 'coords', value: { lat: -10, lon: 20 } }), 'en')).toBe('10°S, 20°E');
-  expect(renderText(responseText(q({ kind: 'coords', precision: 'minute', fields: 'lat', mapPick: false }), { kind: 'coords', value: { lat: 52.25, lon: 20 } }), 'uk')).toBe('52°15′ пн. ш.');
+  expect(renderText(responseText(q({ kind: 'coords', precision: 'minute', fields: 'lat', mapPick: false }), { kind: 'coords', value: { lat: 52.25, lon: 20 } }), 'uk')).toBe('52°15′\u00a0пн.\u00a0ш.');
   expect(renderText(responseText(q({ kind: 'choice', options: [{ key: 'q.opt.north' }, { key: 'q.opt.south' }] }), { kind: 'choice', index: 1 }), 'en')).toBe('South of it');
   expect(renderText(responseText(q({ kind: 'choice', options: [{ key: 'q.opt.north' }] }), { kind: 'choice', index: 5 }), 'en')).toBe('—');
   expect(renderText(responseText(q({ kind: 'number', unit: 'km' }), { kind: 'number', value: 1112 }), 'en')).toBe('1112 km');

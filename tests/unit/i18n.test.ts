@@ -3,7 +3,7 @@ import en from '../../src/i18n/en.json';
 import pl from '../../src/i18n/pl.json';
 import uk from '../../src/i18n/uk.json';
 import { detectLang, i18n, messages, t, tn } from '../../src/i18n/i18n.svelte';
-import { renderText } from '../../src/i18n/text';
+import { keepTogether, renderText } from '../../src/i18n/text';
 import { spokenAxis, spokenDMS, spokenLat, spokenLon } from '../../src/i18n/spoken';
 import { findSuspicious } from '../../scripts/translation-review-lib';
 
@@ -61,11 +61,17 @@ describe('runtime', () => {
     expect(t('missing.key')).toBe('missing.key');
   });
   test('renderText with coord params', () => {
-    expect(renderText({ key: 'spoken.zero', params: { amount: { coord: { lat: 52, lon: 21 } } } }, 'uk')).toBe('52° пн. ш., 21° сх. д.');
+    // In running text a Ukrainian coordinate keeps together (no-break spaces inside it); the comma between two may break.
+    expect(renderText({ key: 'spoken.zero', params: { amount: { coord: { lat: 52, lon: 21 } } } }, 'uk')).toBe('52°\u00a0пн.\u00a0ш., 21°\u00a0сх.\u00a0д.');
     expect(renderText({ key: 'spoken.zero', params: { amount: { coord: { lat: 52, lon: 21 }, axis: 'lon' } } }, 'en')).toBe('21°E');
     expect(renderText({ key: 'spoken.zero', params: { amount: 333.6 } }, 'pl')).toBe('333,6');
     expect(renderText({ key: 'spoken.zero', params: { amount: 2224 } }, 'uk')).toBe('2224');
     expect(renderText({ key: 'spoken.zero', params: { amount: 333.6 } }, 'en')).toBe('333.6');
+  });
+  test('keepTogether: Ukrainian letters stay with their number; other notations are unchanged', () => {
+    expect(keepTogether('34° пд. ш., 58° зх. д.')).toBe('34°\u00a0пд.\u00a0ш., 58°\u00a0зх.\u00a0д.');
+    expect(keepTogether('52°14′N, 21°E')).toBe('52°14′N, 21°E');
+    expect(keepTogether('0°, 180°')).toBe('0°, 180°');
   });
   test('spoken', () => {
     expect(spokenLat(52, 'en')).toBe('52 degrees north');
