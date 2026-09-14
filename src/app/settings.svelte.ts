@@ -1,4 +1,4 @@
-import { readJSON, writeJSON } from './storage';
+import { readRecord, writeJSON } from './storage';
 
 export type Theme = 'system' | 'light' | 'dark';
 export interface Settings { theme: Theme; largeText: boolean; reducedMotion: boolean }
@@ -11,7 +11,8 @@ function systemReducedMotion(): boolean {
 }
 
 export function initSettings(): void {
-  const s = readJSON<Partial<Settings>>(KEY, {});
+  // Each field is checked on its own: saved settings may be null, not an object, or hold a wrong type.
+  const s = readRecord(KEY);
   settings.theme = s.theme === 'light' || s.theme === 'dark' ? s.theme : 'system';
   settings.largeText = s.largeText === true;
   settings.reducedMotion = typeof s.reducedMotion === 'boolean' ? s.reducedMotion : systemReducedMotion();
