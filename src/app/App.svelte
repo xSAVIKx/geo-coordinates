@@ -67,7 +67,7 @@
 <LiveRegion />
 
 <style>
-  .skip { position: absolute; left: var(--space-2); top: -100px; z-index: 100; background: var(--surface); color: var(--text); padding: var(--space-3) var(--space-4); border-radius: var(--radius-sm); border: 2px solid var(--focus); box-shadow: var(--shadow-3); font-weight: var(--weight-strong); }
+  .skip { position: absolute; left: var(--space-2); top: -12rem; z-index: 100; background: var(--surface); color: var(--text); padding: var(--space-3) var(--space-4); border-radius: var(--radius-sm); border: 2px solid var(--focus); box-shadow: var(--shadow-3); font-weight: var(--weight-strong); }
   .skip:focus { top: var(--space-2); }
   main { flex: 1 0 auto; width: 100%; max-width: var(--page-max); margin-inline: auto; padding: var(--space-4) var(--space-6) var(--space-8); }
   @media (max-width: 599px) { main { padding: var(--space-3) var(--space-3) var(--space-6); } }
