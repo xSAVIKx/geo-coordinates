@@ -1,8 +1,9 @@
 <script lang="ts">
   import { t } from '../../i18n/i18n.svelte';
   import { hemisphere, type ViewCtx } from '../geometry';
-  import { mapState } from '../mapState.svelte';
+  import { useMapState } from '../mapStateContext';
   import { HEMI_LABEL, hemisphereLabelSpots } from '../overlayLayout';
+  const mapState = useMapState();
   let { ctx, idPrefix }: { ctx: ViewCtx; idPrefix: string } = $props();
 
   const regions = $derived(

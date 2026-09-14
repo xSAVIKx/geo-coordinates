@@ -2,8 +2,9 @@
   import { i18n, t } from '../../i18n/i18n.svelte';
   import { POLAR, TROPIC, meridianLine, parallelLine, type ViewCtx } from '../geometry';
   import { lineLabelSpecs, type LineLabelSpec } from '../lineLabels';
-  import { mapState } from '../mapState.svelte';
+  import { useMapState } from '../mapStateContext';
   import { sceneLineLabels } from '../overlayText';
+  const mapState = useMapState();
   // `part`: 'lines' draws the lines, 'labels' their names — drawn later, above the noon meridian and the point's guides.
   let { ctx, part = 'all' }: { ctx: ViewCtx; part?: 'all' | 'lines' | 'labels' } = $props();
 

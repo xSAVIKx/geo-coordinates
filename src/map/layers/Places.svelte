@@ -4,12 +4,13 @@
   import type { ViewCtx } from '../geometry';
   import { meanSunPoint } from '../../geo/sun';
   import { createLabelMemory, overlaps, placeLabelOptions, pointBox, selectStablePlacements, textBox, type LabelBox, type PlaceLabelOption } from '../labelLayout';
-  import { mapState } from '../mapState.svelte';
+  import { useMapState } from '../mapStateContext';
   import { bracketBoxes, CONTINENT_WIDTH, fitMapNames, markerLayout, noonLabel, NOON_LABEL, viewEdgeBoxes } from '../overlayLayout';
   import { bracketFmt, markerText, noonText, sceneLatEdgeBoxes, sceneLineLabels } from '../overlayText';
   import { MAP_LABELS, PLACES, tierVisible, tierZoom } from '../places';
   import { SCHOOL_BADGE_H, schoolBadgeWidth, type SchoolCluster } from '../schools';
   import { LABELLED_RIVERS, REGION_DETAIL_ZOOM, regionActive, riverLabelPoints } from '../world';
+  const mapState = useMapState();
   // `chosenBoxes`: the chosen school's name and square (drawn on top by Schools.svelte), kept clear by every name here.
   let { ctx, schoolClusters = [], chosenBoxes = [] }: { ctx: ViewCtx; schoolClusters?: SchoolCluster[]; chosenBoxes?: LabelBox[] } = $props();
 

@@ -2,7 +2,8 @@
   import { geoGraticule } from 'd3-geo';
   import { MERCATOR_MAX_LAT, type ViewCtx } from '../geometry';
   import { gridExtent, resolveGridStep } from '../gridStep';
-  import { mapState } from '../mapState.svelte';
+  import { useMapState } from '../mapStateContext';
+  const mapState = useMapState();
   let { ctx }: { ctx: ViewCtx } = $props();
   const step = $derived(resolveGridStep(mapState.layers.graticuleStep, ctx));
   const d = $derived.by(() => {

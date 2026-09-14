@@ -4,7 +4,8 @@
   import { edgeTicks } from '../edgeTicks';
   import type { ViewCtx } from '../geometry';
   import { gridUsesMinutes, resolveGridStep } from '../gridStep';
-  import { mapState } from '../mapState.svelte';
+  import { useMapState } from '../mapStateContext';
+  const mapState = useMapState();
   let { ctx }: { ctx: ViewCtx } = $props();
 
   const FONT = 11;

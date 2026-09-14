@@ -1,7 +1,8 @@
 <script lang="ts">
   import type { ViewCtx } from '../geometry';
   import { bordersFor, detailFor, landFor, sphere } from '../world';
-  import { mapState } from '../mapState.svelte';
+  import { useMapState } from '../mapStateContext';
+  const mapState = useMapState();
   let { ctx }: { ctx: ViewCtx } = $props();
   const oceanD = $derived(ctx.path(sphere) ?? '');
   const layers = $derived(landFor(ctx.zoom, ctx.bounds));

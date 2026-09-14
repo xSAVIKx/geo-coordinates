@@ -1,6 +1,7 @@
 <script lang="ts">
   import { meridianLine, parallelLine, type ViewCtx } from '../geometry';
-  import { mapState } from '../mapState.svelte';
+  import { useMapState } from '../mapStateContext';
+  const mapState = useMapState();
   // `part`: 'guides' draws the dashed parallel and meridian (under place names, so they never strike
   // through one); 'handle' draws the point itself, on top of everything.
   let { ctx, part = 'all' }: { ctx: ViewCtx; part?: 'all' | 'guides' | 'handle' } = $props();

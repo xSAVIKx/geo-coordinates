@@ -2,10 +2,11 @@
   import { bracketModel, labelWidth } from '../brackets';
   import { hemisphere, meridianLine, parallelLine, type ViewCtx } from '../geometry';
   import { meanSunPoint } from '../../geo/sun';
-  import { mapState } from '../mapState.svelte';
+  import { useMapState } from '../mapStateContext';
   import { bracketBoxes, markerLayout, noonLabel, NOON_LABEL } from '../overlayLayout';
   import { bracketFmt as fmt, markerText, noonText, sceneLineLabels } from '../overlayText';
   import type { MarkerTone } from '../types';
+  const mapState = useMapState();
   // `part`: 'lines' draws only the noon meridian's line (under place names, so it never strikes through
   // one); 'marks' draws everything else (markers, brackets, highlights and the noon label) above them.
   let { ctx, part = 'all' }: { ctx: ViewCtx; part?: 'all' | 'lines' | 'marks' } = $props();

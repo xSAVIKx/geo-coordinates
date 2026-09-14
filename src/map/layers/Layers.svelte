@@ -7,12 +7,13 @@
   import Hemispheres from './Hemispheres.svelte';
   import Land from './Land.svelte';
   import Overlays from './Overlays.svelte';
-  import { mapState } from '../mapState.svelte';
+  import { useMapState } from '../mapStateContext';
   import { layoutSchools } from '../chosenLabel';
   import Places from './Places.svelte';
   import PointMarker from './PointMarker.svelte';
   import Schools from './Schools.svelte';
   import SpecialLines from './SpecialLines.svelte';
+  const mapState = useMapState();
   // While the flat map is dragged, `ctx` is the view where the drag began (drawn with a wide pad) and
   // `offset` slides it to where the map is now; `edgeCtx` is the live view, for the edge numbers.
   let { ctx, idPrefix, edgeCtx, offset = null }: { ctx: ViewCtx; idPrefix: string; edgeCtx?: ViewCtx; offset?: [number, number] | null } = $props();

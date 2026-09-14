@@ -3,7 +3,8 @@
   import { normalizeLon } from '../../geo/format';
   import { meanSunPoint } from '../../geo/sun';
   import type { ViewCtx } from '../geometry';
-  import { mapState } from '../mapState.svelte';
+  import { useMapState } from '../mapStateContext';
+  const mapState = useMapState();
   let { ctx }: { ctx: ViewCtx } = $props();
 
   // Night is everything more than 90° from the point under the Sun, i.e. within 90° of the opposite point.

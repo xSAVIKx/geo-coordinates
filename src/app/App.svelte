@@ -5,6 +5,7 @@
   import CheatSheet from './CheatSheet.svelte';
   import LabPage from './LabPage.svelte';
   import TopicPage from './TopicPage.svelte';
+  import Worksheet from './Worksheet.svelte';
   import Footer from './Footer.svelte';
   import LiveRegion from './LiveRegion.svelte';
   import Laser from './Laser.svelte';
@@ -66,6 +67,8 @@
     <Rehearsal />
   {:else if route.name === 'cheatsheet'}
     <CheatSheet />
+  {:else if route.name === 'worksheet'}
+    <Worksheet />
   {:else if route.name === 'class-quiz'}
     <h1 tabindex="-1">{t('mode.classQuiz.title')}</h1>
     <ClassQuiz seed={route.seed} />

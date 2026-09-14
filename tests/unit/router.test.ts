@@ -15,6 +15,7 @@ describe('parseRoute', () => {
     ['#en/lab', { name: 'lab', lang: 'en' }],
     ['#uk/cheatsheet', { name: 'cheatsheet', lang: 'uk' }],
     ['#uk/cheatsheet/2', { name: 'home', lang: 'uk' }],
+    ['#pl/worksheet', { name: 'worksheet', lang: 'pl' }],
     ['#en/class-quiz', { name: 'class-quiz', lang: 'en', seed: null }],
     ['#en/class-quiz?seed=5b-A', { name: 'class-quiz', lang: 'en', seed: '5b-A' }],
     ['#en/class-quiz?seed=<script>', { name: 'class-quiz', lang: 'en', seed: null }],
@@ -33,7 +34,7 @@ describe('parseRoute', () => {
 
 describe('formatRoute', () => {
   test('round trips canonical forms', () => {
-    for (const hash of ['#en/', '#pl/topic-3/explore', '#pl/topic-8/explore/4', '#uk/topic-1/practice', '#en/rehearsal', '#en/lab', '#pl/cheatsheet', '#en/class-quiz', '#en/class-quiz?seed=abc']) {
+    for (const hash of ['#en/', '#pl/topic-3/explore', '#pl/topic-8/explore/4', '#uk/topic-1/practice', '#en/rehearsal', '#en/lab', '#pl/cheatsheet', '#en/worksheet', '#en/class-quiz', '#en/class-quiz?seed=abc']) {
       expect(formatRoute(parseRoute(hash, 'en'))).toBe(hash);
     }
   });
