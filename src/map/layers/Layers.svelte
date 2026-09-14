@@ -8,7 +8,7 @@
   import Land from './Land.svelte';
   import Overlays from './Overlays.svelte';
   import { mapState } from '../mapState.svelte';
-  import { chosenSchoolMark, clearOfChosen, clusterSchools } from '../schools';
+  import { layoutSchools } from '../chosenLabel';
   import Places from './Places.svelte';
   import PointMarker from './PointMarker.svelte';
   import Schools from './Schools.svelte';
@@ -20,9 +20,10 @@
   // Grouped in the drawing's coordinates, so the badges slide with everything else while the flat
   // map is dragged; the flat grouping itself is cached per zoom (see schools.ts), so a pan never regroups.
   // The school chosen from a list is left out of the groups and drawn alone, named.
-  const chosenId = $derived(mapState.layers.schools ? mapState.chosenSchool : null);
-  const chosenMark = $derived(chosenSchoolMark(ctx, chosenId));
-  const schoolClusters = $derived(mapState.layers.schools ? clearOfChosen(clusterSchools(ctx, chosenId), chosenMark, ctx.px) : []);
+  // Its name goes first, inside the view and clear of badges (they step aside) — see chosenLabel.ts.
+  const schools = $derived(mapState.layers.schools ? layoutSchools(ctx, mapState.chosenSchool, mapState.point, mapState.layers.pointGuides) : null);
+  const schoolClusters = $derived(schools?.clusters ?? []);
+  const chosenBoxes = $derived(schools?.label && schools.chosen ? [schools.label.box, { left: schools.chosen.x - 12 * ctx.px, right: schools.chosen.x + 12 * ctx.px, top: schools.chosen.y - 12 * ctx.px, bottom: schools.chosen.y + 12 * ctx.px }] : []);
 </script>
 
 <g class="geo" transform={offset ? `translate(${offset[0]} ${offset[1]})` : undefined}>
@@ -46,10 +47,11 @@
 <SpecialLines {ctx} />
 <!-- A school's square goes under a city's dot and name; count badges and the chosen school go over them, so the digits stay readable. -->
 {#if mapState.layers.schools}<Schools {ctx} clusters={schoolClusters} part="squares" />{/if}
-<Places {ctx} {schoolClusters} {chosenMark} />
-{#if mapState.layers.schools}<Schools {ctx} clusters={schoolClusters} chosen={chosenMark} part="badges" />{/if}
+<Places {ctx} {schoolClusters} {chosenBoxes} />
+{#if schools}<Schools {ctx} clusters={schoolClusters} chosen={schools.chosen} label={schools.label} part="badges" />{/if}
 <Overlays {ctx} />
 <PointMarker {ctx} />
+{#if schools?.label}<Schools {ctx} clusters={[]} label={schools.label} part="label" />{/if}
 </g>
 <!-- Degree numbers last so guides and overlays never cover them; they ignore the pointer, so the point handle stays grabbable. -->
 {#if ctx.kind === 'flat'}<EdgeLabels ctx={edgeCtx ?? ctx} />{/if}

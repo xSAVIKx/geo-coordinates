@@ -9,9 +9,10 @@
   import { lineLabelPoint, lineLabelSpecs } from '../lineLabels';
   import { mapState } from '../mapState.svelte';
   import { MAP_LABELS, PLACES, tierVisible } from '../places';
-  import { SCHOOL_BADGE_H, schoolBadgeWidth, type School, type SchoolCluster } from '../schools';
+  import { SCHOOL_BADGE_H, schoolBadgeWidth, type SchoolCluster } from '../schools';
   import { LABELLED_RIVERS, REGION_DETAIL_ZOOM, regionActive, riverLabelPoints } from '../world';
-  let { ctx, schoolClusters = [], chosenMark = null }: { ctx: ViewCtx; schoolClusters?: SchoolCluster[]; chosenMark?: { x: number; y: number; school: School } | null } = $props();
+  // `chosenBoxes`: the chosen school's name and square (drawn on top by Schools.svelte), kept clear by every name here.
+  let { ctx, schoolClusters = [], chosenBoxes = [] }: { ctx: ViewCtx; schoolClusters?: SchoolCluster[]; chosenBoxes?: LabelBox[] } = $props();
 
   // Which place labels were visible the *previous* time this ran, for the hysteresis bonus in
   // `visibleIds` — per scene: a new scene (MapState.sceneVersion) starts without any bonus. Plain,
@@ -136,7 +137,7 @@
       (c) => c.featured,
       (c) => c.distance,
       (c) => previousVisible.has(c.id),
-      [...lineObstacles, ...continentObstacles, ...edgeObstacles, ...pointObstacles, ...(chosenLabel ? [chosenLabel.box] : [])],
+      [...lineObstacles, ...continentObstacles, ...edgeObstacles, ...pointObstacles, ...chosenBoxes],
     );
     const out = new Map<string, Side>();
     candidates.forEach((c, i) => { if (chosen[i]! >= 0) out.set(c.id, SIDES[orders.get(c.id)![chosen[i]!]!]!); });
@@ -188,37 +189,16 @@
     if (side.endsWith('left')) return { x: x + 6 * px, y: y + dy * px, anchor: 'end' };
     return { x, y: y + dy * px, anchor: 'middle' };
   };
-  // The school chosen from a list is always named, before any place name (it was asked for): where it
-  // is clear of everything, else clear of the point and the map's edge, else to its right regardless.
-  const CHOSEN_FONT = 12.5;
-  const chosenLabel = $derived.by(() => {
-    if (!chosenMark) return null;
-    const { x, y, school } = chosenMark;
-    if (x < 0 || x > ctx.width || y < 0 || y > ctx.height) return null;
-    const px = ctx.px;
-    const width = labelWidth(school.name, CHOSEN_FONT, px);
-    const mark: LabelBox = { left: x - 12 * px, right: x + 12 * px, top: y - 12 * px, bottom: y + 12 * px };
-    const options = SCHOOL_SIDES.map((side) => {
-      const base = schoolSideAnchor(x, y, side, px);
-      // A little further out than other school names: the chosen square and its ring are bigger.
-      const a = { ...base, x: base.x + (side === 'right' ? 6 : side === 'left' ? -6 : 0) * px, y: base.y + (side.startsWith('above') ? -2 : side.startsWith('below') ? 3 : 0) * px };
-      return { a, box: textBox(a.x, a.y, width, CHOSEN_FONT * px, a.anchor) };
-    });
-    const hard = [...edgeObstacles, ...pointObstacles, mark];
-    for (const obstacles of [[...hard, ...lineObstacles, ...continentObstacles, ...schoolMarks], hard]) {
-      const o = options.find((opt) => !obstacles.some((b) => overlaps(opt.box, b)));
-      if (o) return { id: school.id, name: school.name, ...o.a, box: o.box, mark };
-    }
-    return { id: school.id, name: school.name, ...options[0]!.a, box: options[0]!.box, mark };
-  });
-
   const schoolLabels = $derived.by(() => {
     if (!schoolClusters.length || ctx.zoom < 3 || !roomy) return [];
     const singles = schoolClusters.filter((c) => c.members.length === 1 && c.x >= 0 && c.x <= ctx.width && c.y >= 0 && c.y <= ctx.height);
     if (!singles.length) return [];
     const placed: LabelBox[] = [
       ...lineObstacles, ...continentObstacles, ...edgeObstacles, ...pointObstacles, ...schoolMarks,
-      ...(chosenLabel ? [chosenLabel.box, chosenLabel.mark] : []),
+      ...chosenBoxes,
+      // The view's edges: a school's name is left out rather than cut (the globe's names too).
+      { left: -1e7, right: 0, top: -1e7, bottom: 1e7 }, { left: ctx.width, right: 1e7, top: -1e7, bottom: 1e7 },
+      { left: -1e7, right: 1e7, top: -1e7, bottom: 0 }, { left: -1e7, right: 1e7, top: ctx.height, bottom: 1e7 },
       ...candidates.flatMap((c) => {
         const side = placements.get(c.id);
         return side ? [c.boxes[SIDES.indexOf(side)]!] : [];
@@ -278,16 +258,12 @@
 {#each schoolLabels as l (l.id)}
   <text class="halo school-name" data-school={l.id} x={l.x} y={l.y} text-anchor={l.anchor} font-size={SCHOOL_FONT * ctx.px}>{l.name}</text>
 {/each}
-{#if chosenLabel}
-  <text class="halo school-name chosen" data-school={chosenLabel.id} x={chosenLabel.x} y={chosenLabel.y} text-anchor={chosenLabel.anchor} font-size={CHOSEN_FONT * ctx.px}>{chosenLabel.name}</text>
-{/if}
 
 <style>
   .place { fill: var(--text); stroke: var(--halo); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
   .place.minor { fill: var(--map-label); fill-opacity: 0.55; stroke-width: 1; }
   .place-name { fill: var(--text); }
   .school-name { fill: var(--school-text); font-weight: 650; }
-  .school-name.chosen { font-weight: 800; }
   .river-name { fill: var(--river-label); font-style: italic; font-weight: 650; letter-spacing: 0.02em; }
   .map-label { fill: var(--map-label); font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
   .map-label.ocean { fill: var(--ocean-label); font-style: italic; font-weight: 500; letter-spacing: 0.04em; text-transform: none; }

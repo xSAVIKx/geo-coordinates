@@ -76,33 +76,49 @@ export function clusterSchools(ctx: ViewCtx, exclude: string | null = null, marg
     .filter(inView);
 }
 
-/** How far (CSS px) a group is drawn from the chosen school at least: clear of its ring and of the point's grab area on it. */
-export const CHOSEN_CLEARANCE = 30;
+/** Half the side (CSS px) of the area round the chosen school kept free of other marks: its ring and the point's grab area on it. */
+export const CHOSEN_CLEARANCE = 22;
+
+/** Half width and height (CSS px) of a group's mark: a count badge, or a school's square. */
+function markHalf(c: SchoolCluster): [number, number] {
+  return c.members.length > 1 ? [schoolBadgeWidth(c.members.length) / 2 + 1, SCHOOL_BADGE_H / 2 + 1] : [6, 6];
+}
 
 /**
  * Groups drawn where the chosen school sits (often its city-level neighbours, at the very same spot)
- * are moved out from under it — away from it, or up and to the right when on top of it — so their
- * badge stays visible and clickable. Only where they are drawn changes, never who is in them.
+ * are moved out from under it — away from it, or up and to the right when on top of it — until their
+ * mark is clear of the area round the chosen school; a moved mark turns round it, 40° at a time,
+ * until it is also clear of the other marks. Only where they are drawn changes, never who is in them.
  */
 export function clearOfChosen(clusters: SchoolCluster[], chosen: { x: number; y: number } | null, px: number): SchoolCluster[] {
   if (!chosen) return clusters;
-  const min = CHOSEN_CLEARANCE * px;
-  const near = (c: SchoolCluster) => Math.hypot(c.x - chosen.x, c.y - chosen.y) < min;
-  // Badges already in place (those not near the chosen school, then each one moved): a moved badge
-  // turns round the chosen school, 40° at a time, until it is a badge's width from all of them.
-  const placed: { x: number; y: number }[] = clusters.filter((c) => !near(c));
-  const apart = min * 0.9;
+  const keep = CHOSEN_CLEARANCE * px, gap = 2 * px;
+  const boxAt = (c: SchoolCluster, x: number, y: number) => {
+    const [hw, hh] = markHalf(c);
+    return { left: x - hw * px, right: x + hw * px, top: y - hh * px, bottom: y + hh * px };
+  };
+  const hits = (a: { left: number; right: number; top: number; bottom: number }, b: typeof a) => a.left < b.right + gap && b.left < a.right + gap && a.top < b.bottom + gap && b.top < a.bottom + gap;
+  const zone = { left: chosen.x - keep, right: chosen.x + keep, top: chosen.y - keep, bottom: chosen.y + keep };
+  const near = (c: SchoolCluster) => hits(boxAt(c, c.x, c.y), zone);
+  const placed = clusters.filter((c) => !near(c)).map((c) => boxAt(c, c.x, c.y));
   return clusters.map((c) => {
     if (!near(c)) return c;
+    const [hw, hh] = markHalf(c);
     const dx = c.x - chosen.x, dy = c.y - chosen.y;
     const base = Math.hypot(dx, dy) > 0.5 * px ? Math.atan2(dy, dx) : -Math.PI / 4;
-    let spot = { x: chosen.x + Math.cos(base) * min, y: chosen.y + Math.sin(base) * min };
+    // How far along a direction the mark must go for its box to clear the zone (along the easier axis).
+    const reach = (angle: number) => {
+      const ux = Math.abs(Math.cos(angle)), uy = Math.abs(Math.sin(angle));
+      return Math.min(ux > 1e-6 ? ((hw * px + keep + gap) / ux) : Infinity, uy > 1e-6 ? ((hh * px + keep + gap) / uy) : Infinity);
+    };
+    const at = (angle: number) => ({ x: chosen.x + Math.cos(angle) * reach(angle), y: chosen.y + Math.sin(angle) * reach(angle) });
+    let spot = at(base);
     for (let k = 0; k < 9; k++) {
       const angle = base + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * (Math.PI / 4.5);
-      const at = { x: chosen.x + Math.cos(angle) * min, y: chosen.y + Math.sin(angle) * min };
-      if (placed.every((p) => Math.hypot(p.x - at.x, p.y - at.y) >= apart)) { spot = at; break; }
+      const p = at(angle);
+      if (!placed.some((b) => hits(boxAt(c, p.x, p.y), b))) { spot = p; break; }
     }
-    placed.push(spot);
+    placed.push(boxAt(c, spot.x, spot.y));
     return { ...c, ...spot };
   });
 }
@@ -193,16 +209,16 @@ export type ClusterClick = { kind: 'zoom'; center: LatLon; zoom: number } | { ki
 /**
  * What a click on the badge with `key` (see Schools.svelte) does: zoom in on the group, or — when
  * that cannot pull it apart (all its schools share one spot, or the map is already as close as it
- * goes) — list its schools. Null when no such group is drawn. `exclude` is the chosen school, as drawn.
+ * goes) — list its schools, sorted by name in `lang`. Null when no such group is drawn. `exclude` is the chosen school, as drawn.
  */
-export function clusterClick(ctx: ViewCtx, key: string, maxZoom: number, exclude: string | null = null): ClusterClick | null {
+export function clusterClick(ctx: ViewCtx, key: string, maxZoom: number, exclude: string | null = null, lang = 'en'): ClusterClick | null {
   const c = clusterSchools(ctx, exclude).find((x) => x.key === key && x.members.length > 1);
   if (!c) return null;
   const current = ctx.kind === 'flat' ? ctx.zoom : ctx.zoom / 2;
   const oneSpot = c.members.every((s) => sameSpot(s, c.members[0]!));
   const target = clusterZoomTarget(c.members, ctx, maxZoom);
   if (oneSpot || target.zoom <= current * (1 + 1e-9)) {
-    const collator = new Intl.Collator();
+    const collator = new Intl.Collator(lang);
     return { kind: 'list', members: [...c.members].sort((a, b) => collator.compare(a.name, b.name)) };
   }
   return { kind: 'zoom', ...target };

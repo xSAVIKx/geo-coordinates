@@ -5,8 +5,11 @@ import { retrieved, schools as slim } from 'virtual:maple-bear-schools';
 import { schoolsModuleCode, slimSchools } from '../../scripts/schools-plugin.ts';
 import { makeFlatCtx, makeGlobeCtx } from '../../src/map/geometry';
 import { gridCluster } from '../../src/map/gridCluster';
+import { badgeBox, chosenTextWidth, layoutChosenLabel, layoutSchools, wrapName } from '../../src/map/chosenLabel';
+import { overlaps } from '../../src/map/labelLayout';
 import { FLAT_MAX_ZOOM, GLOBE_MAX_ZOOM, MapState } from '../../src/map/mapState.svelte';
-import { CHOSEN_CLEARANCE, chosenSchoolMark, clearOfChosen, clusterClick, clusterSchools, clusterZoomTarget, isolatingFlatZoom, isolatingGlobeZoom, SCHOOL_CELL, SCHOOL_CELL_DEEP, SCHOOL_DEEP_ZOOM, schoolCell, SCHOOLS } from '../../src/map/schools';
+import { HOME } from '../../src/map/places';
+import { CHOSEN_CLEARANCE, clearOfChosen, clusterClick, clusterSchools, clusterZoomTarget, isolatingFlatZoom, isolatingGlobeZoom, SCHOOL_CELL, SCHOOL_CELL_DEEP, SCHOOL_DEEP_ZOOM, schoolCell, SCHOOLS, type SchoolCluster } from '../../src/map/schools';
 
 const katowice = () => SCHOOLS.find((s) => s.id === 'pl-katowice')!;
 const total = (clusters: { members: unknown[] }[]) => clusters.reduce((n, c) => n + c.members.length, 0);
@@ -137,44 +140,91 @@ describe('school clusters', () => {
     expect(g.zoom).toBe(SCHOOL_DEEP_ZOOM);
   });
 
-  test('every school, chosen from the list, is drawn alone in view on the flat map and the globe', () => {
+  // The lab at 1366 px (flat map and globe) and at 375 px (flat map), with the px the page really has.
+  const VIEWS = [
+    { name: 'flat 1366', kind: 'flat', px: 1.675, projection: 'grid' },
+    { name: 'globe 1366', kind: 'globe', px: 1.742, projection: 'grid' },
+    { name: 'flat 375', kind: 'flat', px: 2.751, projection: 'grid' },
+    { name: 'flat 1366 Mercator', kind: 'flat', px: 1.675, projection: 'mercator' },
+  ] as const;
+
+  test('every school, chosen from the list, is drawn alone and its whole name is inside the view, clear of every badge', () => {
     const failures: string[] = [];
-    for (const [projection, px] of [['grid', 1.675], ['grid', 2.8], ['mercator', 1.675], ['equal-earth', 1.2]] as const) {
+    for (const view of VIEWS) {
       for (const s of SCHOOLS) {
-        const zoom = isolatingFlatZoom(s, projection, px, FLAT_MAX_ZOOM);
         const state = new MapState();
-        state.chooseProjection(projection);
-        state.setFlatView(s, zoom);
-        const ctx = makeFlatCtx(960, 480, state.flat.center, state.flat.zoom, px, projection);
-        const clusters = clusterSchools(ctx, s.id, Infinity);
-        const mark = chosenSchoolMark(ctx, s.id);
-        if (clusters.some((c) => c.members.some((m) => m.id === s.id))) failures.push(`${projection}/${px} ${s.id}: still grouped`);
-        if (!mark || mark.x < 0 || mark.x > 960 || mark.y < 0 || mark.y > 480) failures.push(`${projection}/${px} ${s.id}: not in view`);
-        if (total(clusters) !== SCHOOLS.length - 1) failures.push(`${projection}/${px} ${s.id}: ${total(clusters)} others`);
+        state.applyScene({ views: ['globe', 'flat'], point: HOME, pointEditable: true, precision: 'auto', layers: { graticuleStep: 'auto' }, schoolsToggle: true, ...(view.projection === 'mercator' ? { flatProjection: 'mercator' as const } : {}) });
+        state.viewPx = view.kind === 'flat' ? { flat: view.px, globe: null } : { flat: 1.675, globe: view.px };
+        state.chooseSchool(s.id);
+        const ctx = view.kind === 'flat'
+          ? makeFlatCtx(960, 480, state.flat.center, state.flat.zoom, view.px, view.projection)
+          : makeGlobeCtx(500, state.rotate, view.px, state.globeZoom);
+        const layout = layoutSchools(ctx, s.id, state.point, true);
+        const where = `${view.name} ${s.id}`;
+        // Drawn alone: the other 486 schools are all in the groups, the chosen one is not and is in view.
+        const inGroups = layout.clusters.flatMap((c) => c.members.map((m) => m.id));
+        if (inGroups.includes(s.id) || new Set(inGroups).size !== inGroups.length) failures.push(`${where}: grouping`);
+        const c = layout.chosen;
+        if (!c || c.x < 0 || c.x > ctx.width || c.y < 0 || c.y > ctx.height) { failures.push(`${where}: square not in view`); continue; }
+        const label = layout.label;
+        if (!label) { failures.push(`${where}: no name`); continue; }
+        if (label.lines.join(' ') !== s.name) failures.push(`${where}: name text`);
+        const b = label.box;
+        if (b.left < 0 || b.top < 0 || b.right > ctx.width || b.bottom > ctx.height) failures.push(`${where}: name leaves the view`);
+        const badges = layout.clusters.filter((g) => g.members.length > 1).map((g) => badgeBox(g, ctx.px));
+        if (badges.some((g) => overlaps(g, b))) failures.push(`${where}: name under a badge`);
+        const square = { left: c.x - 12 * ctx.px, right: c.x + 12 * ctx.px, top: c.y - 12 * ctx.px, bottom: c.y + 12 * ctx.px };
+        if (badges.some((g) => overlaps(g, square))) failures.push(`${where}: square under a badge`);
+        if (overlaps(b, square)) failures.push(`${where}: name over its square`);
       }
     }
-    for (const s of SCHOOLS) {
-      const gz = isolatingGlobeZoom(s, 1, GLOBE_MAX_ZOOM);
-      const ctx = makeGlobeCtx(500, [-s.lon, -Math.max(-60, Math.min(60, s.lat))], 1, gz);
-      const mark = chosenSchoolMark(ctx, s.id);
-      if (!mark || mark.x < 0 || mark.x > 500 || mark.y < 0 || mark.y > 500) failures.push(`globe ${s.id}: not in view`);
-      if (clusterSchools(ctx, s.id).some((c) => c.members.some((m) => m.id === s.id))) failures.push(`globe ${s.id}: still grouped`);
-    }
     expect(failures).toEqual([]);
-  }, 60_000);
+  }, 120_000);
 
-  test('a group at the chosen school is drawn clear of it', () => {
-    const c = (x: number, y: number) => ({ key: `k${x},${y}`, x, y, members: [] });
-    const moved = clearOfChosen([c(100, 100), c(110, 100), c(300, 300)], { x: 100, y: 100 }, 2);
-    expect(Math.hypot(moved[0]!.x - 100, moved[0]!.y - 100)).toBeCloseTo(CHOSEN_CLEARANCE * 2);
-    expect(moved[0]!.y).toBeLessThan(100);
-    expect(Math.hypot(moved[1]!.x - 100, moved[1]!.y - 100)).toBeCloseTo(CHOSEN_CLEARANCE * 2);
-    expect(Math.hypot(moved[1]!.x - moved[0]!.x, moved[1]!.y - moved[0]!.y)).toBeGreaterThanOrEqual(CHOSEN_CLEARANCE * 2 * 0.9 - 1e-9);
-    expect(moved[2]).toMatchObject({ x: 300, y: 300 });
-    expect(clearOfChosen(moved, null, 2)).toBe(moved);
-    // Two groups next to it do not end up on top of each other.
-    const two = clearOfChosen([c(99, 101), c(98, 102)], { x: 100, y: 100 }, 1);
-    expect(Math.hypot(two[0]!.x - two[1]!.x, two[0]!.y - two[1]!.y)).toBeGreaterThanOrEqual(CHOSEN_CLEARANCE * 0.9 - 1e-9);
+  test('chosen name layout: wraps long names, keeps inside the bounds, keeps off guides and badges when it can', () => {
+    const two = wrapName('Maple Bear Canadian Pre-school, Jakkur, Bengaluru', 2);
+    expect(two).toHaveLength(2);
+    expect(two.join(' ')).toBe('Maple Bear Canadian Pre-school, Jakkur, Bengaluru');
+    expect(wrapName('Maple Bear Katowice', 1)).toEqual(['Maple Bear Katowice']);
+    const bounds = { left: 0, top: 0, right: 300, bottom: 200 };
+    const far = 1e7;
+    const guides = [{ left: 147, right: 153, top: -far, bottom: far }, { left: -far, right: far, top: 97, bottom: 103 }];
+    // In the middle with guides: a corner block (clear of both lines).
+    const mid = layoutChosenLabel({ x: 150, y: 100, name: 'Maple Bear Katowice', px: 1, bounds, hard: [], soft: [[], guides] });
+    expect(mid.lines.join(' ')).toBe('Maple Bear Katowice');
+    expect(guides.some((g) => overlaps(g, mid.box))).toBe(false);
+    // At the right edge: never past it.
+    const edge = layoutChosenLabel({ x: 295, y: 100, name: 'Maple Bear Katowice', px: 1, bounds, hard: [], soft: [] });
+    expect(edge.box.right).toBeLessThanOrEqual(300);
+    // Too long for one line in a narrow view: wrapped, and inside.
+    const long = 'Maple Bear Canadian Pre-school, Neo Town Electronoic City Phase 1, Bengaluru';
+    const narrow = layoutChosenLabel({ x: 60, y: 100, name: long, px: 1, bounds: { left: 0, top: 0, right: 240, bottom: 200 }, hard: [], soft: [] });
+    expect(narrow.lines.length).toBeGreaterThan(1);
+    expect(narrow.lines.join(' ')).toBe(long);
+    expect(Math.max(...narrow.lines.map((l) => chosenTextWidth(l, 1)))).toBeLessThanOrEqual(240);
+    expect(narrow.box.left).toBeGreaterThanOrEqual(0);
+    expect(narrow.box.right).toBeLessThanOrEqual(240);
+    // A badge above: the name goes elsewhere.
+    const badge = { left: 100, right: 200, top: 60, bottom: 90 };
+    const avoid = layoutChosenLabel({ x: 150, y: 100, name: 'Maple Bear Katowice', px: 1, bounds, hard: [], soft: [[badge]] });
+    expect(overlaps(avoid.box, badge)).toBe(false);
+  });
+
+  test('a group at the chosen school is drawn clear of it and of the other groups', () => {
+    const c = (x: number, y: number, n = 3) => ({ key: `k${x},${y}`, x, y, members: new Array(n).fill(SCHOOLS[0]) });
+    const zone = (px: number) => ({ left: 100 - CHOSEN_CLEARANCE * px, right: 100 + CHOSEN_CLEARANCE * px, top: 100 - CHOSEN_CLEARANCE * px, bottom: 100 + CHOSEN_CLEARANCE * px });
+    for (const px of [1, 2]) {
+      const input = [c(100, 100), c(110, 100, 120), c(99, 101), c(98, 102, 1), c(300, 300)];
+      const moved = clearOfChosen(input, { x: 100, y: 100 }, px);
+      const boxes = moved.map((g) => (g.members.length > 1 ? badgeBox(g, px) : { left: g.x - 6 * px, right: g.x + 6 * px, top: g.y - 6 * px, bottom: g.y + 6 * px }));
+      for (const b of boxes.slice(0, 4)) expect(overlaps(b, zone(px))).toBe(false);
+      for (let i = 0; i < 4; i++) for (let j = i + 1; j < 4; j++) expect(overlaps(boxes[i]!, boxes[j]!), `${i} ${j}`).toBe(false);
+      expect(moved[0]!.y).toBeLessThan(100); // on top of it: moved up and to the right
+      expect(moved[4]).toBe(input[4]);
+      expect(moved.map((g) => g.members.length)).toEqual(input.map((g) => g.members.length));
+    }
+    const same: SchoolCluster[] = [c(1, 1)];
+    expect(clearOfChosen(same, null, 2)).toBe(same);
   });
 
   test('MapState.chooseSchool: both maps on the school, marked as chosen, the point moved; sizes a hidden view from the drawn one', () => {

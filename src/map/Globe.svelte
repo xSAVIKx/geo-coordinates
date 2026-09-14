@@ -1,6 +1,6 @@
 <script lang="ts">
   import { untrack } from 'svelte';
-  import { t } from '../i18n/i18n.svelte';
+  import { i18n, t } from '../i18n/i18n.svelte';
   import { settings } from '../app/settings.svelte';
   import { makeGlobeCtx } from './geometry';
   import Layers from './layers/Layers.svelte';
@@ -30,12 +30,13 @@
   let pinchDist = 0;
 
   // The list of a count badge that zooming in cannot pull apart (see SchoolPopover.svelte), placed
-  // below the press, in the figure's CSS px. It closes when the view moves or the scene changes.
+  // at the press (in the figure's CSS px) within the map's frame. It closes when the view moves or the scene changes.
   let figure: HTMLElement;
-  let popover = $state<{ members: School[]; x: number; y: number } | null>(null);
+  let popover = $state<{ members: School[]; x: number; y: number; bottom: number } | null>(null);
   function openPopover(clientX: number, clientY: number, members: School[]) {
     const r = figure.getBoundingClientRect();
-    popover = { members, x: clientX - r.left, y: clientY - r.top + 14 };
+    const map = figure.querySelector('.frame')!.getBoundingClientRect();
+    popover = { members, x: clientX - r.left, y: clientY - r.top, bottom: map.bottom - r.top };
   }
   function closePopover(refocus: boolean) {
     popover = null;
@@ -112,7 +113,7 @@
       drag = { mode: 'rotate', startX: pos.x, startY: pos.y, lastX: pos.x, lastY: pos.y };
       return;
     }
-    const hit = drag?.mode === 'maybe-click' && drag.cluster ? clusterClick(ctx, drag.cluster, GLOBE_MAX_ZOOM, mapState.chosenSchool) : null;
+    const hit = drag?.mode === 'maybe-click' && drag.cluster ? clusterClick(ctx, drag.cluster, GLOBE_MAX_ZOOM, mapState.chosenSchool, i18n.lang) : null;
     if (hit?.kind === 'list') {
       openPopover(e.clientX, e.clientY, hit.members);
     } else if (hit) {
@@ -205,7 +206,7 @@
     {/if}
     <SchoolsToggle />
   </div>
-  {#if popover}<SchoolPopover members={popover.members} x={popover.x} y={popover.y} onclose={closePopover} />{/if}
+  {#if popover}<SchoolPopover members={popover.members} x={popover.x} y={popover.y} mapBottom={popover.bottom} onclose={closePopover} />{/if}
 </figure>
 
 <style>

@@ -135,10 +135,6 @@ for (const [lang, n] of [['pl', { toggle: 'Szkoły Maple Bear', country: 'Polska
     await expect(poland).toContainText(n.three);
     await poland.click();
     await expect(page.locator('details.country[open] button')).toHaveCount(3);
-    // Opening the list scrolls the page, which can leave the globe's "Show the point" button partly under
-    // the sticky header; axe's target-size rule then flags it. That happens on the lab page with the
-    // schools layer off too (task-23b report, fix round 1), so the check runs with nothing under the header.
-    await page.evaluate(() => window.scrollTo(0, 0));
     await expectNoAxeViolations(page, `schools list ${lang}`);
     expect(pageErrors(page)).toEqual([]);
   });
@@ -149,34 +145,49 @@ test('footer: school locations note in English', async ({ page }) => {
   await expect(page.locator('footer')).toContainText('School locations: Maple Bear websites (retrieved September 13, 2026), approximate. This page is not affiliated with Maple Bear.');
 });
 
-test('every one of the 487 schools, once chosen, shows on the flat map as its own named square', async ({ page }) => {
-  test.setTimeout(120_000);
-  await openPage(page, 'en/lab', '?test');
-  const failures = await page.evaluate(async () => {
-    const s = (window as unknown as { __mapState: { chooseSchool(id: string): { id: string; name: string } | null } }).__mapState;
-    const out: string[] = [];
-    const frame = () => new Promise((r) => requestAnimationFrame(() => r(null)));
-    const flat = document.querySelector('.view-flat svg[role="group"]')!;
-    const all = (window as unknown as { __schoolIds: string[] }).__schoolIds;
-    for (const id of all) {
-      const school = s.chooseSchool(id)!;
-      await frame();
-      const square = flat.querySelector(`rect.school-chosen[data-school="${id}"]`);
-      const name = flat.querySelector(`text.school-name.chosen[data-school="${id}"]`);
-      if (!square) out.push(`${id}: no square`);
-      else if (!name || name.textContent !== school.name) out.push(`${id}: no name`);
-      else {
-        const r = square.getBoundingClientRect(), m = flat.getBoundingClientRect();
-        if (r.left < m.left || r.right > m.right || r.top < m.top || r.bottom > m.bottom) out.push(`${id}: out of view`);
-        if (flat.querySelectorAll(`[data-school="${id}"]`).length !== 2) out.push(`${id}: drawn twice`);
+// For every school, after choosing it: its square and its whole name are drawn inside the map (the
+// globe's square view), and the name's real bounding box touches no count badge.
+for (const [w, h, views] of [[1366, 768, ['.view-flat', '.view-globe']], [375, 667, ['.view-flat']]] as const) {
+  test(`every one of the 487 schools, once chosen, is drawn alone with its whole name visible (${w} px: ${views.join(', ')})`, async ({ page }) => {
+    test.setTimeout(180_000);
+    await page.setViewportSize({ width: w, height: h });
+    await openPage(page, 'en/lab', '?test');
+    const result = await page.evaluate(async (selectors) => {
+      const s = (window as unknown as { __mapState: { chooseSchool(id: string): { id: string; name: string } | null } }).__mapState;
+      const ids = (window as unknown as { __schoolIds: string[] }).__schoolIds;
+      const frame = () => new Promise((r) => requestAnimationFrame(() => r(null)));
+      const out: string[] = [];
+      const within = (a: DOMRect, b: DOMRect) => a.left >= b.left - 0.5 && a.right <= b.right + 0.5 && a.top >= b.top - 0.5 && a.bottom <= b.bottom + 0.5;
+      const cross = (a: DOMRect, b: DOMRect) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+      let wrapped = 0;
+      for (const id of ids) {
+        const school = s.chooseSchool(id)!;
+        await frame();
+        for (const sel of selectors) {
+          const svg = document.querySelector(`${sel} svg[role="group"]`)!;
+          const map = svg.getBoundingClientRect();
+          const square = svg.querySelector(`rect.school-chosen[data-school="${id}"]`);
+          const name = svg.querySelector<SVGTextElement>(`text.school-name.chosen[data-school="${id}"]`);
+          if (!square || !name) { out.push(`${sel} ${id}: missing`); continue; }
+          if (name.textContent !== school.name) out.push(`${sel} ${id}: text "${name.textContent}"`);
+          if (name.querySelectorAll('tspan').length > 1) wrapped++;
+          const nb = name.getBoundingClientRect();
+          if (!within(square.getBoundingClientRect(), map)) out.push(`${sel} ${id}: square outside`);
+          if (!within(nb, map)) out.push(`${sel} ${id}: name outside ${JSON.stringify([nb.left - map.left, nb.right - map.right, nb.top - map.top, nb.bottom - map.bottom].map(Math.round))}`);
+          for (const badge of svg.querySelectorAll('rect.school-badge')) {
+            if (cross(nb, badge.getBoundingClientRect())) { out.push(`${sel} ${id}: name under a badge`); break; }
+          }
+          if (svg.querySelectorAll(`[data-school="${id}"]`).length !== 2) out.push(`${sel} ${id}: drawn more than once`);
+        }
       }
-    }
-    return { count: all.length, out };
+      return { count: ids.length, wrapped, out };
+    }, [...views]);
+    expect(result.out).toEqual([]);
+    expect(result.count).toBe(487);
+    console.log(`${w}px: ${result.wrapped} of ${487 * views.length} names wrapped`);
+    expect(pageErrors(page)).toEqual([]);
   });
-  expect(failures.out).toEqual([]);
-  expect(failures.count).toBe(487);
-  expect(pageErrors(page)).toEqual([]);
-});
+}
 
 for (const [country, name] of [['Singapore', 'MapleBear Adam'], ['India', 'Maple Bear Canadian Pre-school, Jakkur, Bengaluru'], ['Brazil', 'Maple Bear São Paulo - Alphaville']] as const) {
   test(`list: ${name} (${country}) shows alone and named on the flat map and the globe`, async ({ page }) => {
@@ -231,6 +242,63 @@ test('a badge that zooming cannot pull apart lists its schools; Escape and a pre
   await expect(flat.locator('text.school-name.chosen')).toHaveText(name);
   await expect(badges.locator('text.count', { hasText: new RegExp(`^${Math.max(...counts) - 1}$`) })).toHaveCount(1);
   expect(pageErrors(page)).toEqual([]);
+});
+
+test('badge list: focus leaving it or Escape anywhere closes it; near the bottom of the map it opens above the press', async ({ page }) => {
+  await openPage(page, 'en/lab', '?test');
+  await page.locator('.view-flat').getByRole('button', { name: 'Maple Bear schools' }).click();
+  // Bengaluru low in the view, at the deepest zoom: its badge sits near the map's bottom edge.
+  await page.evaluate(() => (window as unknown as { __mapState: { setFlatView(c: unknown, z: number): void } }).__mapState.setFlatView({ lat: 13.9, lon: 77.5946 }, 80));
+  const flat = page.locator('.view-flat');
+  const badges = flat.locator('.school-cluster');
+  const counts = (await badges.locator('text.count').allTextContents()).map(Number);
+  const badge = badges.nth(counts.indexOf(Math.max(...counts))).locator('rect.school-badge');
+  const dialog = flat.getByRole('dialog');
+  const open = async () => {
+    const b = (await badge.boundingBox())!;
+    await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
+    await expect(dialog.locator('button.pick').first()).toBeFocused();
+    return b.y + b.height / 2;
+  };
+  const pressY = await open();
+  const box = (await dialog.boundingBox())!;
+  const toolbar = (await flat.locator('.toolbar').boundingBox())!;
+  expect(box.y + box.height).toBeLessThanOrEqual(pressY);
+  expect(box.y + box.height).toBeLessThanOrEqual(toolbar.y);
+  expect(box.y).toBeGreaterThanOrEqual((await page.locator('header').boundingBox())!.height);
+  // Focus leaving the list closes it: back past its close button.
+  await page.keyboard.press('Shift+Tab');
+  await expect(dialog.getByRole('button', { name: 'Close the list' })).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(dialog).toHaveCount(0);
+  // Escape closes it wherever focus is inside (here the dialog itself, after a click on its title).
+  await open();
+  await dialog.locator('.title').click();
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  expect(pageErrors(page)).toEqual([]);
+});
+
+test('badge pointer targets never overlap each other or the chosen school', async ({ page }) => {
+  await openPage(page, 'en/lab', '?test');
+  await page.evaluate(() => (window as unknown as { __mapState: { chooseSchool(id: string): unknown } }).__mapState.chooseSchool('br-sao-paulo-alphaville'));
+  for (const view of ['.view-flat', '.view-globe']) {
+    const overlapsFound = await page.locator(`${view} svg[role="group"]`).evaluate((svg) => {
+      const boxes = [...svg.querySelectorAll('rect.hit')].map((r) => r.getBoundingClientRect());
+      const chosen = svg.querySelector('rect.school-chosen')!.getBoundingClientRect();
+      const cross = (a: DOMRect, b: DOMRect) => a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5;
+      const out: string[] = [];
+      boxes.forEach((a, i) => {
+        if (a.height < 23.5 || a.width < 23.5) out.push(`${i} smaller than 24 px`);
+        if (cross(a, chosen)) out.push(`${i} covers the chosen school`);
+        boxes.forEach((b, j) => { if (j > i && cross(a, b)) out.push(`${i} and ${j}`); });
+      });
+      return { count: boxes.length, out };
+    });
+    expect(overlapsFound.count).toBeGreaterThan(3);
+    expect(overlapsFound.out, view).toEqual([]);
+  }
 });
 
 test('no schools switch on a practice question or in the class quiz', async ({ page }) => {
