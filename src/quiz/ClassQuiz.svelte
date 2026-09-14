@@ -1,7 +1,7 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import { announce } from '../app/announcer.svelte';
-  import { TOPIC_IDS, type TopicId } from '../app/ids';
+  import { TOPIC_IDS, inTopicOrder, type TopicId } from '../app/ids';
   import { layout } from '../app/layout.svelte';
   import { navigate } from '../app/router.svelte';
   import { i18n, t } from '../i18n/i18n.svelte';
@@ -29,7 +29,8 @@
   let timeUp = $state(false);
   let noTopics = $state(false);
 
-  const questions = $derived(phase === 'run' ? generateSet(seed, chosen, difficulty, count) : []);
+  // In lesson order, not tick order: the same code and the same ticked topics always give the same questions.
+  const questions = $derived(phase === 'run' ? generateSet(seed, inTopicOrder(chosen), difficulty, count) : []);
   const question = $derived(questions[index]);
   const letters = ['A', 'B', 'C', 'D'];
   let prompt = $state<HTMLHeadingElement>();
@@ -43,19 +44,24 @@
   // Questions with `pointEditable` (place-point) show read-only in class mode until reveal, which
   // adds the answer marker via `question.solution`; read-coords questions hide the readout until
   // reveal is set below.
+  // Keyed on the question alone (the run, its set and `index`): everything else is read untracked. The
+  // announcement's `t(...)` reads the language, so a tracked call would re-run this on a language switch
+  // and hide a revealed answer (and move focus) mid-question.
   let lastIndex = -1;
   $effect(() => {
     if (phase !== 'run' || !question) return;
-    void index;
-    mapState.applyScene({ ...question.scene, pointEditable: false });
-    revealed = false;
-    timeUp = false;
-    // Every question's prompt takes focus, the first one too (the Start button it replaces is gone); a
-    // later question also announces its position.
-    const first = lastIndex === -1;
-    lastIndex = index;
-    queueMicrotask(() => prompt?.focus());
-    if (!first) announce(t('practice.progress', { n: index + 1, total: questions.length }), 'polite');
+    const q = question, i = index;
+    untrack(() => {
+      mapState.applyScene({ ...q.scene, pointEditable: false });
+      revealed = false;
+      timeUp = false;
+      // Every question's prompt takes focus, the first one too (the Start button it replaces is gone); a
+      // later question also announces its position.
+      const first = lastIndex === -1;
+      lastIndex = i;
+      queueMicrotask(() => prompt?.focus());
+      if (!first) announce(t('practice.progress', { n: i + 1, total: questions.length }), 'polite');
+    });
   });
 
   function start(e: SubmitEvent) {
@@ -149,12 +155,12 @@
     <div class="top">
       <div class="head">
         <p class="progress eyebrow">{t('practice.progress', { n: index + 1, total: questions.length })}</p>
-        <h2 id="cq-prompt" class="prompt" tabindex="-1" bind:this={prompt}>{renderText(question.prompt)}</h2>
+        <h2 id="cq-prompt" class="prompt" class:long={renderText(question.prompt).length > 60} tabindex="-1" bind:this={prompt}>{renderText(question.prompt)}</h2>
       </div>
       {#if timer > 0}{#key index}<Countdown seconds={timer} running={!revealed} ondone={() => (timeUp = true)} />{/key}{/if}
     </div>
     {#if timeUp && !revealed}<p class="timeup">{t('classQuiz.timeUp')}</p>{/if}
-    <div class="body">
+    <div class="body" class:revealed>
       <div class="map"><MapStage /></div>
       <div class="side">
         {#if question.input.kind === 'choice'}
@@ -219,6 +225,8 @@
   .head { display: flex; flex-direction: column; gap: clamp(0.25rem, 0.1rem + 0.4vw, 1rem); min-width: 0; }
   .progress { margin: 0; font-size: clamp(1rem, 0.6rem + 0.8vw, 2.2rem); }
   .prompt { font-size: clamp(1.6rem, 0.9rem + 2.6vw, 7rem); line-height: 1.12; margin: 0; font-weight: var(--weight-heavy); max-width: 40ch; }
+  /* A long prompt (a time question's two sentences) a size down, so the map and a revealed explanation still share the first screen. */
+  .prompt.long { font-size: clamp(1.4rem, 0.8rem + 1.9vw, 5rem); max-width: 56ch; }
   .prompt:focus { outline: none; }
   /* The prompt takes focus on every question (for screen readers); on a projector a ring round the question would read as a frame, so a keyboard user sees a quiet bar at its side instead (as every heading the page focuses itself). */
   .prompt:focus-visible { outline: none; box-shadow: -0.35rem 0 0 var(--focus); }
@@ -226,7 +234,12 @@
   .timeup { align-self: flex-start; display: inline-flex; align-items: center; color: var(--bad); background: var(--bad-soft); border-radius: var(--radius-pill); padding: 0.2em 0.8em; font-weight: var(--weight-heavy); font-size: clamp(1.1rem, 0.6rem + 1.2vw, 3rem); margin: 0; animation: pop 300ms var(--ease) both; }
   @keyframes pop { from { transform: scale(0.9); opacity: 0; } to { transform: none; opacity: 1; } }
   .body { display: grid; gap: clamp(1rem, 0.5rem + 1vw, 3rem); grid-template-columns: minmax(0, 1fr); }
-  @media (min-width: 1024px) { .body { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); align-items: start; } }
+  /* Beside the map at wide widths; once the answer is revealed the side takes half the width, so the explanation stays on the first screen of a 1920×1080 projector (presenter mode too). */
+  @media (min-width: 1024px) {
+    .body { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: start; }
+    .body.revealed { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    .options li.dim { font-size: clamp(1rem, 0.6rem + 0.9vw, 2.8rem); padding-block: 0.3em; }
+  }
   .options { list-style: none; padding: 0; margin: 0; display: grid; gap: clamp(0.5rem, 0.3rem + 0.5vw, 1.5rem); }
   .options li { display: flex; gap: 0.6em; align-items: center; font-size: clamp(1.15rem, 0.7rem + 1.2vw, 3.6rem); line-height: 1.2; font-weight: 600; padding: 0.45em 0.6em; border: 2px solid var(--border); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow-1); transition: border-color 300ms var(--ease), background-color 300ms var(--ease), opacity 300ms var(--ease); }
   .opt { flex: 1; min-width: 0; }
@@ -240,7 +253,7 @@
   @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
   .answer { display: flex; gap: 0.5em; align-items: center; font-size: 1.35em; line-height: 1.2; font-weight: var(--weight-heavy); color: var(--ok); margin: 0 0 0.35em; }
   .answer-icon { flex: none; width: 1.3em; height: 1.3em; padding: 0.22em; border-radius: 50%; background: var(--ok); color: var(--surface); }
-  .why { margin: 0; line-height: 1.45; }
+  .why { margin: 0; font-size: 0.94em; line-height: 1.4; }
   .controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
   .controls .btn { font-size: clamp(1.1rem, 0.8rem + 0.5vw, 2rem); min-height: clamp(3.25rem, 2.4rem + 1.2vw, 5.5rem); padding: 0 1.1em; }
   .controls .end { margin-left: auto; color: var(--text-muted); }

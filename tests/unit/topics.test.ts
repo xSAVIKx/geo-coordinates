@@ -75,3 +75,10 @@ test("free-play steps with an adaptive grid use precision 'auto'; other steps do
     }
   }
 });
+
+test('chosen topics are used in lesson order, whatever order they were ticked in', async () => {
+  const { inTopicOrder } = await import('../../src/app/ids');
+  expect(inTopicOrder([5, 2, 9, 1])).toEqual([1, 2, 5, 9]);
+  expect(inTopicOrder([3, 1, 2])).toEqual(inTopicOrder([1, 2, 3]));
+  expect(inTopicOrder([])).toEqual([]);
+});

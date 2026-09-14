@@ -6,7 +6,7 @@
   import { describeAnswer, generateSet, modulesForTopic } from '../quiz/registry';
   import type { Difficulty, Question } from '../quiz/types';
   import { AUTHOR } from './credits';
-  import { TOPIC_IDS, type TopicId } from './ids';
+  import { TOPIC_IDS, inTopicOrder, type TopicId } from './ids';
   import PrintTools from './PrintTools.svelte';
 
   // A printable worksheet: settings (never printed) and a paper preview that prints as is. The questions
@@ -34,7 +34,7 @@
   let showKey = $state(true);
 
   const cleanCode = $derived(code.trim().replace(/[^\w-]/g, '').slice(0, 32));
-  const topics = $derived(available.filter((id) => chosen.includes(id)));
+  const topics = $derived(inTopicOrder(chosen));
   const questions = $derived<Question[]>(topics.length && cleanCode ? generateSet(`sheet:${cleanCode}`, topics, difficulty, count) : []);
   const year = new Date().getFullYear();
 
