@@ -2,12 +2,14 @@
   import { t } from '../../i18n/i18n.svelte';
   import { hemisphere, type ViewCtx } from '../geometry';
   import { mapState } from '../mapState.svelte';
+  import { HEMI_LABEL, hemisphereLabelSpots } from '../overlayLayout';
   let { ctx, idPrefix }: { ctx: ViewCtx; idPrefix: string } = $props();
 
   const regions = $derived(
     mapState.layers.hemispheres === 'ns' ? (['N', 'S'] as const) : mapState.layers.hemispheres === 'ew' ? (['E', 'W'] as const) : ([] as const),
   );
-  const LABEL_AT = { N: { lat: 45, lon: -120 }, S: { lat: -45, lon: -120 }, E: { lat: 60, lon: 90 }, W: { lat: 60, lon: -90 } } as const;
+  // Shared with the special-line names, which keep clear of these (overlayLayout.ts).
+  const spots = $derived(hemisphereLabelSpots(ctx, mapState.layers.hemispheres));
 </script>
 
 <defs>
@@ -21,9 +23,8 @@
 {#each regions as r, i (r)}
   <path d={ctx.path(hemisphere(r)) ?? ''} fill="url(#{idPrefix}-{i === 0 ? 'stripes' : 'dots'})" />
 {/each}
-{#each regions as r (r)}
-  {@const xy = ctx.project(ctx.kind === 'globe' ? { lat: LABEL_AT[r].lat > 0 ? 35 : -35, lon: r === 'E' || r === 'W' ? (r === 'E' ? 90 : -90) : -ctx.projection.rotate()[0] } : LABEL_AT[r])}
-  {#if xy}<text class="halo hemi-label" x={xy[0]} y={xy[1]} text-anchor="middle" font-size={15 * ctx.px}>{t(`hemi.${r}`)}</text>{/if}
+{#each spots as { r, xy } (r)}
+  <text class="halo hemi-label" x={xy[0]} y={xy[1]} text-anchor="middle" font-size={HEMI_LABEL * ctx.px}>{t(`hemi.${r}`)}</text>
 {/each}
 
 <style>

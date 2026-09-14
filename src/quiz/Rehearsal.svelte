@@ -195,6 +195,11 @@
   .links .btn { color: var(--accent); font-size: var(--step--1); padding: 0 var(--space-3); }
   @media (max-width: 599px) {
     .card { padding: var(--space-4); }
+    /* As in Practice: the levels share one full-width row, the "Difficulty" word stays for screen readers. */
+    .difficulty { align-self: stretch; }
+    .difficulty legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .levels { display: flex; flex-wrap: nowrap; width: 100%; }
+    .levels label { flex: 1 1 0; min-width: 0; padding: 0 var(--space-2); }
     .detail { margin-left: 0; }
     .summary-head { gap: var(--space-4); }
     .setup .btn.lg { align-self: stretch; }

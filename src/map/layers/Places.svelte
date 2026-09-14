@@ -1,16 +1,12 @@
 <script lang="ts">
-  import { formatLat } from '../../geo/format';
   import { i18n, t } from '../../i18n/i18n.svelte';
   import { labelWidth } from '../brackets';
-  import { edgeTicks } from '../edgeTicks';
   import type { ViewCtx } from '../geometry';
-  import { gridUsesMinutes, resolveGridStep } from '../gridStep';
   import { meanSunPoint } from '../../geo/sun';
   import { createLabelMemory, overlaps, placeLabelOptions, pointBox, selectStablePlacements, textBox, type LabelBox, type PlaceLabelOption } from '../labelLayout';
-  import { lineLabelSpecs } from '../lineLabels';
   import { mapState } from '../mapState.svelte';
-  import { bracketBoxes, LINE_LABEL, markerLayout, noonLabel, NOON_LABEL, placeLineLabels } from '../overlayLayout';
-  import { bracketFmt, markerText, noonText } from '../overlayText';
+  import { bracketBoxes, CONTINENT_WIDTH, fitMapNames, markerLayout, noonLabel, NOON_LABEL, viewEdgeBoxes } from '../overlayLayout';
+  import { bracketFmt, markerText, noonText, sceneLatEdgeBoxes, sceneLineLabels } from '../overlayText';
   import { MAP_LABELS, PLACES, tierVisible, tierZoom } from '../places';
   import { SCHOOL_BADGE_H, schoolBadgeWidth, type SchoolCluster } from '../schools';
   import { LABELLED_RIVERS, REGION_DETAIL_ZOOM, regionActive, riverLabelPoints } from '../world';
@@ -45,26 +41,19 @@
     const noon = date ? noonLabel(ctx, meanSunPoint(date).lon, labelWidth(noonText(), NOON_LABEL, ctx.px), [...out, ...lineObstacles]) : null;
     return noon ? [...out, noon.box] : out;
   });
-  const lineObstacles = $derived.by<LabelBox[]>(() => {
-    const m = markerLayout(mapState.overlays, ctx, markerText);
-    const avoid = [...bracketBoxes(mapState.overlays, ctx, bracketFmt, m.room), ...m.labels];
-    return placeLineLabels(lineLabelSpecs(mapState.layers), { kind: ctx.kind, width: ctx.width, height: ctx.height, px: ctx.px, project: (p) => ctx.project(p), rotateLambda: ctx.projection.rotate()[0] },
-      (spec) => labelWidth(t(spec.labelKey), LINE_LABEL, ctx.px), avoid).map((l) => l.box);
-  });
-  // Continent and ocean names that fit: wholly inside the view (not cut at a map's side or the globe's
-  // edge) and clear of overlay texts and the point's ring (a marker's "Greenland" label wins over "Arctic Ocean").
+  const lineObstacles = $derived.by<LabelBox[]>(() => { void i18n.lang; return sceneLineLabels(ctx, mapState.layers, mapState.overlays).map((l) => l.box); });
+  // Continent and ocean names that fit (see `fitMapNames`): inside the view and, on the globe, its disc;
+  // clear of overlay texts, the point's ring and the special-line names (a marker's "Greenland" label wins over "Arctic Ocean").
   const continents = $derived.by(() => {
     if (!showContinents) return [];
-    return MAP_LABELS.flatMap((l) => {
+    const spots = MAP_LABELS.flatMap((l) => {
       const xy = ctx.project(l);
       if (!xy) return [];
-      const size = (l.kind === 'ocean' ? 12 : 11.5) * ctx.px;
-      const box = textBox(xy[0], xy[1], labelWidth(t(`label.${l.id}`), l.kind === 'ocean' ? 12 : 11.5, ctx.px), size, 'middle');
-      const inside = box.left >= 0 && box.right <= ctx.width && box.top >= 0 && box.bottom <= ctx.height && (ctx.kind === 'flat'
-        || Math.hypot(Math.max(Math.abs(box.left - ctx.width / 2), Math.abs(box.right - ctx.width / 2)), Math.max(Math.abs(box.top - ctx.height / 2), Math.abs(box.bottom - ctx.height / 2))) <= ctx.projection.scale() + 2 * ctx.px);
-      if (!inside || [...overlayObstacles, ...pointObstacles].some((o) => overlaps(box, o))) return [];
-      return [{ l, xy, box }];
+      const size = l.kind === 'ocean' ? 12 : 11.5;
+      const width = labelWidth(t(`label.${l.id}`), size, ctx.px) * (l.kind === 'continent' ? CONTINENT_WIDTH : 1);
+      return [{ id: l.id, l, xy, box: textBox(xy[0], xy[1], width, size * ctx.px, 'middle') }];
     });
+    return fitMapNames(spots, { kind: ctx.kind, width: ctx.width, height: ctx.height, radius: ctx.kind === 'globe' ? ctx.projection.scale() : undefined }, [...overlayObstacles, ...pointObstacles, ...lineObstacles]);
   });
   const continentObstacles = $derived(continents.map((c) => c.box));
 
@@ -72,24 +61,10 @@
   // a place name never covers a latitude label or the band of longitude labels at the bottom, and a
   // name that would run off the map is left out rather than cut (the dot still shows).
   const edgeObstacles = $derived.by<LabelBox[]>(() => {
-    const far = 1e7;
     // Names on the globe stay inside its square view too, rather than being cut at the side.
-    if (ctx.kind !== 'flat') return [
-      { left: -far, right: 0, top: -far, bottom: far }, { left: ctx.width, right: far, top: -far, bottom: far },
-      { left: -far, right: far, top: -far, bottom: 0 }, { left: -far, right: far, top: ctx.height, bottom: far },
-    ];
-    const step = resolveGridStep(mapState.layers.graticuleStep, ctx);
-    const precision = gridUsesMinutes(step) ? 'minute' : 'degree';
-    const out: LabelBox[] = [
-      { left: 0, right: ctx.width, top: ctx.height - 18 * ctx.px, bottom: far },
-      { left: -far, right: 0, top: -far, bottom: far },
-      { left: ctx.width, right: far, top: -far, bottom: far },
-      { left: -far, right: far, top: -far, bottom: 0 },
-    ];
-    for (const lat of edgeTicks(ctx, ctx.center, ctx.zoom, step).lats) {
-      out.push(textBox(4 * ctx.px, lat.y + 4 * ctx.px, labelWidth(formatLat(lat.value, i18n.lang, precision), 11, ctx.px), 11 * ctx.px, 'start'));
-    }
-    return out;
+    if (ctx.kind !== 'flat') return viewEdgeBoxes(ctx.width, ctx.height);
+    const [left, right, top] = viewEdgeBoxes(ctx.width, ctx.height);
+    return [{ left: 0, right: ctx.width, top: ctx.height - 18 * ctx.px, bottom: 1e7 }, left!, right!, top!, ...sceneLatEdgeBoxes(ctx, mapState.layers)];
   });
 
   // The movable point is an obstacle too: names move aside (or hide) rather than sit under its ring.

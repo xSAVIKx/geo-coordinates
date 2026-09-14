@@ -2,6 +2,7 @@
   import { untrack } from 'svelte';
   import { announce } from '../app/announcer.svelte';
   import { TOPIC_IDS, type TopicId } from '../app/ids';
+  import { layout } from '../app/layout.svelte';
   import { navigate } from '../app/router.svelte';
   import { i18n, t } from '../i18n/i18n.svelte';
   import { renderText } from '../i18n/text';
@@ -32,6 +33,12 @@
   const question = $derived(questions[index]);
   const letters = ['A', 'B', 'C', 'D'];
   let prompt = $state<HTMLHeadingElement>();
+
+  // While the quiz runs, the page (and the header's content) spans the whole window.
+  $effect(() => {
+    layout.wide = phase === 'run';
+    return () => { layout.wide = false; };
+  });
 
   // Questions with `pointEditable` (place-point) show read-only in class mode until reveal, which
   // adds the answer marker via `question.solution`; read-coords questions hide the readout until
@@ -200,9 +207,7 @@
 
   /* ---------- Big-screen run ----------
    * Sizes follow the viewport (clamp + vw), so the same layout reads from the back of a classroom on a
-   * 1920×1080 projector and on a 3840×2160 screen; the run also lifts the page's max width. */
-  :global(#main:has(> .run)) { max-width: none; }
-  :global(#main > h1:has(+ .run)) { font-size: clamp(1rem, 0.7rem + 0.6vw, 1.8rem); color: var(--text-muted); margin: 0 0 var(--space-2); }
+   * 1920×1080 projector and on a 3840×2160 screen; the run also asks the shell for the whole window width (`layout.wide`). */
   .run { display: flex; flex-direction: column; gap: clamp(0.75rem, 0.4rem + 0.6vw, 2rem); }
   .top { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); }
   .progress { margin: 0; font-size: clamp(1rem, 0.6rem + 0.8vw, 2.2rem); }

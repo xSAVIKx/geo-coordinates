@@ -1,11 +1,9 @@
 <script lang="ts">
   import { i18n, t } from '../../i18n/i18n.svelte';
-  import { labelWidth } from '../brackets';
   import { POLAR, TROPIC, meridianLine, parallelLine, type ViewCtx } from '../geometry';
   import { lineLabelSpecs, type LineLabelSpec } from '../lineLabels';
   import { mapState } from '../mapState.svelte';
-  import { bracketBoxes, LINE_LABEL, markerLayout, placeLineLabels } from '../overlayLayout';
-  import { bracketFmt, markerText } from '../overlayText';
+  import { sceneLineLabels } from '../overlayText';
   // `part`: 'lines' draws the lines, 'labels' their names — drawn later, above the noon meridian and the point's guides.
   let { ctx, part = 'all' }: { ctx: ViewCtx; part?: 'all' | 'lines' | 'labels' } = $props();
 
@@ -18,13 +16,8 @@
     void i18n.lang;
     return lineLabelSpecs(mapState.layers).map((spec) => ({ ...spec, geo: GEO[spec.id]!() }));
   });
-  // Labels share their placement with Places.svelte (which keeps names clear of them): inside a flat
-  // map's view, and a vertical one beside its meridian on the side that no bracket or marker label takes.
-  const avoid = $derived.by(() => {
-    const m = markerLayout(mapState.overlays, ctx, markerText);
-    return [...bracketBoxes(mapState.overlays, ctx, bracketFmt, m.room), ...m.labels];
-  });
-  const labels = $derived(part === 'lines' ? [] : placeLineLabels(lines, { kind: ctx.kind, width: ctx.width, height: ctx.height, px: ctx.px, project: (p) => ctx.project(p), rotateLambda: ctx.projection.rotate()[0] }, (spec) => labelWidth(t(spec.labelKey), LINE_LABEL, ctx.px), avoid));
+  // Labels share their placement with Places.svelte and Overlays.svelte (see `sceneLineLabels`).
+  const labels = $derived.by(() => { void i18n.lang; return part === 'lines' ? [] : sceneLineLabels(ctx, mapState.layers, mapState.overlays); });
 </script>
 
 {#if part !== 'labels'}
@@ -37,8 +30,8 @@
 <!-- Vertical labels run up the meridian beside it, not across it: rotate(-90) turns the glyphs' height to the left of the anchor. -->
 {#if part !== 'lines'}
   {#each labels as l (l.spec.id)}
-    <text class="label halo {l.spec.cls}" x={l.x} y={l.y} font-size={LINE_LABEL * ctx.px}
-      transform={l.vertical ? `rotate(-90 ${l.x} ${l.y})` : undefined}>{t(l.spec.labelKey)}</text>
+    <text class="label halo {l.spec.cls}" x={l.x} y={l.y} font-size={l.size * ctx.px}
+      transform={l.vertical ? `rotate(-90 ${l.x} ${l.y})` : undefined}>{#each l.lines as line, i (i)}<tspan x={l.x} dy={i === 0 ? 0 : l.lineStep}>{line}</tspan>{/each}</text>
   {/each}
 {/if}
 

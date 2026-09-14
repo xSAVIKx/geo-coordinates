@@ -12,6 +12,7 @@
   import { router, startRouter } from './router.svelte';
   import { applySettings, initSettings, saveSettings, settings } from './settings.svelte';
   import { installPresenter, presenter } from './presenter.svelte';
+  import { layout } from './layout.svelte';
   import { t } from '../i18n/i18n.svelte';
 
   initSettings();
@@ -52,7 +53,7 @@
 
 <a class="skip" href="#main" onclick={skip}>{t('app.skip')}</a>
 <Header />
-<main id="main" bind:this={main}>
+<main id="main" bind:this={main} data-wide={layout.wide || undefined}>
   {#if route.name === 'lab'}
     <LabPage />
   {:else if route.name === 'explore'}
@@ -81,5 +82,8 @@
   main { flex: 1 0 auto; width: 100%; max-width: var(--page-max); margin-inline: auto; padding: var(--space-4) var(--space-6) var(--space-8); }
   .presenter-hint { margin: var(--space-6) 0 0; color: var(--text-muted); font-size: var(--step--1); text-align: end; }
   @media (hover: none) { .presenter-hint { display: none; } }
+  /* A class quiz run: the whole window, with the page title reduced to a quiet line above the question. */
+  main[data-wide] { max-width: none; }
+  main[data-wide] > h1 { font-size: clamp(1rem, 0.7rem + 0.6vw, 1.8rem); color: var(--text-muted); margin: 0 0 var(--space-2); }
   @media (max-width: 599px) { main { padding: var(--space-3) var(--space-3) var(--space-6); } }
 </style>

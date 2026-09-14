@@ -213,12 +213,13 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" /></svg>
       </button>
     </div>
+    <!-- The schools switch comes before the presets: on a phone's scrolling tool row it is in view without scrolling. -->
+    <SchoolsToggle />
     <div class="btn-group" role="group" aria-label={t('map.presetGroup')}>
       {#each PRESETS as p (p)}
         <button type="button" class="btn" onclick={() => mapState.setFlatPreset(p)}>{t(`map.preset.${p}`)}</button>
       {/each}
     </div>
-    <SchoolsToggle />
     {#if mapState.projectionOverride === null || mapState.projectionSwitch}
       <div class="projection-group seg" role="group" aria-label={t('map.projection')} aria-describedby="{uid}-projection-hint">
         {#each PROJECTIONS as proj (proj)}

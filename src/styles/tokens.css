@@ -206,8 +206,12 @@
   --river: #7dbbef; --river-label: #d6ecfb; --school: #f9a8d4; --school-text: #fddcef;
 }
 :root[data-large-text="true"] { --fs-scale: 1.25; }
-/* Big screens at 100% scaling (a 3840×2160 classroom display): the whole interface steps up by half, so
- * type, spacing and 44px targets keep their proportions instead of shrinking to a strip in the middle. */
+/* Big screens at 100% scaling: the whole interface steps up, so type, spacing and 44px targets keep their
+ * proportions instead of shrinking to a strip in the middle. A quarter from 2560px (a 27" QHD monitor gets only a
+ * gentle step), half from 3000px (a 3840×2160 display). Classroom screens are also covered by presenter mode. */
 @media (min-width: 2560px) {
+  :root { --ui-zoom: 1.25; --tap: 55px; --page-max: 2350px; }
+}
+@media (min-width: 3000px) {
   :root { --ui-zoom: 1.5; --tap: 66px; --page-max: 2820px; }
 }

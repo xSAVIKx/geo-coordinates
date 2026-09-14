@@ -9,7 +9,7 @@ export const presenter = $state({ on: false, laser: false });
 
 /**
  * How much bigger than the 16px baseline the interface is drawn: the root font size / 16. It folds in the
- * large-text setting, the big-screen step-up (≥ 2560px), the browser's own default size and presenter mode,
+ * large-text setting, the big-screen step-ups (1.25× from 2560px, 1.5× from 3000px), the browser's own default size and presenter mode,
  * so the maps can size their labels and markers the same way the HTML around them grows. Also exposed to
  * CSS as --ui-scale (presenter mode thickens map lines with it).
  */

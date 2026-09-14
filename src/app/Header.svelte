@@ -4,6 +4,7 @@
   import { formatRoute } from './router';
   import { switchLang } from './router.svelte';
   import SettingsDialog from './SettingsDialog.svelte';
+  import { layout } from './layout.svelte';
   import { presenter, toggleLaser, togglePresenter } from './presenter.svelte';
 
   const NAMES: Record<LangCode, string> = { en: 'English', pl: 'Polski', uk: 'Українська' };
@@ -12,7 +13,7 @@
 </script>
 
 <header class="bar">
-  <div class="inner">
+  <div class="inner" class:wide={layout.wide}>
     <a class="brand" href={formatRoute({ name: 'home', lang: i18n.lang })}>
       <svg class="logo" viewBox="0 0 40 40" width="40" height="40" aria-hidden="true">
         <circle cx="20" cy="20" r="17" class="logo-sea" />
@@ -57,6 +58,8 @@
 <style>
   .bar { position: sticky; top: 0; z-index: 20; background: var(--surface); background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: saturate(1.4) blur(10px); -webkit-backdrop-filter: saturate(1.4) blur(10px); border-bottom: 1px solid var(--border); }
   .inner { display: flex; gap: var(--space-2) var(--space-4); align-items: center; justify-content: space-between; min-height: var(--header-h); padding: var(--space-2) var(--space-6); max-width: var(--page-max); margin-inline: auto; }
+  /* Lined up with a full-width page (a class quiz run). */
+  .inner.wide { max-width: none; }
   .brand { display: inline-flex; gap: var(--space-3); align-items: center; color: var(--text); text-decoration: none; font-weight: var(--weight-heavy); font-size: var(--step-1); letter-spacing: var(--tracking-tight); min-height: var(--tap); min-width: 0; border-radius: var(--radius-sm); }
   .title { line-height: 1.15; }
   .title.short { display: none; }

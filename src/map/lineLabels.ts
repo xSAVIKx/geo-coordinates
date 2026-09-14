@@ -4,7 +4,7 @@
 // a special-line label actually sits.
 import type { LatLon } from '../geo/types';
 import { POLAR, TROPIC } from './geometry';
-import type { LayerFlags } from './types';
+import type { LayerFlags, Overlay } from './types';
 
 export interface LineLabelSpec { id: string; cls: string; labelKey: string; labelAt: LatLon; vertical: boolean }
 
@@ -29,4 +29,22 @@ export function lineLabelSpecs(layers: Pick<LayerFlags, 'specialLines' | 'tropic
 export function lineLabelPoint(spec: LineLabelSpec, kind: 'flat' | 'globe', rotateLambda: number): LatLon {
   if (kind === 'globe' && !spec.vertical) return { lat: spec.labelAt.lat, lon: -rotateLambda - 35 };
   return spec.labelAt;
+}
+
+/**
+ * The special lines a scene is about, whose names must stay on the map: the equator when the scene shades
+ * the northern and southern hemispheres or highlights the parallel 0°, the prime meridian when it shades
+ * the eastern and western hemispheres or highlights the meridian 0°, the 180° meridian when it highlights it.
+ */
+export function namedLines(layers: Pick<LayerFlags, 'hemispheres'>, overlays: readonly Overlay[]): Set<string> {
+  const out = new Set<string>();
+  if (layers.hemispheres === 'ns') out.add('eq');
+  if (layers.hemispheres === 'ew') out.add('pm');
+  for (const o of overlays) {
+    if (o.kind !== 'highlight-line') continue;
+    if (o.axis === 'lat' && o.value === 0) out.add('eq');
+    if (o.axis === 'lon' && o.value === 0) out.add('pm');
+    if (o.axis === 'lon' && Math.abs(o.value) === 180) out.add('am');
+  }
+  return out;
 }
