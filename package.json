@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && node --experimental-strip-types scripts/size-check.ts",
+    "build": "vite build && node --experimental-strip-types scripts/size-check.ts && node --experimental-strip-types scripts/translation-review.ts",
     "check": "svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
     "test": "vitest run",
     "e2e": "playwright test",

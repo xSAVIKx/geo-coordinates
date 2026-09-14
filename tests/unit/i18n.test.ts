@@ -5,6 +5,7 @@ import uk from '../../src/i18n/uk.json';
 import { detectLang, i18n, messages, t, tn } from '../../src/i18n/i18n.svelte';
 import { renderText } from '../../src/i18n/text';
 import { spokenLat, spokenLon } from '../../src/i18n/spoken';
+import { findSuspicious } from '../../scripts/translation-review-lib';
 
 const files = { en, pl, uk } as Record<string, Record<string, string>>;
 const REQUIRED_FORMS: Record<string, string[]> = { en: ['one', 'other'], pl: ['one', 'few', 'many', 'other'], uk: ['one', 'few', 'many', 'other'] };
@@ -32,6 +33,9 @@ describe('message files', () => {
   });
   test('no empty strings', () => {
     for (const [lang, f] of Object.entries(files)) for (const [k, v] of Object.entries(f)) expect(v.trim(), `${lang}:${k}`).not.toBe('');
+  });
+  test('no untranslated or wrong-alphabet strings (see scripts/translation-review-lib.ts)', () => {
+    expect(findSuspicious({ en, pl, uk })).toEqual([]);
   });
 });
 
