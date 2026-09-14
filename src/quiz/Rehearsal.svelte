@@ -23,6 +23,12 @@
   let results = $state<CheckResult[]>([]);
   let best = $state<number | null>(null);
 
+  // The answer being typed or chosen, held here (as in Practice) so it survives the question card being recreated when a
+  // rotation or resize crosses the 1024px layout switch. Reset wherever the question changes.
+  interface Draft { value: Answer | null; coordsText: { lat: string; lon: string }; numberText: string; clockText: string }
+  const emptyDraft = (): Draft => ({ value: null, coordsText: { lat: '', lon: '' }, numberText: '', clockText: '' });
+  let draft = $state<Draft>(emptyDraft());
+
   // Every available topic contributes questions, shuffled so a rehearsal doesn't always start
   // with topic 1 — repeated (mod length) to fill all 15 slots.
   const topics = $derived.by<TopicId[]>(() => {
@@ -58,6 +64,7 @@
     index = 0;
     answers = [];
     results = [];
+    draft = emptyDraft();
     applied = '';
     phase = 'run';
   }
@@ -75,7 +82,7 @@
   }
 
   function next() {
-    if (index < COUNT - 1) { index += 1; return; }
+    if (index < COUNT - 1) { index += 1; draft = emptyDraft(); return; }
     best = recordScore(scoreId('rehearsal', difficulty), score);
     phase = 'results';
   }
@@ -95,7 +102,8 @@
 
 {#snippet questionCard()}
   <QuestionCard {question} number={index + 1} total={COUNT} result={results[index] ?? null} showFeedback={false}
-    onsubmit={submit} onnext={next} nextLabel={index < COUNT - 1 ? t('rehearsal.submitNext') : t('rehearsal.finish')} {roundKey} focusOnMount={focusQuestion} />
+    onsubmit={submit} onnext={next} nextLabel={index < COUNT - 1 ? t('rehearsal.submitNext') : t('rehearsal.finish')} {roundKey} focusOnMount={focusQuestion}
+    bind:value={draft.value} bind:coordsDraft={draft.coordsText} bind:numberDraft={draft.numberText} bind:clockDraft={draft.clockText} />
 {/snippet}
 
 {#if phase === 'setup'}
