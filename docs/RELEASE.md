@@ -22,17 +22,9 @@ without the owner's go-ahead.
 Pages must be enabled **before** the first push to `main`: the push starts the `pages.yml`
 workflow, and its deploy job fails if the repository has no Pages site yet.
 
-1. **Merge `feat/lesson-page` into `main`.**
-
-   `main` currently holds only the design docs, so it can fast-forward:
+1. **Be on `main`.** The finished lesson is already merged into `main`:
 
        git checkout main
-       git merge --ff-only feat/lesson-page
-
-   If `main` has since diverged (no longer a pure ancestor relationship), merge normally instead:
-
-       git checkout main
-       git merge feat/lesson-page
 
 2. **Create the GitHub repository without pushing** (creates the repo under the `xSAVIKx`
    account and adds it as the `origin` remote):
