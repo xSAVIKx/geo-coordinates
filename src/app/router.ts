@@ -7,7 +7,8 @@ export type Route =
   | { name: 'practice'; lang: LangCode; topic: TopicId }
   | { name: 'rehearsal'; lang: LangCode }
   | { name: 'class-quiz'; lang: LangCode; seed: string | null }
-  | { name: 'lab'; lang: LangCode };
+  | { name: 'lab'; lang: LangCode }
+  | { name: 'cheatsheet'; lang: LangCode };
 
 export function parseRoute(hash: string, fallbackLang: LangCode): Route {
   const [pathPart = '', query = ''] = hash.replace(/^#\/?/, '').split('?');
@@ -20,6 +21,7 @@ export function parseRoute(hash: string, fallbackLang: LangCode): Route {
   const [head, sub, stepRaw] = rest;
   if (rest.length === 1 && head === 'rehearsal') return { name: 'rehearsal', lang };
   if (rest.length === 1 && head === 'lab') return { name: 'lab', lang };
+  if (rest.length === 1 && head === 'cheatsheet') return { name: 'cheatsheet', lang };
   if (rest.length === 1 && head === 'class-quiz') {
     const seed = new URLSearchParams(query).get('seed');
     return { name: 'class-quiz', lang, seed: seed && /^[\w-]{1,32}$/.test(seed) ? seed : null };
@@ -47,5 +49,6 @@ export function formatRoute(r: Route): string {
     case 'rehearsal': return `#${r.lang}/rehearsal`;
     case 'class-quiz': return `#${r.lang}/class-quiz${r.seed ? `?seed=${r.seed}` : ''}`;
     case 'lab': return `#${r.lang}/lab`;
+    case 'cheatsheet': return `#${r.lang}/cheatsheet`;
   }
 }

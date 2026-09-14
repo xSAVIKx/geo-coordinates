@@ -79,3 +79,18 @@ a:hover { text-decoration-thickness: 2px; }
 
 /* ---------- Map text ---------- */
 svg text.halo { paint-order: stroke; stroke: var(--halo); stroke-width: 3px; stroke-linejoin: round; stroke-opacity: 0.92; font-weight: 600; font-family: var(--font); }
+
+/* ---------- Print ----------
+ * The cheat sheet and the worksheet are made for A4 paper. Whatever the screen shows (dark theme,
+ * presenter mode, large text, a big-screen step-up), paper gets black on white at the normal size,
+ * without the header, footer and controls (.no-print).
+ */
+@page { size: A4 portrait; margin: 12mm; }
+@media print {
+  html, :root[data-presenter="true"] { font-size: 100% !important; --ui-zoom: 1; --fs-scale: 1; --stroke-scale: 1; color-scheme: light; background: #fff; }
+  :root body { background: #fff; color: #000; min-height: 0; }
+  #app { min-height: 0; display: block; }
+  #main { max-width: none; padding: 0; margin: 0; }
+  .no-print { display: none !important; }
+  *, *::before, *::after { box-shadow: none !important; text-shadow: none !important; }
+}

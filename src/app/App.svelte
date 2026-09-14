@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import Header from './Header.svelte';
   import Home from './Home.svelte';
+  import CheatSheet from './CheatSheet.svelte';
   import LabPage from './LabPage.svelte';
   import TopicPage from './TopicPage.svelte';
   import Footer from './Footer.svelte';
@@ -51,7 +52,7 @@
   }
 </script>
 
-<a class="skip" href="#main" onclick={skip}>{t('app.skip')}</a>
+<a class="skip no-print" href="#main" onclick={skip}>{t('app.skip')}</a>
 <Header />
 <main id="main" bind:this={main} data-wide={layout.wide || undefined}>
   {#if route.name === 'lab'}
@@ -63,13 +64,15 @@
   {:else if route.name === 'rehearsal'}
     <h1 tabindex="-1">{t('mode.rehearsal.title')}</h1>
     <Rehearsal />
+  {:else if route.name === 'cheatsheet'}
+    <CheatSheet />
   {:else if route.name === 'class-quiz'}
     <h1 tabindex="-1">{t('mode.classQuiz.title')}</h1>
     <ClassQuiz seed={route.seed} />
   {:else}
     <Home />
   {/if}
-  {#if presenter.on}<p class="presenter-hint">{t('presenter.hint')}</p>{/if}
+  {#if presenter.on}<p class="presenter-hint no-print">{t('presenter.hint')}</p>{/if}
 </main>
 <!-- Presenter mode shows the lesson only: the credits stay on the normal page. -->
 {#if !presenter.on}<Footer />{/if}

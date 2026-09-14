@@ -5,7 +5,7 @@
   const retrieved = $derived(new Intl.DateTimeFormat(i18n.lang, { dateStyle: 'long', timeZone: 'UTC' }).format(new Date(`${SCHOOL_DATA.retrieved}T00:00:00Z`)));
 </script>
 
-<footer aria-label={t('footer.label')}>
+<footer class="no-print" aria-label={t('footer.label')}>
   <p>
     © {year} {t('footer.madeBy', { name: AUTHOR.name })}
     <span class="sep" aria-hidden="true"> · </span>

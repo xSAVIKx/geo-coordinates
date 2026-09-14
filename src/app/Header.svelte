@@ -12,7 +12,7 @@
   let settingsOpen = $state(false);
 </script>
 
-<header class="bar">
+<header class="bar no-print">
   <div class="inner" class:wide={layout.wide}>
     <a class="brand" href={formatRoute({ name: 'home', lang: i18n.lang })}>
       <svg class="logo" viewBox="0 0 40 40" width="40" height="40" aria-hidden="true">

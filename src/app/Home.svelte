@@ -33,6 +33,7 @@
     { key: 'rehearsal', route: 'rehearsal' },
     { key: 'classQuiz', route: 'class-quiz' },
     { key: 'lab', route: 'lab' },
+    { key: 'cheatsheet', route: 'cheatsheet' },
   ] as const;
 </script>
 
@@ -88,6 +89,7 @@
       <svg class="mode-icon" viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
         {#if m.key === 'rehearsal'}<path d="M9 5h10M9 12h10M9 19h10M3.5 5l1.5 1.5L7.5 4M3.5 12l1.5 1.5 2.5-2.5M4 18.2h2.5v2H4z" />
         {:else if m.key === 'classQuiz'}<path d="M3 4.5h18v11H3zM12 15.5V20M8 20h8M8 11l2.5-2.5 2 2L16 7" />
+        {:else if m.key === 'cheatsheet'}<path d="M6 2.8h8.5L19 7.3v13.9H6zM14.3 3v4.5H19M9 11h7M9 14.5h7M9 18h4.5" />
         {:else}<circle cx="12" cy="12" r="4" /><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" />{/if}
       </svg>
       <div class="card-body">
@@ -135,6 +137,8 @@
   @media (min-width: 1024px) {
     .cards { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-5); }
     .cards > .card:last-child:nth-child(odd) { grid-column: auto; }
+    /* Four modes: a row of four, so none sits alone under the topic grid. */
+    .modes { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   }
   .card { position: relative; display: flex; gap: var(--space-4); align-items: flex-start; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--space-5); box-shadow: var(--shadow-1); transition: box-shadow var(--dur) var(--ease), transform var(--dur) var(--ease), border-color var(--dur) var(--ease); }
   .card:hover { box-shadow: var(--shadow-3); transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); }
