@@ -225,6 +225,8 @@
   "footer.mapData": "Дані карти: {source}",
   "footer.schools": "Розташування шкіл: сайти Maple Bear (станом на {date}), приблизне. Цей сайт офіційно не пов’язаний з Maple Bear.",
   "footer.label": "Про цю сторінку",
+  "footer.website": "{name} – вебсайт",
+  "footer.github": "{name} на GitHub",
   "map.stage": "Карта",
   "map.chooseView": "Оберіть вигляд",
   "map.view.globe": "Глобус",

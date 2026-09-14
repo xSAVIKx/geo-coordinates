@@ -225,6 +225,8 @@
   "footer.mapData": "Dane mapy: {source}",
   "footer.schools": "Położenie szkół: strony Maple Bear (stan z {date}), przybliżone. Ta strona nie jest oficjalnie powiązana z Maple Bear.",
   "footer.label": "O tej stronie",
+  "footer.website": "{name} – strona internetowa",
+  "footer.github": "{name} na GitHubie",
   "map.stage": "Mapa",
   "map.chooseView": "Wybierz widok",
   "map.view.globe": "Globus",

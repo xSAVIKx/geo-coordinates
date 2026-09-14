@@ -221,6 +221,8 @@
   "footer.mapData": "Map data: {source}",
   "footer.schools": "School locations: Maple Bear websites (retrieved {date}), approximate. This page is not affiliated with Maple Bear.",
   "footer.label": "About this page",
+  "footer.website": "{name} – website",
+  "footer.github": "{name} on GitHub",
   "map.stage": "Map",
   "map.chooseView": "Choose view",
   "map.view.globe": "Globe",

@@ -50,6 +50,16 @@ test('findInfoNotes flags allowed foreign terms without marking them suspicious,
   expect(notes.some((n) => n.key === 'place.oslo')).toBe(false);
 });
 
+test('GitHub brand name is allowed as info-note Latin text in Ukrainian', () => {
+  const messages = {
+    en: { 'footer.github': '{name} on GitHub' },
+    pl: { 'footer.github': '{name} na GitHubie' },
+    uk: { 'footer.github': '{name} на GitHub' },
+  };
+  expect(findSuspicious(messages)).toEqual([]);
+  expect(findInfoNotes(messages)).toContainEqual({ key: 'footer.github', lang: 'uk' });
+});
+
 test('review page lists every key with lang attributes', () => {
   const html = buildReviewHtml({ en, pl, uk });
   for (const key of Object.keys(en)) expect(html).toContain(`data-key="${key}"`);

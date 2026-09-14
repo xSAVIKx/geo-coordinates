@@ -1,0 +1,68 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Unit tests
+        run: npm test
+
+      # End-to-end tests (Playwright + axe) are intentionally NOT run here:
+      # installing Playwright's browsers on every push would make this workflow
+      # much slower for what is a static, offline single-file page. The full
+      # `npm run e2e` accessibility/responsive suite is run locally against the
+      # built file before every release instead (see docs/RELEASE.md).
+
+      - name: Build
+        run: npm run build
+
+      - name: Assemble Pages site
+        run: |
+          mkdir -p site
+          cp dist/geo-coordinates.html site/index.html
+          cp dist/translation-review.html site/translation-review.html
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

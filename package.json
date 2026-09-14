@@ -1,6 +1,15 @@
 {
-  "name": "geo-coordinates-viz",
+  "name": "geo-coordinates",
   "private": true,
+  "version": "1.0.0",
+  "description": "An interactive, offline, single-file lesson about geographic coordinates for 6th graders, in English, Polish and Ukrainian.",
+  "author": "Yurii Serhiichuk <yurii@serhiichuk.dev> (https://serhiichuk.dev)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xSAVIKx/geo-coordinates.git"
+  },
+  "homepage": "https://xsavikx.github.io/geo-coordinates/",
   "type": "module",
   "scripts": {
     "dev": "vite",

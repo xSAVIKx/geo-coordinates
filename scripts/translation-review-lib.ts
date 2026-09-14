@@ -75,11 +75,12 @@ const onlySymbols = (s: string) => s.replace(/\{\w+\}/g, '').replace(/[\s\d°′
 //                       kept untranslated per controller ruling; "Mercator"
 //                       is listed for when the Latin spelling is used instead
 //                       of the transliterated "Меркатор")
+//  - GitHub              the GitHub brand name (footer.github link text)
 // "N", "S", "E", "W", "P", "L" were pruned: no real message contains them as a
 // standalone Latin token, and Ukrainian coordinate text must never use Latin
 // compass letters (it uses «пн. ш.» / «пд. ш.» / «сх. д.» / «зх. д.»). "km" is
 // deliberately NOT here either: Ukrainian uses "км", not the Latin spelling.
-const LATIN_OK = new Set(['A', 'B', 'UTC', 'Esc', 'Shift', 'Ctrl', 'Google', 'GPS', 'WGS', 'Maple', 'Bear', 'Mercator', 'Equal', 'Earth']);
+const LATIN_OK = new Set(['A', 'B', 'UTC', 'Esc', 'Shift', 'Ctrl', 'Google', 'GPS', 'WGS', 'Maple', 'Bear', 'Mercator', 'Equal', 'Earth', 'GitHub']);
 
 const LATIN_TOKEN = /[A-Za-z]+/g;
 

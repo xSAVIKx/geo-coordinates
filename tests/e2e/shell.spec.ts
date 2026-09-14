@@ -28,6 +28,21 @@ test('footer credits the author and the map data', async ({ page }) => {
   await expect(page.locator('meta[name="author"]')).toHaveAttribute('content', 'Yurii Serhiichuk');
 });
 
+test('footer links to the author website and GitHub profile with 44px targets', async ({ page }) => {
+  await openPage(page, 'pl/');
+  const footer = page.getByRole('contentinfo');
+  const website = footer.getByRole('link', { name: 'Yurii Serhiichuk – strona internetowa' });
+  const github = footer.getByRole('link', { name: 'Yurii Serhiichuk na GitHubie' });
+  await expect(website).toHaveAttribute('href', 'https://serhiichuk.dev');
+  await expect(website).toHaveAttribute('rel', 'author');
+  await expect(github).toHaveAttribute('href', 'https://github.com/xSAVIKx');
+  for (const link of [website, github]) {
+    const box = await link.boundingBox();
+    expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+  }
+  await expectNoAxeViolations(page, 'footer links');
+});
+
 test('unknown route falls back to home', async ({ page }) => {
   await openPage(page, 'en/nope/nope');
   await expect(page).toHaveURL(/#en\/$/);
