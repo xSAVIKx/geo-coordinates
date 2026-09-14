@@ -31,13 +31,18 @@ export function setLang(lang: LangCode): void {
   writeString('geo-coords:lang', lang);
 }
 
-function interpolate(s: string, params?: Record<string, string | number>): string {
-  if (!params) return s;
-  return s.replace(/\{(\w+)\}/g, (m, name: string) => (name in params ? String(params[name]) : m));
+/**
+ * A sum in running text never breaks at its operator ("140 + 158 = 298°" never leaves "140" alone at the end of a line):
+ * no-break spaces round + − × ÷ = ≈, and round the colon Polish and Ukrainian divide with ("556 : 111,2"). The same rule
+ * in every language, applied to the finished text so numbers filled in from parameters are covered too.
+ */
+export function keepSumsTogether(s: string): string {
+  return s.replace(/ ([+−×÷=≈]) /g, '\u00a0$1\u00a0').replace(/(\d) : (?=\d)/g, '$1\u00a0:\u00a0');
 }
 
-export function hasKey(key: string, lang: LangCode = i18n.lang): boolean {
-  return key in messages[lang];
+function interpolate(s: string, params?: Record<string, string | number>): string {
+  if (!params) return keepSumsTogether(s);
+  return keepSumsTogether(s.replace(/\{(\w+)\}/g, (m, name: string) => (name in params ? String(params[name]) : m)));
 }
 
 // `lang` defaults to the current language. Passing it explicitly never mutates state,

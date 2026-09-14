@@ -12,6 +12,8 @@ import { missingKeys } from './textKeys';
 const DIFFS: Difficulty[] = ['easy', 'medium', 'hard'];
 const SEEDS = 1000;
 const OPPOSITE = { N: 'S', S: 'N', E: 'W', W: 'E' } as const;
+/** Sums are rendered with no-break spaces round their operators (see keepSumsTogether); compared here as plain spaces. */
+const plain = (s: string) => s.replace(/\u00a0/g, ' ');
 
 function texts(q: Question, mod = MODULES.find((m) => m.type === q.type)!) {
   const list = [q.prompt, q.explanation, mod.describeAnswer(q)];
@@ -194,7 +196,7 @@ describe('difference and distance', () => {
         else if (crosses180) { over180++; expect(q.explanation.key).toBe('q.diff.explain.over180'); expect(p.x! + p.y!).toBe(p.sum); expect(360 - p.sum!).toBe(expected); }
         else { opposite++; expect(q.explanation.key).toBe(`q.diff.explain.opposite.${axis}`); expect(p.x! + p.y!).toBe(expected); }
         // The rendered explanation shows the numbers it works with.
-        const en = renderText(q.explanation, 'en');
+        const en = plain(renderText(q.explanation, 'en'));
         expect(en).toContain(`${expected}°`);
         if (crosses180) expect(en).toContain(`360 − ${x + y} = ${expected}°`);
         // Difficulty (spec 5.2).
@@ -243,7 +245,7 @@ describe('difference and distance', () => {
           expect(markersOf(q.scene.overlays)).toEqual([]); // the places are not shown before answering
           expect(markersOf(q.solution)).toHaveLength(2);
           expect(renderText(q.prompt, 'en')).toContain(`${km} km`);
-          expect(renderText(q.explanation, 'en')).toContain(`${km} ÷ 111.2 = ${deg}°`);
+          expect(plain(renderText(q.explanation, 'en'))).toContain(`${km} ÷ 111.2 = ${deg}°`);
           expect(mod.check(q, num(km / 111)).correct).toBe(true);
           expect(mod.check(q, num(deg + 0.5)).correct).toBe(false);
           expect(mod.check(q, num(deg + 0.5)).mistake).toBeUndefined();
@@ -254,7 +256,7 @@ describe('difference and distance', () => {
         expect(q.answer).toEqual(num(km));
         expect(q.input).toEqual({ kind: 'number', unit: 'km' });
         expect(markersOf(q.scene.overlays).map((m) => m.p)).toEqual([a, b]);
-        const en = renderText(q.explanation, 'en');
+        const en = plain(renderText(q.explanation, 'en'));
         expect(en, `seed ${s}`).toContain(`${deg} × 111.2 = ${km} km`);
         const x = Math.abs(a.lat), y = Math.abs(b.lat);
         const onLine = a.lat === 0 || b.lat === 0;

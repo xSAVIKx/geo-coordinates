@@ -4,6 +4,9 @@ import { dayShift, time } from '../../src/quiz/generators/time';
 import { createRng } from '../../src/quiz/rng';
 import type { Difficulty, Question } from '../../src/quiz/types';
 
+/** Sums are rendered with no-break spaces round their operators (see keepSumsTogether); compared here as plain spaces. */
+const plain = (s: string) => s.replace(/\u00a0/g, ' ');
+
 const DIFFS: Difficulty[] = ['easy', 'medium', 'hard'];
 const SEEDS = 1000;
 
@@ -83,7 +86,7 @@ describe('time questions (property tests)', () => {
         if (d === 'hard') expect(across180, `seed ${s}`).toBe(true);
         if (d === 'easy') expect(variant).not.toBe('degrees');
 
-        const en = renderText(q.explanation, 'en');
+        const en = plain(renderText(q.explanation, 'en'));
         if (variant === 'degrees') {
           expect(q.input).toEqual({ kind: 'number', unit: 'deg' });
           expect(q.answer).toEqual({ kind: 'number', value: deg });

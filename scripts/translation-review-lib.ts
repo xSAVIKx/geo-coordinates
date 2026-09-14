@@ -64,7 +64,7 @@ const onlySymbols = (s: string) => s.replace(/\{\w+\}/g, '').replace(/[\s\d°′
 //                       they never need to be on this list.
 //  - UTC, Esc, Shift, Ctrl  keyboard-key / technical abbreviations
 //                       conventionally kept in Latin script even in Cyrillic
-//                       UI text (classQuiz.keys, map.zoomHint, map.*.hint,
+//                       UI text (classQuiz.keys, map.*.hint,
 //                       topic.5/8 step bodies)
 //  - Google              brand name ("Google Карти", "Google Картах")
 //  - GPS, WGS            technical acronyms (WGS 84 datum)

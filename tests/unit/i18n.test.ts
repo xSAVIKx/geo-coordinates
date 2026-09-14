@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import en from '../../src/i18n/en.json';
 import pl from '../../src/i18n/pl.json';
 import uk from '../../src/i18n/uk.json';
-import { detectLang, i18n, messages, t, tn } from '../../src/i18n/i18n.svelte';
+import { detectLang, i18n, keepSumsTogether, messages, t, tn } from '../../src/i18n/i18n.svelte';
 import { keepTogether, renderText } from '../../src/i18n/text';
 import { spokenAxis, spokenDMS, spokenLat, spokenLon } from '../../src/i18n/spoken';
 import { findSuspicious } from '../../scripts/translation-review-lib';
@@ -96,6 +96,25 @@ describe('runtime', () => {
       expect(spokenLon(21, 'en')).toBe('LON:21 degrees:east');
     } finally {
       messages.en['spoken.lon'] = original;
+    }
+  });
+});
+
+describe('sums in running text', () => {
+  test('never break at an operator: no-break spaces round + − × ÷ = ≈ and a dividing colon, in every language', () => {
+    expect(keepSumsTogether('so add: 140 + 158 = 298°.')).toBe('so add: 140\u00a0+\u00a0158\u00a0=\u00a0298°.');
+    expect(keepSumsTogether('556 : 111,2 = 5°')).toBe('556\u00a0:\u00a0111,2\u00a0=\u00a05°');
+    // Prose keeps its breaks: a dash, a slash, a colon after a word.
+    expect(keepSumsTogether('Print / Save – website. Esc: end')).toBe('Print / Save – website. Esc: end');
+    for (const lang of ['en', 'pl', 'uk'] as const) {
+      for (const key of Object.keys(files[lang]!)) {
+        const out = key.includes('#') ? tn(base(key), 3, {}, lang) : t(key, {}, lang);
+        expect(/ [+−×÷=≈] /.test(out), `${lang} ${key}: ${out}`).toBe(false);
+        expect(/\d : \d/.test(out), `${lang} ${key}: ${out}`).toBe(false);
+      }
+      // Numbers filled in from parameters are covered too.
+      const sum = renderText({ key: 'q.diff.explain.opposite.lat', params: { x: 30, y: 34, result: 64 } }, lang);
+      expect(sum, lang).toContain('30\u00a0+\u00a034\u00a0=\u00a064');
     }
   });
 });
