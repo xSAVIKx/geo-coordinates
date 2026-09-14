@@ -117,3 +117,23 @@ test('worksheet: choosing no topic explains why there is no sheet', async ({ pag
   await expect(page.getByRole('alert')).toHaveText('Wybierz co najmniej jeden temat.');
   await expect(page.locator('.paper')).toHaveCount(0);
 });
+
+test('worksheet: a highlighted 180° meridian prints inside the map frame, and crowded markers print as text only', async ({ page }) => {
+  await openPage(page, 'en/worksheet');
+  await page.locator('input[name="ws-difficulty"][value="hard"]').check();
+  await makeSheet(page, 'rev24');
+  await expect(page.locator('.paper .meta').first()).toContainText('Topics: 1, 2, 3, 4, 5, 6, 7, 8');
+  // Question 1 (code rev24, hard): "What is the highlighted line?" with the 180° meridian.
+  const q1 = page.locator('.questions > li').nth(0);
+  const line = await q1.locator('.hl-line').boundingBox();
+  const frame = await q1.locator('.frame').boundingBox();
+  const world = await q1.locator('rect.world').boundingBox();
+  const centre = line!.x + line!.width / 2;
+  expect(Math.abs(centre - (world!.x + world!.width))).toBeLessThan(1.5);
+  // A clear gap between the line's casing and the frame (the casing is 9 CSS px wide).
+  expect(frame!.x + frame!.width - centre).toBeGreaterThan(6);
+  // Question 5 (a "further" question whose markers would overlap on the world map) prints without a map.
+  const q5 = page.locator('.questions > li').nth(4);
+  await expect(q5.locator('svg')).toHaveCount(0);
+  await expect(q5.locator('.options li')).not.toHaveCount(0);
+});

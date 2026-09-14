@@ -212,7 +212,7 @@
   "worksheet.name": "Ім’я та прізвище",
   "worksheet.class": "Клас",
   "worksheet.date": "Дата",
-  "worksheet.meta": "{level} · Запитань: {count} · Код: {code}",
+  "worksheet.meta": "{level} · Теми: {topics} · Запитань: {count} · Код: {code}",
   "worksheet.markPoint": "Познач точку {coords} на карті.",
   "worksheet.answer": "Відповідь",
   "worksheet.time": "Час",

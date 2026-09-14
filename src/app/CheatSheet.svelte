@@ -12,7 +12,8 @@
   const lat = (v: number) => formatLat(v, lang);
   const lon = (v: number) => formatLon(v, lang);
   // Keeps a formula (52 − 30 = 22°) and a Ukrainian letter pair (52° пн. ш.) from breaking across lines.
-  const nb = (text: string) => text.replace(/ ([−+×÷=≈→]) /g, '\u00a0$1\u00a0').replace(/(\d[°′]) (?=(пн|пд|сх|зх)\.)/g, '$1\u00a0').replace(/(пн|пд|сх|зх)\. (?=[шд]\.)/g, '$1.\u00a0');
+  const nb = (text: string) => text.replace(/ ([−+×÷=≈→]) /g, '\u00a0$1\u00a0').replace(/(\d[°′]) (?=(пн|пд|сх|зх)\.)/g, '$1\u00a0').replace(/(пн|пд|сх|зх)\. (?=[шд]\.)/g, '$1.\u00a0')
+    .replace(/(\d) (?=(km|км|min|minutes?|minut[ay]?|хв|хвилин[аи]?|h|hours?|год|годин[аи]?|godz\.|godzin[ay]?)(?![\p{L}]))/gu, '$1\u00a0');
   const sections = [
     { id: 'grid', items: 4 },
     { id: 'read', items: 3 },
@@ -67,7 +68,8 @@
                 <text x={gx(0) + 3} y="11.5">{lat(90)}</text>
                 <text x={gx(0) + 3} y="72">{lat(-90)}</text>
                 <text x="6" y={gy(0) - 2.5}>0° · {t('cheat.fig.equator')}</text>
-                <text x={gx(0) - 3} y="11.5" text-anchor="end">{t('cheat.fig.prime')}</text>
+                <!-- Shrunk to fit between the frame and the meridian («нульовий меридіан» is long); ≈0.56 em per character. -->
+                <text x={gx(0) - 3} y="11.5" text-anchor="end" font-size={Math.min(7, (gx(0) - 9) / (t('cheat.fig.prime').length * 0.56))}>{t('cheat.fig.prime')}</text>
                 <text x={gx(-90)} y={gy(0) + 9} text-anchor="middle">{lon(-90)}</text>
                 <text x={gx(90)} y={gy(0) + 9} text-anchor="middle">{lon(90)}</text>
               </g>
@@ -156,7 +158,8 @@
     .sheet-head p { font-size: 10pt; }
     .sections { columns: 2; column-gap: 7mm; }
     h2 { font-size: 11pt; }
-    ul { font-size: 9.5pt; }
+    ul { font-size: 9.5pt; line-height: 1.33; }
+    .sec { margin-bottom: 0.7em; }
     .fig.wide, .fig.strip { width: 62mm; }
     .fig.side { width: 22mm; }
     .sheet-foot { font-size: 7.5pt; }

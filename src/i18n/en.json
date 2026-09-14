@@ -208,7 +208,7 @@
   "worksheet.name": "Name",
   "worksheet.class": "Class",
   "worksheet.date": "Date",
-  "worksheet.meta": "{level} · Questions: {count} · Code: {code}",
+  "worksheet.meta": "{level} · Topics: {topics} · Questions: {count} · Code: {code}",
   "worksheet.markPoint": "Mark the point {coords} on the map.",
   "worksheet.answer": "Answer",
   "worksheet.time": "Time",

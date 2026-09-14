@@ -77,7 +77,6 @@ const onlySymbols = (s: string) => s.replace(/\{\w+\}/g, '').replace(/[\s\d°′
 //                       of the transliterated "Меркатор")
 //  - GitHub              the GitHub brand name (footer.github link text)
 //  - PDF                 the file format named on the print buttons ("Зберегти як PDF")
-//  - CC, BY              the licence name "CC BY 4.0" on the printed cheat sheet and worksheet
 //  - P, L               the presenter-mode keys in presenter.hint ("P: режим
 //                       презентації · L: указка"). They name physical keys and
 //                       are printed in Latin on Ukrainian keyboards too (the
@@ -87,7 +86,14 @@ const onlySymbols = (s: string) => s.replace(/\{\w+\}/g, '').replace(/[\s\d°′
 // standalone Latin token, and Ukrainian coordinate text must never use Latin
 // compass letters (it uses «пн. ш.» / «пд. ш.» / «сх. д.» / «зх. д.»). "km" is
 // deliberately NOT here either: Ukrainian uses "км", not the Latin spelling.
-const LATIN_OK = new Set(['A', 'B', 'P', 'L', 'UTC', 'Esc', 'Shift', 'Ctrl', 'Google', 'GPS', 'WGS', 'Maple', 'Bear', 'Mercator', 'Equal', 'Earth', 'GitHub', 'PDF', 'CC', 'BY']);
+const LATIN_OK = new Set(['A', 'B', 'P', 'L', 'UTC', 'Esc', 'Shift', 'Ctrl', 'Google', 'GPS', 'WGS', 'Maple', 'Bear', 'Mercator', 'Equal', 'Earth', 'GitHub', 'PDF']);
+
+// Latin words allowed only in the keys that need them (not anywhere in Ukrainian text):
+//  - CC, BY in cheat.foot  the licence name "CC BY 4.0" on the printed cheat sheet and worksheet
+const KEY_LATIN_OK: readonly (readonly [RegExp, ReadonlySet<string>])[] = [
+  [/^cheat\.foot$/, new Set(['CC', 'BY'])],
+];
+const latinOk = (key: string, token: string) => LATIN_OK.has(token) || KEY_LATIN_OK.some(([re, words]) => re.test(key) && words.has(token));
 
 const LATIN_TOKEN = /[A-Za-z]+/g;
 
@@ -96,8 +102,8 @@ function latinTokens(s: string): string[] {
   return s.replace(/\{\w+\}/g, '').match(LATIN_TOKEN) ?? [];
 }
 
-const hasDisallowedLatin = (s: string) => latinTokens(s).some((t) => !LATIN_OK.has(t));
-const hasAllowedLatin = (s: string) => latinTokens(s).some((t) => LATIN_OK.has(t));
+const hasDisallowedLatin = (key: string, s: string) => latinTokens(s).some((t) => !latinOk(key, t));
+const hasAllowedLatin = (key: string, s: string) => latinTokens(s).some((t) => latinOk(key, t));
 
 export function findSuspicious(m: Messages): Suspicious[] {
   const out: Suspicious[] = [];
@@ -107,7 +113,7 @@ export function findSuspicious(m: Messages): Suspicious[] {
       const v = m[lang][key];
       if (v === undefined) continue;
       if (v === en && !onlySymbols(v) && !SAME_OK.some((r) => r.test(key))) out.push({ key, lang, reason: 'same-as-en' });
-      else if (lang === 'uk' && hasDisallowedLatin(v)) out.push({ key, lang, reason: 'latin-in-uk' });
+      else if (lang === 'uk' && hasDisallowedLatin(key, v)) out.push({ key, lang, reason: 'latin-in-uk' });
       else if (lang === 'pl' && /[Ѐ-ӿ]/.test(v)) out.push({ key, lang, reason: 'cyrillic-in-pl' });
     }
   }
@@ -131,7 +137,7 @@ export function findInfoNotes(m: Messages): InfoNote[] {
       const v = m[lang][key];
       if (v === undefined || flagged.has(`${key}|${lang}`)) continue;
       const sameAsEnAllowed = v === en && !onlySymbols(v) && SAME_OK.some((r) => r.test(key)) && !PLACE_NAME_KEY.test(key);
-      if (sameAsEnAllowed || hasAllowedLatin(v)) out.push({ key, lang });
+      if (sameAsEnAllowed || hasAllowedLatin(key, v)) out.push({ key, lang });
     }
   }
   return out;

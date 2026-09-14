@@ -87,7 +87,7 @@
   <article class="paper" aria-labelledby="ws-title">
     <header class="paper-head">
       <h2 id="ws-title">{t('worksheet.sheetTitle')}</h2>
-      <p class="meta">{t('worksheet.meta', { level: t(`difficulty.${difficulty}`), count, code: cleanCode })}</p>
+      <p class="meta">{t('worksheet.meta', { level: t(`difficulty.${difficulty}`), topics: topics.join(', '), count, code: cleanCode })}</p>
       <div class="fill">
         <span>{t('worksheet.name')}: <i class="line long"></i></span>
         <span>{t('worksheet.class')}: <i class="line short"></i></span>
@@ -124,7 +124,7 @@
 
     {#if showKey}
       <section class="key" aria-labelledby="ws-key">
-        <h2 id="ws-key">{t('worksheet.keyTitle')} <span class="meta">· {t('worksheet.meta', { level: t(`difficulty.${difficulty}`), count, code: cleanCode })}</span></h2>
+        <h2 id="ws-key">{t('worksheet.keyTitle')} <span class="meta">· {t('worksheet.meta', { level: t(`difficulty.${difficulty}`), topics: topics.join(', '), count, code: cleanCode })}</span></h2>
         <ol>
           {#each questions as q, i (q.id)}
             <li><span class="n">{i + 1}.</span> <b>{renderText(describeAnswer(q))}</b> — {renderText(q.explanation)}</li>

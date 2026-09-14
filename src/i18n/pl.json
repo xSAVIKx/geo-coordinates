@@ -212,7 +212,7 @@
   "worksheet.name": "Imię i nazwisko",
   "worksheet.class": "Klasa",
   "worksheet.date": "Data",
-  "worksheet.meta": "{level} · Pytania: {count} · Kod: {code}",
+  "worksheet.meta": "{level} · Tematy: {topics} · Pytania: {count} · Kod: {code}",
   "worksheet.markPoint": "Zaznacz punkt {coords} na mapie.",
   "worksheet.answer": "Odpowiedź",
   "worksheet.time": "Godzina",

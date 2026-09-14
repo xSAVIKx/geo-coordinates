@@ -66,3 +66,12 @@ test('review page lists every key with lang attributes', () => {
   expect(html).toContain('lang="uk"');
   expect(html).toContain('<title>');
 });
+
+test('the CC BY licence words are allowed in the licence line only', () => {
+  const found = findSuspicious({
+    en: { 'cheat.foot': 'Licence: CC BY 4.0', 'other.key': 'Licence: CC BY 4.0' },
+    pl: { 'cheat.foot': 'Licencja: CC BY 4.0', 'other.key': 'Licencja: CC BY 4.0' },
+    uk: { 'cheat.foot': 'Ліцензія: CC BY 4.0', 'other.key': 'Ліцензія: CC BY 4.0' },
+  });
+  expect(found).toEqual([{ key: 'other.key', lang: 'uk', reason: 'latin-in-uk' }]);
+});
