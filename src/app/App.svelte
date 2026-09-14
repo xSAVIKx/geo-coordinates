@@ -29,7 +29,10 @@
     applySettings();
     saveSettings();
   });
-  $effect(() => { document.title = t('app.title'); });
+  $effect(() => {
+    document.title = t('app.title');
+    document.querySelector('meta[name="description"]')?.setAttribute('content', t('app.description'));
+  });
 
   let main: HTMLElement;
   const route = $derived(router.route);

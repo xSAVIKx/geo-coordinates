@@ -188,7 +188,7 @@ export function buildReviewHtml(m: Messages): string {
     })
     .join('');
 
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
 <title>Translation review — Coordinates</title>
 <style>
   body{font:15px/1.45 system-ui,sans-serif;margin:1rem;color:#1b2430;background:#fff}

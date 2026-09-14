@@ -21,3 +21,19 @@ test('the built file carries its third-party licence notices and still renders i
   await openPage(page, 'en/');
   expect(await page.evaluate(() => document.compatMode)).toBe('CSS1Compat');
 });
+
+test('the built file carries its icons inline, links no manifest offline, and describes itself in the chosen language', async ({ page }) => {
+  await openPage(page, 'en/');
+  const head = await page.evaluate(() => ({
+    icons: [...document.querySelectorAll<HTMLLinkElement>('link[rel="icon"], link[rel="apple-touch-icon"]')].map((l) => l.href.slice(0, 22)),
+    manifest: document.querySelector('link[rel="manifest"]'),
+    ogImage: document.querySelector('meta[property="og:image"]')?.getAttribute('content'),
+  }));
+  expect(head.icons).toEqual(['data:image/svg+xml,%3C', 'data:image/png;base64,', 'data:image/png;base64,']);
+  expect(head.manifest).toBeNull();
+  expect(head.ogImage).toBe('https://xsavikx.github.io/geo-coordinates/og-image.png');
+  const description = () => page.locator('meta[name="description"]').getAttribute('content');
+  expect(await description()).toMatch(/^Learn latitude and longitude/);
+  await openPage(page, 'uk/');
+  await expect.poll(description).toMatch(/^Вивчай широту й довготу/);
+});

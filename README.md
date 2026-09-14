@@ -57,6 +57,7 @@ Requires Node 24 or newer.
     npm run e2e      # Playwright + axe accessibility tests against the built file
     npm run shot -- en/lab lab   # full-page screenshots of one route: shots/lab-375x667.png, shots/lab-1366x768.png
     npm run shots:readme         # the README screenshots, docs/screenshots/{home,lesson,lab}.png (after a build)
+    npm run brand                # icons and the social card in site-static/, from site-static/icon.svg
 
 `npm run shots:readme` captures the first 1366×768 screen of `en/`, `en/topic-6/explore/5` and `en/lab`, and
 reduces each PNG to 256 colours when `python3` with Pillow is installed (otherwise it keeps full-colour PNGs and
@@ -102,6 +103,12 @@ fails if they are missing.
 
 The built file is static. `dist/` is committed for offline use. GitHub Pages is served from a
 GitHub Actions workflow (`.github/workflows/pages.yml`) that builds the project and publishes
-`dist/geo-coordinates.html` as `index.html`, alongside `dist/translation-review.html`. See
+`dist/geo-coordinates.html` as `index.html`, alongside `dist/translation-review.html` and the files in
+`site-static/`: the web app manifest and its icons, the social card (`og-image.png`) and a sitemap.
+
+The page head carries a search description, a canonical URL, Open Graph and Twitter card tags, theme colours and
+LearningResource structured data. The favicon and the Apple touch icon are inlined as data URIs at build time
+(`scripts/site-head.ts`), so they work offline too; the manifest link is added only when the page is opened at its
+published address, so offline copies never ask for it. The search description follows the chosen language. See
 [`docs/RELEASE.md`](docs/RELEASE.md) for the release checklist and the exact commands to
 create the repository and enable Pages.

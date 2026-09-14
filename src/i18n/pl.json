@@ -1,6 +1,7 @@
 {
   "app.title": "Współrzędne na kuli ziemskiej",
   "app.shortTitle": "Współrzędne",
+  "app.description": "Poznaj szerokość i długość geograficzną na interaktywnych mapach, globusie i w laboratorium dnia i nocy. Ćwiczenia i karty do druku po polsku, angielsku i ukraińsku.",
   "app.skip": "Przejdź do treści",
   "unit.degree#one": "{count} stopień",
   "unit.degree#few": "{count} stopnie",

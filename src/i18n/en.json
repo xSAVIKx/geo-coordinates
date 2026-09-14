@@ -1,6 +1,7 @@
 {
   "app.title": "Coordinates on the globe",
   "app.shortTitle": "Coordinates",
+  "app.description": "Learn latitude and longitude with interactive maps, a globe and a day and night lab. Practice questions and printable sheets in English, Polish and Ukrainian.",
   "app.skip": "Skip to main content",
   "unit.degree#one": "{count} degree",
   "unit.degree#other": "{count} degrees",
