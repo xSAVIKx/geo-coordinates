@@ -6,6 +6,7 @@
   import MapStage from '../map/MapStage.svelte';
   import { mapState } from '../map/mapState.svelte';
   import { responseText } from './answerText';
+  import Celebration from './Celebration.svelte';
   import QuestionCard from './QuestionCard.svelte';
   import { checkAnswer, describeAnswer, generateSet, modulesForTopic } from './registry';
   import { createRng, randomSeed } from './rng';
@@ -122,6 +123,7 @@
         <h2 id="rehearsal-results" tabindex="-1" bind:this={heading}>{t('rehearsal.results')}</h2>
         <p class="score">{t('practice.score', { score, total: COUNT })}</p>
         {#if best !== null}<p class="best">{t('practice.best', { best, total: COUNT })}</p>{/if}
+        {#if score === COUNT}<div><Celebration /></div>{/if}
       </div>
     </div>
     <ol class="review">

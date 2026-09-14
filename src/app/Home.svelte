@@ -3,6 +3,31 @@
   import { TOPIC_IDS } from './ids';
   import { formatRoute } from './router';
   import { getTopic } from '../topics';
+  import { bestScore, scoreId } from '../quiz/scores';
+  import type { Difficulty } from '../quiz/types';
+  import type { TopicId } from './ids';
+
+  const ROUND = 10;
+  const DIFFS: Difficulty[] = ['hard', 'medium', 'easy'];
+  // Best practice score per topic over all difficulties (the harder level wins a tie). Loaded into state
+  // when Home mounts (every visit to Home mounts it again) and reloaded when another tab saves a score, so
+  // a round just finished always shows — unlike a bare bestScore() call in the template, which is not reactive.
+  type Best = { score: number; difficulty: Difficulty } | null;
+  const readBest = (id: TopicId): Best => {
+    let best: Best = null;
+    for (const d of DIFFS) {
+      const s = bestScore(scoreId(id, d));
+      if (s !== null && (best === null || s > best.score)) best = { score: s, difficulty: d };
+    }
+    return best;
+  };
+  let bests = $state<Partial<Record<TopicId, Best>>>({});
+  $effect(() => {
+    const load = () => { bests = Object.fromEntries(TOPIC_IDS.map((id) => [id, readBest(id)])); };
+    load();
+    window.addEventListener('storage', load);
+    return () => window.removeEventListener('storage', load);
+  });
 
   const modes = [
     { key: 'rehearsal', route: 'rehearsal' },
@@ -39,6 +64,16 @@
         <h3><a href={formatRoute({ name: 'explore', lang: i18n.lang, topic: id, step: 0 })}>{t(`topic.${id}.title`)}</a></h3>
         <p>{t(`topic.${id}.summary`)}</p>
         {#if (getTopic(id)?.questionTypes.length ?? 0) > 0}
+          {@const best = bests[id]}
+          {#if best}
+            <p class="progress" class:perfect={best.score === ROUND}>
+              <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">{#if best.score === ROUND}<path d="M12 2.8l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2l-5.6 3 1.1-6.3-4.6-4.4 6.3-.9z" />{:else}<path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20h7" />{/if}</svg>
+              <span aria-hidden="true">{t('home.best', { score: best.score, total: ROUND, level: t(`difficulty.${best.difficulty}`).toLocaleLowerCase(i18n.lang) })}</span>
+              <span class="visually-hidden">{t('home.bestLong', { score: best.score, total: ROUND, level: t(`difficulty.${best.difficulty}`).toLocaleLowerCase(i18n.lang) })}</span>
+            </p>
+          {:else if bests[id] === null}
+            <p class="progress none">{t('home.notPractised')}</p>
+          {/if}
           <a class="btn practise" href={formatRoute({ name: 'practice', lang: i18n.lang, topic: id })}>{t('home.practice')}<span class="visually-hidden">: {t(`topic.${id}.title`)}</span></a>
         {/if}
       </div>
@@ -111,6 +146,10 @@
   .card h3 a:focus-visible { outline: none; }
   .card:has(h3 a:focus-visible) { outline: 3px solid var(--focus); outline-offset: 2px; }
   .card p { margin: 0; color: var(--text-muted); flex: 1; }
+  .card .progress { flex: none; display: inline-flex; align-items: center; gap: var(--space-1); margin-top: var(--space-1); padding: 0.1rem var(--space-3) 0.1rem var(--space-2); border-radius: var(--radius-pill); background: var(--warm-soft); color: var(--warm-text); font-size: var(--step--1); font-weight: var(--weight-strong); }
+  .progress svg { flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .progress.perfect svg { fill: var(--warm); stroke: var(--warm-text); stroke-width: 1.2; }
+  .card .progress.none { background: var(--surface-2); color: var(--text-muted); padding-left: var(--space-3); font-weight: 500; }
   .practise { position: relative; z-index: 1; margin-top: var(--space-2); padding: 0 var(--space-4); font-size: var(--step--1); }
   .mode-icon { flex: none; width: 2.5rem; height: 2.5rem; padding: 0.5rem; border-radius: 0.8rem; background: var(--accent-soft); fill: none; stroke: var(--accent); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 </style>

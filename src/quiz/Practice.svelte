@@ -10,6 +10,7 @@
   import { mapState } from '../map/mapState.svelte';
   import type { Overlay } from '../map/types';
   import type { TopicDef } from '../topics/types';
+  import Celebration from './Celebration.svelte';
   import QuestionCard from './QuestionCard.svelte';
   import { checkAnswer, generateSet } from './registry';
   import { randomSeed } from './rng';
@@ -35,6 +36,9 @@
   interface Draft { value: Answer | null; coordsText: { lat: string; lon: string }; numberText: string; clockText: string }
   const emptyDraft = (): Draft => ({ value: null, coordsText: { lat: '', lon: '' }, numberText: '', clockText: '' });
   let draft = $state<Draft>(emptyDraft());
+  // Which questions of this round the Hint was used on (shown with a tag in the summary; they still count).
+  // Held here, like the draft, so a hint stays shown when the layout switch recreates the question card.
+  let hints = $state<boolean[]>([]);
   // The best score for the *currently selected* difficulty — shown both beside the difficulty
   // selector and in the round summary. Loaded on init, reloaded whenever `difficulty` (or the
   // topic) changes, and updated the moment a round finishes, so it never goes stale like a plain
@@ -67,6 +71,7 @@
     results = [];
     finished = false;
     draft = emptyDraft();
+    hints = [];
   });
 
   let applied = '';
@@ -100,6 +105,7 @@
     results = [];
     finished = false;
     draft = emptyDraft();
+    hints = [];
   }
 
   let summaryHeading = $state<HTMLHeadingElement>();
@@ -123,6 +129,7 @@
 {#snippet questionCard()}
   <QuestionCard {question} number={index + 1} total={ROUND} {result} onsubmit={submit} onnext={next}
     nextLabel={index < ROUND - 1 ? t('practice.next') : t('practice.results')} {roundKey}
+    hint hinted={hints[index] === true} onhint={() => (hints[index] = true)}
     bind:value={draft.value} bind:coordsDraft={draft.coordsText} bind:numberDraft={draft.numberText} bind:clockDraft={draft.clockText} />
 {/snippet}
 
@@ -160,6 +167,7 @@
           <h2 id="summary-title" tabindex="-1" bind:this={summaryHeading}>{t('practice.done')}</h2>
           <p class="score">{t('practice.score', { score, total: ROUND })}</p>
           {#if currentBest !== null}<p class="best-line">{t('practice.best', { best: currentBest, total: ROUND })}</p>{/if}
+          {#if score === ROUND}<Celebration />{/if}
         </div>
       </div>
       <h3>{t('practice.review')}</h3>
@@ -168,7 +176,7 @@
           <li class:ok={results[i]?.correct}>
             <span class="mark" aria-hidden="true">{#if results[i]?.correct}<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>{:else}<svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17" /></svg>{/if}</span>
             <span class="visually-hidden">{results[i]?.correct ? t('practice.resultCorrect') : t('practice.resultWrong')}: </span>
-            {renderText(q.prompt)}
+            <span class="prompt-text">{renderText(q.prompt)}{#if hints[i]} <span class="hint-tag">{t('practice.hintTag')}</span>{/if}</span>
           </li>
         {/each}
       </ol>
@@ -224,5 +232,6 @@
   .mark { flex: none; display: grid; place-items: center; width: 1.6rem; height: 1.6rem; margin-top: 0.05rem; border-radius: 50%; background: var(--bad); color: var(--surface); }
   .ok .mark { background: var(--ok); }
   .mark svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+  .hint-tag { display: inline-block; margin-left: var(--space-1); padding: 0 var(--space-2); border-radius: var(--radius-pill); background: var(--warm-soft); color: var(--warm-text); font-size: var(--step--1); font-weight: var(--weight-strong); white-space: nowrap; }
   .actions { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; margin-top: var(--space-6); }
 </style>

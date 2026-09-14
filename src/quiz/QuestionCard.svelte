@@ -22,12 +22,15 @@
   let {
     question, number, total, result, onsubmit, onnext, nextLabel, roundKey,
     value = $bindable(null), coordsDraft = $bindable({ lat: '', lon: '' }), numberDraft = $bindable(''), clockDraft = $bindable(''),
-    showFeedback = true, big = false,
+    showFeedback = true, big = false, hint = false, hinted = false, onhint,
   }: {
     question: Question; number: number; total: number; result: CheckResult | null;
     onsubmit: (a: Answer) => void; onnext: () => void; nextLabel: string; roundKey: string;
     value?: Answer | null; coordsDraft?: { lat: string; lon: string }; numberDraft?: string; clockDraft?: string;
     showFeedback?: boolean; big?: boolean;
+    // `hint` offers the Hint button (Practice only). Whether it was used is owned by Practice (like the
+    // draft), so the hint stays shown when the phone/desktop switch recreates this card.
+    hint?: boolean; hinted?: boolean; onhint?: () => void;
   } = $props();
 
   let invalid = $state(false);
@@ -116,8 +119,26 @@
 
   {#if invalid}<p class="need" role="alert">{t('practice.needAnswer')}</p>{/if}
 
+  {#if hint}
+    <!-- Always in the DOM (empty until used), so screen readers announce the hint when it appears. -->
+    <div class="hint" aria-live="polite">
+      {#if hinted}
+        <p class="hint-text"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.2h5c0-.9.4-1.6 1.1-2.2A6 6 0 0 0 12 3z" /></svg><span><strong>{t('practice.hint')}:</strong> {t(`q.hint.${question.type}`)}</span></p>
+      {/if}
+    </div>
+  {/if}
+
   {#if !answered}
-    <button type="submit" class="btn primary lg">{t('practice.check')}</button>
+    <div class="buttons">
+      <button type="submit" class="btn primary lg">{t('practice.check')}</button>
+      {#if hint}
+        <!-- Stays in place once used (aria-disabled, not removed), so keyboard focus is not dropped. -->
+        <button type="button" class="btn lg hint-btn" aria-disabled={hinted} onclick={() => { if (!hinted) onhint?.(); }}>
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.2h5c0-.9.4-1.6 1.1-2.2A6 6 0 0 0 12 3z" /></svg>
+          {t('practice.hint')}
+        </button>
+      {/if}
+    </div>
   {:else}
     {#if showFeedback && result}
       <!-- Focused programmatically after answering (for screen-reader users to hear the
@@ -145,8 +166,13 @@
   h2:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; border-radius: 4px; }
   .big h2 { font-size: clamp(1.6rem, 1rem + 3vw, 4rem); }
   .primary { align-self: flex-start; }
+  .buttons { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
+  .hint:empty { position: absolute; } /* out of the card's flex gap while empty, still in the accessibility tree */
+  .hint-text { display: flex; gap: var(--space-2); align-items: flex-start; margin: 0; padding: var(--space-3) var(--space-4); border-radius: var(--radius); background: var(--warm-soft); color: var(--text); border: 1px solid color-mix(in srgb, var(--warm) 45%, transparent); }
+  .hint-text svg, .hint-btn svg { flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .hint-text svg { margin-top: 0.15rem; color: var(--warm-text); }
   .need { color: var(--bad); font-weight: var(--weight-strong); margin: 0; }
   .fb:focus { outline: none; }
   .fb:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: var(--radius); }
-  @media (max-width: 599px) { .card { padding: var(--space-4); gap: var(--space-3); } .primary { align-self: stretch; } }
+  @media (max-width: 599px) { .card { padding: var(--space-4); gap: var(--space-3); } .primary { align-self: stretch; } .buttons > .btn { flex: 1 1 auto; } }
 </style>
