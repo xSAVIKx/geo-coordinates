@@ -8,7 +8,7 @@ import type { Plugin } from 'vite';
 
 export interface Notice { name: string; version: string; license: string; text: string; url?: string }
 
-/** Data bundled without a package of its own: the map data world-atlas and the Central Europe detail are made from. */
+/** Data bundled without a package of its own: the map data world-atlas, the world borders (Poland point of view) and the Central Europe detail are made from. */
 export const DATA_NOTICES: Notice[] = [{
   name: 'Natural Earth', version: 'map data', license: 'Public domain', url: 'https://www.naturalearthdata.com/',
   text: 'Made with Natural Earth. Free vector and raster map data @ naturalearthdata.com. Natural Earth data is in the public domain.',

@@ -26,9 +26,12 @@ MIT), and it does not cover the third-party data described below.
 - **Map and place data** — land, borders, graticule and place data are derived
   from [Natural Earth](https://www.naturalearthdata.com/), which is placed in
   the **public domain**. No attribution is legally required, but this project
-  credits Natural Earth in its footer and README as a courtesy. World
-  boundary topology is built with [world-atlas](https://github.com/topojson/world-atlas)
-  (ISC license), also derived from Natural Earth data.
+  credits Natural Earth in its footer and README as a courtesy. World land
+  topology comes from [world-atlas](https://github.com/topojson/world-atlas)
+  (ISC license), also derived from Natural Earth data. World country borders
+  follow Natural Earth's Poland point-of-view admin-0 countries dataset
+  (`ne_10m_admin_0_countries_pol`, version 5.1.1), which shows Ukraine's
+  internationally recognised borders, including Crimea.
 
 - **Maple Bear school locations** — the coordinates and names shown on the
   optional Maple Bear schools layer are factual data (approximate school

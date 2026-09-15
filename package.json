@@ -20,7 +20,8 @@
     "shot": "node --experimental-strip-types scripts/shot.ts",
     "shots:readme": "node --experimental-strip-types scripts/readme-shots.ts",
     "brand": "node --experimental-strip-types scripts/brand-assets.ts",
-    "data:regional": "node --experimental-strip-types scripts/build-regional-data.ts"
+    "data:regional": "node --experimental-strip-types scripts/build-regional-data.ts",
+    "data:borders": "node --experimental-strip-types scripts/build-world-borders.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",

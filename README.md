@@ -58,6 +58,7 @@ Requires Node 24 or newer.
     npm run shot -- en/lab lab   # full-page screenshots of one route: shots/lab-375x667.png, shots/lab-1366x768.png
     npm run shots:readme         # the README screenshots, docs/screenshots/{home,lesson,lab}.png (after a build)
     npm run brand                # icons and the social card in site-static/, from site-static/icon.svg
+    npm run data:borders -- --download   # rebuild src/map/data/world-borders-pol.json (raw download cached in .cache/)
 
 `npm run shots:readme` captures the first 1366×768 screen of `en/`, `en/topic-6/explore/5` and `en/lab`, and
 reduces each PNG to 256 colours when `python3` with Pillow is installed (otherwise it keeps full-colour PNGs and
@@ -81,8 +82,11 @@ Author details for the page footer live in `src/app/credits.ts`.
 
 ## Credits
 
-- Map data: [Natural Earth](https://www.naturalearthdata.com/) (public domain), via
-  [world-atlas](https://github.com/topojson/world-atlas).
+- Map data: [Natural Earth](https://www.naturalearthdata.com/) (public domain). Land and coastlines come via
+  [world-atlas](https://github.com/topojson/world-atlas) (110m). World country borders follow Natural Earth's
+  Poland point-of-view admin-0 countries (`ne_10m_admin_0_countries_pol`, version 5.1.1), which show Ukraine's
+  internationally recognised borders, Crimea included; they are simplified by `npm run data:borders`
+  (`scripts/build-world-borders.ts`). The Central Europe detail is Natural Earth 10m (`npm run data:regional`).
 - Map rendering libraries: [world-atlas](https://github.com/topojson/world-atlas),
   [d3-geo](https://github.com/d3/d3-geo) and [topojson-client](https://github.com/topojson/topojson-client) (all ISC licensed).
 - Interface framework: [Svelte](https://svelte.dev) (MIT licensed).

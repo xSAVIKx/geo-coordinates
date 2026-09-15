@@ -1,17 +1,21 @@
 import { feature, mesh } from 'topojson-client';
 import type { GeometryCollection, Topology } from 'topojson-specification';
 import topoJson from 'world-atlas/countries-110m.json';
+import bordersJson from './data/world-borders-pol.json';
 import regionJson from './data/central-europe.json';
 import { boundsIntersect, type GeoBounds } from './geometry';
 
 const topo = topoJson as unknown as Topology<{ countries: GeometryCollection; land: GeometryCollection }>;
+// Borders are not world-atlas's (Natural Earth "de facto": Crimea inside Russia) but Natural Earth's Poland
+// point of view, Ukraine's internationally recognised borders (scripts/build-world-borders.ts).
+const bordersTopo = bordersJson as unknown as Topology<{ countries: GeometryCollection }>;
 
 export const land = feature(topo, topo.objects.land);
-export const borders = mesh(topo, topo.objects.countries, (a, b) => a !== b);
+export const borders = mesh(bordersTopo, bordersTopo.objects.countries, (a, b) => a !== b);
 export const sphere = { type: 'Sphere' } as const;
 
 // ---------------------------------------------------------------------------------------------
-// Level of detail. Below zoom 4 (and outside Central Europe) the world-atlas 110m data is all
+// Level of detail. Below zoom 4 (and outside Central Europe) the world 110m data (above) is all
 // there is. From zoom 4, when the view reaches the region box, Natural Earth 10m data
 // (scripts/build-regional-data.ts) is drawn over it: a sea-coloured box hides the coarse land
 // there, then detailed land, lakes, coastlines and borders. Voivodeships and rivers join at zoom 6.
