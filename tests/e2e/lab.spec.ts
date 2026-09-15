@@ -70,10 +70,44 @@ test('lab: spinning the Earth runs the clock and turns the globe, and stops agai
   expect(pageErrors(page)).toEqual([]);
 });
 
+test('lab: the spin speed changes how fast the clocks run, even while spinning', async ({ page }) => {
+  await openPage(page, 'en/lab', '?test');
+  const minutes = () => page.evaluate(() => (window as unknown as { __mapState: { sun: { utcMinutes: number } } }).__mapState.sun.utcMinutes);
+  const speed = page.getByRole('group', { name: 'Speed: one day lasts' });
+  await expect(speed.getByRole('button', { name: '12 sec' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByText('One day = 12 seconds, 7,200 times faster than the real Earth.')).toBeVisible();
+
+  // The real Earth: a minute of simulated time takes a whole real minute, so nothing moves in a second.
+  await speed.getByRole('button', { name: '24 hr' }).click();
+  await expect(page.getByText(/Real speed: the Earth turns 15° every hour/)).toBeVisible();
+  const before = await minutes();
+  await page.getByRole('button', { name: 'Spin the Earth' }).click();
+  await page.waitForTimeout(800);
+  expect(await minutes()).toBe(before);
+
+  // Switch to one day a second without stopping: hours go by within half a second.
+  await speed.getByRole('button', { name: '1 sec' }).click();
+  await expect(speed.getByRole('button', { name: '1 sec' })).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(async () => ((await minutes()) - before + 1440) % 1440, { timeout: 2000 }).toBeGreaterThan(240);
+  await page.getByRole('button', { name: 'Stop' }).click();
+  await expectNoAxeViolations(page);
+  expect(pageErrors(page)).toEqual([]);
+});
+
+test('lab: the spin speed is named in Polish and Ukrainian', async ({ page }) => {
+  await openPage(page, 'pl/lab');
+  await expect(page.getByRole('group', { name: 'Prędkość: doba trwa' })).toBeVisible();
+  await expect(page.getByText(/Jedna doba\s=\s12\ssekund, czyli 7200 razy szybciej/)).toBeVisible();
+  await openPage(page, 'uk/lab');
+  await expect(page.getByRole('group', { name: 'Швидкість: доба триває' })).toBeVisible();
+  await expect(page.getByText(/Одна доба\s=\s12\sсекунд, тобто в 7\s?200 разів швидше/)).toBeVisible();
+});
+
 test('reduced motion hides the spin button', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await openPage(page, 'en/lab');
   await expect(page.getByRole('button', { name: 'Spin the Earth' })).toHaveCount(0);
+  await expect(page.getByRole('group', { name: 'Speed: one day lasts' })).toHaveCount(0);
 });
 
 test('lab on a phone: controls follow the map and nothing scrolls sideways', async ({ page }) => {

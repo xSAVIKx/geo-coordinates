@@ -1,3 +1,10 @@
+<script module lang="ts">
+  import { DEFAULT_SPIN_SPEED } from './spinSpeeds';
+  // Kept while the page is open, so the chosen speed survives moving between the lab and lesson steps.
+  const spin = $state({ speed: DEFAULT_SPIN_SPEED });
+  type Light = 'day' | 'dawn' | 'dusk' | 'night';
+</script>
+
 <script lang="ts">
   import { motionReduced } from '../app/settings.svelte';
   import { formatLon } from '../geo/format';
@@ -7,12 +14,11 @@
   import { mapState } from './mapState.svelte';
   import { placeById } from './places';
   import Slider from './Slider.svelte';
+  import { SPIN_SPEEDS, minutesPerMs, speedFactor } from './spinSpeeds';
 
   // Rows below are re-sorted by longitude (west to east) before rendering, so this list's order
   // doesn't matter for display. Katowice is the lesson's home city.
   const CLOCK_PLACES = ['newyork', 'london', 'katowice', 'kyiv', 'delhi', 'tokyo'];
-  /** Simulated minutes per real millisecond while the Earth spins: a whole day in 12 seconds. */
-  const SPIN_SPEED = 1440 / 12_000;
   const GREENWICH_LAT = 51.48;
 
   const has = (c: (typeof mapState.labControls)[number]) => mapState.labControls.includes(c);
@@ -36,7 +42,8 @@
     let frame = requestAnimationFrame(function tick(now) {
       const sun = mapState.sun;
       if (!sun) { playing = false; return; }
-      pending += (now - last) * SPIN_SPEED;
+      // Read every frame, so a new speed takes effect while the Earth is spinning.
+      pending += (now - last) * minutesPerMs(SPIN_SPEEDS[spin.speed]!);
       last = now;
       const step = Math.floor(pending);
       if (step > 0) {
@@ -72,7 +79,6 @@
     return { id, day: dayOfYear(d), label: new Intl.DateTimeFormat(i18n.lang, { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(d) };
   }));
 
-  type Light = 'day' | 'dawn' | 'dusk' | 'night';
   const clocks = $derived.by(() => {
     const sun = mapState.sun;
     if (!sun || !sunPoint || !has('clocks')) return [];
@@ -90,6 +96,16 @@
         return { ...r, minutes, time: formatClock(minutes), light, lonText: formatLon(r.lon, i18n.lang) };
       })
       .sort((a, b) => a.lon - b.lon || (a.id === 'point' ? 1 : -1));
+  });
+
+  const unitText = (i: number, unitDisplay: 'short' | 'long') => {
+    const s = SPIN_SPEEDS[i]!;
+    return new Intl.NumberFormat(i18n.lang, { style: 'unit', unit: s.unit, unitDisplay }).format(s.amount);
+  };
+  const speedHint = $derived.by(() => {
+    const s = SPIN_SPEEDS[spin.speed]!;
+    const factor = speedFactor(s);
+    return factor === 1 ? t('lab.speedHintReal') : t('lab.speedHint', { duration: unitText(spin.speed, 'long'), factor: new Intl.NumberFormat(i18n.lang).format(factor) });
   });
 
   const hand = (deg: number, length: number) => `M12 12L${12 + length * Math.sin((deg * Math.PI) / 180)} ${12 - length * Math.cos((deg * Math.PI) / 180)}`;
@@ -151,6 +167,17 @@
             </button>
           {/if}
         </div>
+        {#if has('sun-time') && !motionReduced()}
+          <div class="speed">
+            <span class="speed-label" id="spin-speed-label">{t('lab.speed')}</span>
+            <div class="speed-options" role="group" aria-labelledby="spin-speed-label" aria-describedby="spin-speed-hint">
+              {#each SPIN_SPEEDS as _, i (i)}
+                <button type="button" class="btn" aria-pressed={spin.speed === i} onclick={() => (spin.speed = i)}>{unitText(i, 'short')}</button>
+              {/each}
+            </div>
+            <p class="speed-hint" id="spin-speed-hint">{speedHint}</p>
+          </div>
+        {/if}
       {/if}
     </div>
     {/if}
@@ -206,6 +233,11 @@
   @media (max-width: 599px) { .key-dates { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
   .buttons { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+  .speed { display: grid; gap: var(--space-1); }
+  .speed-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(4.2rem, 1fr)); gap: var(--space-1); }
+  .speed-label { font-size: var(--step--1); font-weight: var(--weight-strong); color: var(--text-muted); }
+  .speed-options .btn { padding-inline: var(--space-1); min-width: 0; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .speed-hint { margin: 0; font-size: var(--step--1); color: var(--text-muted); }
   .buttons svg { width: 1.25rem; height: 1.25rem; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 
   .clocks-wrap { min-width: 0; }
