@@ -82,17 +82,59 @@ async function gridContrastOverRealPixel(page: Page, lat: number, lon: number) {
 // WCAG 1.4.11 (non-text contrast) applies here: the grid is a graphical object, 3:1 minimum against what's behind it.
 // Bright real terrain, not the Alps or the Sahara (both mid-tone and pass even with the near-white ambient halo that
 // caused this): Greenland's ice sheet and interior Antarctica, both close to the whitest pixels the relief texture has.
+//
+// Ice is the right sample for a *near-white* casing, which is the bug this was written for. It is the wrong sample,
+// on its own, for the dark casing the style has now: against near-white, a near-black casing is at its most
+// comfortable, and the ice figures (5.3-5.6 today) are the best the map ever gets, not the worst. The real margin is
+// over mid-tone terrain, which the MIDTONE block below samples. Both blocks run against the decoded texture, so the
+// backgrounds are real pixels and not assumptions.
+const ICE = [['Greenland', 75, -40], ['Antarctica', -82, 20]] as const;
 for (const scheme of ['light', 'dark'] as const) {
   test(`Physical (${scheme}): the grid stays visible over real bright ice, not just mid-tone terrain`, async ({ page }) => {
     await page.emulateMedia({ colorScheme: scheme });
     await openPage(page, 'en/lab', '?test');
     await setMapStyle(page, 'physical');
     await waitForTexture(page, 'flat');
-    for (const [name, lat, lon] of [['Greenland', 75, -40], ['Antarctica', -82, 20]] as const) {
+    for (const [name, lat, lon] of ICE) {
       const { bg, casingVsBg, gridCoreVsBg } = await gridContrastOverRealPixel(page, lat, lon);
       expect(bg[0], `${name} bg should be a genuinely bright pixel`).toBeGreaterThan(200);
       expect(casingVsBg, `${name} casing vs terrain`).toBeGreaterThanOrEqual(3);
       expect(gridCoreVsBg, `${name} grid line core vs terrain`).toBeGreaterThanOrEqual(3);
+    }
+    expect(pageErrors(page)).toEqual([]);
+  });
+}
+
+/*
+ * Mid-tone terrain: open ocean, rainforest, savanna, desert, taiga — where most of the graticule actually is, and
+ * where a dark casing has the least room. Only the casing is held to 3:1 here, and that is the honest reading of
+ * what the mark is: over a mid-tone background the grid's own blue-grey (#6d88a0) is close to the terrain's own
+ * luminance, so the line core measures 1.8-2.5 and the dark rim of the casing is what separates the mark from the
+ * picture. That has always been true of this design — the same spots measured 1.80-2.56 before the grid was
+ * lightened — so a 3:1 floor on the core here would be a floor the style never met, not a guard. The casing over
+ * these spots measured 5.2-7.2 before and 3.6-4.5 now; the floor is what the narrowing may not eat into.
+ *
+ *   spot                 bg lum   casing before   casing after
+ *   Atlantic mid-blue     0.355        5.29           3.59
+ *   Pacific deep          0.388        5.67           3.76
+ *   Amazon lowland        0.349        5.23           3.57
+ *   Congo lowland         0.440        6.27           4.04
+ *   Siberia               0.459        6.49           4.13
+ *   Sahara                0.524        7.22           4.45
+ */
+const MIDTONE = [['Atlantic', 0, -30], ['Amazon', -5, -62], ['Congo', 0, 20], ['Sahara', 23, 10], ['Siberia', 62, 95]] as const;
+for (const scheme of ['light', 'dark'] as const) {
+  test(`Physical (${scheme}): the casing carries the grid over mid-tone terrain, where it has least room`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: scheme });
+    await openPage(page, 'en/lab', '?test');
+    await setMapStyle(page, 'physical');
+    await waitForTexture(page, 'flat');
+    for (const [name, lat, lon] of MIDTONE) {
+      const { bg, casingVsBg } = await gridContrastOverRealPixel(page, lat, lon);
+      const l = luminance(bg);
+      expect(l, `${name} should be a genuinely mid-tone pixel, not ice`).toBeGreaterThan(0.1);
+      expect(l, `${name} should be a genuinely mid-tone pixel, not night`).toBeLessThan(0.65);
+      expect(casingVsBg, `${name} casing vs terrain`).toBeGreaterThanOrEqual(3);
     }
     expect(pageErrors(page)).toEqual([]);
   });
@@ -189,7 +231,8 @@ for (const scheme of ['light', 'dark'] as const) {
  * line reads at 3:1, and it is a line and not a ghost.
  */
 const GRID_FLOOR = { at: 0.9, min: 3 } as const;
-/** A grid whose median painted pixel is below this is fringe, not a line, whatever its strongest pixel says. */
+/* A grid whose median painted pixel is below this is fringe, not a line, whatever its strongest pixel says. A
+ * regression fence, not a derived threshold: drawn just under where the design stands (worst measured p50 2.13). */
 const GRID_BODY_FLOOR = 1.8;
 for (const scheme of ['light', 'dark'] as const) {
   test(`Political (${scheme}): the grid stays visible over every country fill, not only over the ocean`, async ({ page }) => {
@@ -268,27 +311,34 @@ test('Political shares Physical\'s robust casing colour (ready for its own brigh
   expect(atlasCasing).toBe(atlasHalo);
 });
 
-test('every non-Atlas style draws halos under the grid and full-strength halos behind map text; Atlas unchanged', async ({ page }) => {
-  await openPage(page, 'en/lab', '?test');
-  await expect(page.locator('.view-flat path.grid-casing')).toHaveCount(0);
-  for (const style of ['physical', 'satellite', 'political'] as const) {
-    await setMapStyle(page, style);
-    if (style !== 'political') await waitForTexture(page, 'flat');
-    await expect(page.locator('.view-flat .frame')).toHaveAttribute('data-map-style', style);
-    await expect(page.locator('.view-flat path.grid-casing')).toHaveCount(1);
-    const halo = await page.locator('.view-flat text.halo').first().evaluate((t) => { const cs = getComputedStyle(t); return [cs.strokeOpacity, cs.strokeWidth]; });
-    expect(halo).toEqual(['1', '4px']);
-    // The contrast figures above are computed from the two strokes' colours and opacities, not their widths, so
-    // they would still pass if the casing were narrowed until it no longer showed either side of the line it is
-    // meant to separate from the picture. It has to actually be a casing: at least 0.4 px of it visible on each
-    // side of the widest grid line the style draws.
-    const [casingW, gridW] = await Promise.all([
-      page.locator('.view-flat path.grid-casing').evaluate((el) => parseFloat(getComputedStyle(el).strokeWidth)),
-      page.locator('.view-flat path.grid').evaluate((el) => parseFloat(getComputedStyle(el).strokeWidth)),
-    ]);
-    expect(casingW, `${style}: the casing has to show either side of the grid line`).toBeGreaterThanOrEqual(gridW + 0.8);
-  }
-});
+// Both themes, because the grid line's *width* is a token and dark-theme Political is the one style that changes it
+// (0.95 px against everyone else's 0.75 px). A light-theme-only run would never measure the widest line on the map,
+// which is exactly the one the casing has to be wide enough for.
+for (const scheme of ['light', 'dark'] as const) {
+  test(`every non-Atlas style draws halos under the grid and full-strength halos behind map text (${scheme}); Atlas unchanged`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: scheme });
+    await openPage(page, 'en/lab', '?test');
+    await expect(page.locator('.view-flat path.grid-casing')).toHaveCount(0);
+    for (const style of ['physical', 'satellite', 'political'] as const) {
+      await setMapStyle(page, style);
+      if (style !== 'political') await waitForTexture(page, 'flat');
+      await expect(page.locator('.view-flat .frame')).toHaveAttribute('data-map-style', style);
+      await expect(page.locator('.view-flat path.grid-casing')).toHaveCount(1);
+      const halo = await page.locator('.view-flat text.halo').first().evaluate((t) => { const cs = getComputedStyle(t); return [cs.strokeOpacity, cs.strokeWidth]; });
+      expect(halo).toEqual(['1', '4px']);
+      // The contrast figures above are computed from the two strokes' colours and opacities, not their widths, so
+      // they would still pass if the casing were narrowed until it no longer showed either side of the line it is
+      // meant to separate from the picture. A regression fence, not a derived threshold: it is drawn just under
+      // where the design stands today (1.8 px casing over Political dark's 0.95 px line, a margin of 0.85), so
+      // that the casing cannot quietly be shaved to nothing to make a contrast number pass.
+      const [casingW, gridW] = await Promise.all([
+        page.locator('.view-flat path.grid-casing').evaluate((el) => parseFloat(getComputedStyle(el).strokeWidth)),
+        page.locator('.view-flat path.grid').evaluate((el) => parseFloat(getComputedStyle(el).strokeWidth)),
+      ]);
+      expect(casingW, `${style} (${scheme}): the casing has to show either side of the grid line`).toBeGreaterThanOrEqual(gridW + 0.8);
+    }
+  });
+}
 
 test('the source of each style is named under the map; the footer credits NASA Earth Observatory', async ({ page }) => {
   await openPage(page, 'en/lab', '?test');

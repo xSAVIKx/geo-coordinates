@@ -18,14 +18,22 @@ export const GRID_MIN_PX = 40;
 export const GRID_MAX_PX = 120;
 /**
  * The width the 40–120 px band was chosen on. Every map this wide or wider keeps that band exactly, which
- * is what leaves desktop Atlas and the projector alone. The lesson's flat map is 575 px in a 1366-wide
- * window and 499 px (in unscaled units) in presenter mode on a 1920 screen; 480 puts both of those, and
- * every larger one, firmly on the untouched side rather than balanced on the edge of the rule.
+ * is what leaves desktop Atlas and the projector alone.
+ *
+ * Where it sits is decided from below, not from above. The flat map is 2:1, so on a 351 px phone it is
+ * only 177 px tall, and the lesson's Poland preset puts its 5° grid at 43.9 px — four parallels, which is
+ * the scaffolding a pupil reads a latitude off. A reference much above 385 px lifts the floor past 43.9,
+ * takes that view to 10°, and leaves it with one ordinary parallel and three meridians: the core "read the
+ * coordinates off the map" view, on the device most pupils use, stripped of half its reference lines.
+ * 380 keeps it, and still lifts the floor enough that the phone's zoomed globe reaches for the 2° bridge
+ * (1° is 34 px, still short of the floor) instead of drawing ten lines each way.
  */
-export const GRID_BAND_REF_PX = 480;
-/** How far the band may open up on a narrow map (a 192 px map and anything smaller sits at the cap). */
-export const GRID_BAND_MAX_SPREAD = 2.5;
-/** However wide the spacing gets, this many gaps still have to cross the map, or it stops being a grid. */
+export const GRID_BAND_REF_PX = 380;
+/**
+ * However wide the spacing gets, this many gaps still have to cross the map, or it stops being a grid.
+ * This, not the spread, is what stops the band running away on a small map: below about 370 px it is the
+ * rule that sets the top of the band, and below about 214 px it sets the floor too.
+ */
 export const GRID_MIN_GAPS = 3;
 
 /**
@@ -34,18 +42,20 @@ export const GRID_MIN_GAPS = 3;
  * 40 px between lines is comfortable on the desktop map the number was picked on; on a 350 px phone the
  * same 40 px lets nine or ten lines cross the picture, and the graticule stops being a reference and
  * becomes a texture over the relief. So the band opens up as the map narrows, in inverse proportion to
- * its width, up to the spread cap — and is then pulled back so at least `GRID_MIN_GAPS` gaps still
- * cross the map, since a phone map with one line on it is no more readable than one with ten.
+ * its width.
+ *
+ * `GRID_MIN_GAPS` then caps the *top* of the band outright, and the floor is brought down with it rather
+ * than pushed past it: a phone map with one line on it is no more readable than one with ten, and a band
+ * whose floor sat above its own ceiling would quietly stop meaning anything.
  */
 export function gridBand(cssWidth: number): [number, number] {
   const spread = gridBandSpread(cssWidth);
-  const min = GRID_MIN_PX * spread;
-  return [min, Math.max(min * 1.5, Math.min(GRID_MAX_PX * spread, cssWidth / GRID_MIN_GAPS))];
+  const max = Math.min(GRID_MAX_PX * spread, Math.max(1, cssWidth) / GRID_MIN_GAPS);
+  return [Math.min(GRID_MIN_PX * spread, max), max];
 }
 
 /** How far this map's band is opened up: 1 at or above the reference width, growing as the map narrows. */
-export const gridBandSpread = (cssWidth: number): number =>
-  Math.min(GRID_BAND_MAX_SPREAD, Math.max(1, GRID_BAND_REF_PX / Math.max(1, cssWidth)));
+export const gridBandSpread = (cssWidth: number): number => Math.max(1, GRID_BAND_REF_PX / Math.max(1, cssWidth));
 
 /**
  * The adaptive grid step for a map `cssWidth` px wide drawn at `pxPerDegree` CSS px per degree: the

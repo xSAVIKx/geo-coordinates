@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { candidateValues, edgeTicks } from '../../src/map/edgeTicks';
 import { makeFlatCtx, makeGlobeCtx } from '../../src/map/geometry';
-import { AUTO_GRID_STEPS, BRIDGE_GRID_STEPS, chooseGridStep, GRID_BAND_MAX_SPREAD, GRID_BAND_REF_PX, gridBand, gridExtent, gridUsesMinutes, pxPerDegreeAtCenter, resolveGridStep } from '../../src/map/gridStep';
+import { AUTO_GRID_STEPS, BRIDGE_GRID_STEPS, chooseGridStep, GRID_BAND_REF_PX, GRID_MIN_GAPS, gridBand, gridExtent, gridUsesMinutes, pxPerDegreeAtCenter, resolveGridStep } from '../../src/map/gridStep';
 import { formatLat, formatLon } from '../../src/geo/format';
 
 describe('chooseGridStep', () => {
@@ -29,15 +29,20 @@ describe('chooseGridStep', () => {
     expect(chooseGridStep(30, 573)).toBe(5);   // 1° = 30 px (too dense) vs 5° = 150 px
     expect(chooseGridStep(36, 573)).toBe(1);   // 1° = 36 px vs 5° = 180 px
   });
-  test('a narrow map is given more room per line, so fewer of them cross the picture', () => {
-    const PHONE = 351; // the flat map in a 375-wide window
-    // The owner's Poland view: 5° put fourteen lines across the phone map; 10° puts eight.
-    expect(chooseGridStep((PHONE * 9) / 360, PHONE)).toBe(10);
-    expect(chooseGridStep((PHONE * 9) / 360, 875)).toBe(5); // the same view on a projector is untouched
-    // Europe at zoom 6 keeps 10°: six gaps is already right, and the band only nudges, it does not stampede.
-    expect(chooseGridStep((PHONE * 6) / 360, PHONE)).toBe(10);
+  test('a narrow map is given more room per line, without stripping the presets of their reference lines', () => {
+    const PHONE = 351;       // the flat map in a 375-wide window; 177 px tall, since the flat map is 2:1
+    const PHONE_GLOBE = 351; // the globe in the same window is square, so the same width carries far more lines
+    // The floor sits just under the Poland preset's 5° (43.9 px). That view is where a pupil reads a latitude
+    // off four parallels, and 10° would leave it one; it has to survive the rule that thins the globe.
+    expect(chooseGridStep((PHONE * 9) / 360, PHONE)).toBe(5);
+    expect(chooseGridStep((PHONE * 6) / 360, PHONE)).toBe(10);  // Europe at zoom 6: six gaps, unchanged
     // The whole world has nowhere coarser to go than 30°, so it stays there and weight has to carry it.
     expect(chooseGridStep(PHONE / 360, PHONE)).toBe(30);
+    // The square globe at the same width: 15° (44.7 px at the centre) fits on a phone, but on the smaller
+    // globe the lab draws beside a flat map it does not, and the world falls back to the canonical 30°.
+    expect(chooseGridStep(0.0085 * PHONE_GLOBE, PHONE_GLOBE)).toBe(15);
+    expect(chooseGridStep(0.0085 * 319, 319)).toBe(30);
+    expect(chooseGridStep(0.0085 * 287, 287)).toBe(30);
   });
   test('the bridging 2° rung only appears where no ordinary step fits at all', () => {
     // A phone globe zoomed onto Poland: ~35 px per degree, where 1° is ten lines and 5° is two.
@@ -46,14 +51,22 @@ describe('chooseGridStep', () => {
     expect(chooseGridStep(35, 875)).toBe(1);
     expect(chooseGridStep(22, 875)).toBe(5);
   });
-  test('the band opens in proportion below the reference width and stops at the spread cap', () => {
-    expect(gridBand(900)).toEqual([40, 120]);
-    expect(gridBand(GRID_BAND_REF_PX)).toEqual([40, 120]);
-    const [min] = gridBand(250);
-    expect(min).toBeCloseTo(40 * (GRID_BAND_REF_PX / 250), 6);
-    expect(gridBand(100)[0]).toBe(40 * GRID_BAND_MAX_SPREAD); // capped, however small the map gets
-    // However wide the spacing grows, three gaps still have to cross the map.
-    for (const w of [120, 200, 280, 351, 460, 575, 978]) expect(gridBand(w)[1]).toBeLessThanOrEqual(Math.max(gridBand(w)[0] * 1.5, w / 3));
+  test('the band opens in proportion below the reference width, and not at all above it', () => {
+    for (const w of [GRID_BAND_REF_PX, 460, 575, 875, 978, 1600]) expect(gridBand(w), `${w} px`).toEqual([40, 120]);
+    const [min] = gridBand(330);
+    expect(min).toBeCloseTo(40 * (GRID_BAND_REF_PX / 330), 6);
+    expect(gridBand(330)[0]).toBeGreaterThan(gridBand(360)[0]);
+    expect(gridBand(360)[0]).toBeGreaterThan(gridBand(400)[0]);
+  });
+  test('whatever the width, the band always leaves room for GRID_MIN_GAPS gaps across the map', () => {
+    // Stated as the promise, not as the formula: how many gaps the *widest* spacing the band permits would
+    // put across a map that wide. 234 and 187 are the sizes at which the previous formula broke it, letting
+    // the band ask for spacings only 1.9 and 1.25 gaps wide; every entry here is a genuine regression fence.
+    for (const w of [60, 100, 152, 187, 234, 294, 320, 351, 480, 575, 978, 1600]) {
+      const [min, max] = gridBand(w);
+      expect(w / max, `${w} px: gaps at the band's widest spacing`).toBeGreaterThanOrEqual(GRID_MIN_GAPS - 1e-9);
+      expect(min, `${w} px: a floor above its own ceiling is not a band`).toBeLessThanOrEqual(max);
+    }
   });
 });
 
