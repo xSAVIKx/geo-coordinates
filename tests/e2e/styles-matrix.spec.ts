@@ -96,10 +96,18 @@ test('the country and physical names are never written through another name', as
   }
 });
 
-// The compact panel is `position: fixed`, so anything below the fold cannot be scrolled to — by mouse or by keyboard.
-test('the compact style menu opens fully on screen on a phone, in both views', async ({ page }) => {
+/*
+ * The compact panel is `position: fixed`, so anything below the fold cannot be scrolled to — by mouse or by
+ * keyboard. `largeText` is run too because the clamp used to carry a hardcoded 232 px copy of the panel's
+ * 14.5rem width: with the setting on, that rem is 25 % wider (290 px) and the panel's right-hand edge hung off
+ * a 375 px screen. It now measures the panel it is placing.
+ */
+for (const big of [false, true]) {
+test(`the compact style menu opens fully on screen on a phone, in both views${big ? ' (large text)' : ''}`, async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 667 });
+  if (big) await page.addInitScript(() => localStorage.setItem('geo-coords:settings', JSON.stringify({ theme: 'system', largeText: true, reducedMotion: true })));
   await openPage(page, 'en/lab');
+  if (big) await expect(page.locator('html')).toHaveAttribute('data-large-text', 'true');
   for (const view of ['Map', 'Globe']) {
     await page.getByRole('group', { name: 'Choose view' }).getByRole('button', { name: view }).click();
     await page.getByRole('button', { name: /^Map style:/ }).click();
@@ -116,6 +124,7 @@ test('the compact style menu opens fully on screen on a phone, in both views', a
     await page.keyboard.press('Escape');
   }
 });
+}
 
 test('touch targets of the new controls are at least 44 × 44 px on a phone', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 667 });

@@ -20,6 +20,8 @@
   let button = $state<HTMLButtonElement>();
   let panel = $state<HTMLDivElement>();
   let place = $state({ top: 0, left: 0 });
+  /** False until the panel has been measured and placed, so it is never painted at the first guess (see `toggle`). */
+  let placed = $state(false);
 
   /**
    * The compact panel is `position: fixed`, but it is mounted inside the phone toolbar, whose
@@ -46,7 +48,11 @@
     if (!button) return;
     const r = button.getBoundingClientRect(), h = panel?.offsetHeight ?? 0, below = r.bottom + 4;
     const top = h && below + h > innerHeight - 8 ? Math.max(8, Math.min(r.top - 4 - h, innerHeight - 8 - h)) : below;
-    const left = Math.max(8, Math.min(r.left, innerWidth - 8 - 232));
+    // The panel's real width, not a copy of the 14.5rem in the stylesheet: with `largeText` (or a big-screen
+    // --fs-scale) that rem is 25 %+ wider, and a hardcoded 232 px let the right-hand edge hang off the viewport.
+    // Before the first mount `offsetWidth` is 0, and the guess below is re-run from `toggle()` once it is known.
+    const w = panel?.offsetWidth ?? 0;
+    const left = Math.max(8, Math.min(r.left, innerWidth - 8 - w));
     // A scroll can leave the panel exactly where it was (a sideways scroll, or one the toolbar absorbed); writing
     // the same numbers back would still re-render. The browser already coalesces scroll events to one a frame, so
     // this is the whole of the throttling this needs — a rAF debounce would only add a frame of drift.
@@ -54,7 +60,7 @@
   }
 
   function toggle() {
-    if (!open) anchor();
+    if (!open) { anchor(); placed = false; }
     open = !open;
     // `tick()` (not a raw microtask) waits for Svelte to actually mount the portalled panel into
     // <body> before focus() is attempted — under load a plain queueMicrotask can run first, while
@@ -63,11 +69,15 @@
     // focused button — the panel already places itself in view, and an incidental scroll here
     // would (before the fix below) have closed the very panel that just opened.
     if (open) void tick().then(() => {
-      anchor(); // now that the panel is mounted its height is known, so this placement is the real one
+      // Now that the panel is mounted its size is known, so this placement is the real one — and the first guess,
+      // made with no height at all, is never seen: the panel is transparent until this runs. Without that it
+      // opened below its button and then jumped up a frame later, by 265 px with the large-text setting on.
+      anchor();
+      placed = true;
       panel?.querySelector<HTMLButtonElement>('[aria-pressed="true"]')?.focus({ preventScroll: true });
     });
   }
-  function close(refocus: boolean) { open = false; if (refocus) button?.focus(); }
+  function close(refocus: boolean) { open = false; placed = false; if (refocus) button?.focus(); }
   function pick(s: MapStyle) {
     mapState.chooseMapStyle(s);
     if (compact) close(true);
@@ -114,7 +124,7 @@
   </button>
   {#if open}
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -- Esc closes the menu; the buttons inside are the controls -->
-    <div bind:this={panel} use:portal id="{idPrefix}-style-panel" class="style-panel" role="group" aria-label={t('map.style')}
+    <div bind:this={panel} use:portal id="{idPrefix}-style-panel" class="style-panel" class:placed role="group" aria-label={t('map.style')}
       style:top="{place.top}px" style:left="{place.left}px"
       onkeydown={(e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(true); } }}>
       {@render choices()}
@@ -139,5 +149,9 @@
   /* max-height is the last resort behind the placement above: with very large text the four styles could still be
      taller than a short phone screen, and a fixed panel's overflow is unreachable unless it scrolls itself. */
   .style-panel { position: fixed; z-index: 30; width: 14.5rem; max-height: calc(100dvh - 1rem); overflow: auto; display: grid; gap: var(--space-1); padding: var(--space-2); background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius); box-shadow: var(--shadow-3); }
+  /* Transparent for the one frame between mounting and being measured; still focusable, so the focus move in
+     `toggle` lands as it always did. */
+  .style-panel { opacity: 0; }
+  .style-panel.placed { opacity: 1; }
   .style-panel .btn { justify-content: flex-start; }
 </style>
