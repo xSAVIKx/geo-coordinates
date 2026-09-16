@@ -12,7 +12,7 @@
   const def = $derived(getTopic(topic));
   const prev = $derived(TOPIC_IDS[TOPIC_IDS.indexOf(topic) - 1]);
   const next = $derived(TOPIC_IDS[TOPIC_IDS.indexOf(topic) + 1]);
-  // A topic without question types (topic 9) is Explore only: no Practise tab, and its practice address opens Explore.
+  // A topic without question types (topics 9 and 10) is Explore only: no Practise tab, and its practice address opens Explore.
   const hasPractice = $derived((def?.questionTypes.length ?? 0) > 0);
   $effect(() => {
     if (def && tab === 'practice' && !hasPractice) navigate({ name: 'explore', lang: i18n.lang, topic, step: 0 }, { replace: true });

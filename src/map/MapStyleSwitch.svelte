@@ -34,12 +34,23 @@
     return { destroy: () => node.remove() };
   }
 
+  /**
+   * Puts the panel under its button — or over it. Fixed to the viewport, so the phone's sideways-scrolling tool row
+   * cannot clip it; and because it is fixed, anything that falls past the bottom edge cannot be scrolled to at all,
+   * by pointer or by keyboard: at 375 × 667 the toolbar sits low enough that the fourth style was simply off the
+   * screen. So with no room below the button the panel goes above it, and is clamped into the viewport either way.
+   * Called once before opening (a first guess, while the panel's height is still unknown) and again once it is
+   * mounted; also on every page scroll, so it keeps following its button.
+   */
+  function anchor() {
+    if (!button) return;
+    const r = button.getBoundingClientRect(), h = panel?.offsetHeight ?? 0, below = r.bottom + 4;
+    const top = h && below + h > innerHeight - 8 ? Math.max(8, Math.min(r.top - 4 - h, innerHeight - 8 - h)) : below;
+    place = { top, left: Math.max(8, Math.min(r.left, innerWidth - 8 - 232)) };
+  }
+
   function toggle() {
-    if (!open && button) {
-      // Fixed to the viewport, so the phone's sideways-scrolling tool row cannot clip it.
-      const r = button.getBoundingClientRect();
-      place = { top: r.bottom + 4, left: Math.max(8, Math.min(r.left, innerWidth - 8 - 232)) };
-    }
+    if (!open) anchor();
     open = !open;
     // `tick()` (not a raw microtask) waits for Svelte to actually mount the portalled panel into
     // <body> before focus() is attempted — under load a plain queueMicrotask can run first, while
@@ -47,7 +58,10 @@
     // same pattern). `preventScroll` avoids the browser scrolling anything to reveal the newly
     // focused button — the panel already places itself in view, and an incidental scroll here
     // would (before the fix below) have closed the very panel that just opened.
-    if (open) void tick().then(() => panel?.querySelector<HTMLButtonElement>('[aria-pressed="true"]')?.focus({ preventScroll: true }));
+    if (open) void tick().then(() => {
+      anchor(); // now that the panel is mounted its height is known, so this placement is the real one
+      panel?.querySelector<HTMLButtonElement>('[aria-pressed="true"]')?.focus({ preventScroll: true });
+    });
   }
   function close(refocus: boolean) { open = false; if (refocus) button?.focus(); }
   function pick(s: MapStyle) {
@@ -58,13 +72,22 @@
     if (!open) return;
     const outside = (e: PointerEvent) => { if (!panel?.contains(e.target as Node) && !button?.contains(e.target as Node)) close(false); };
     const away = () => close(false);
-    // Only a real page scroll (target is the document) closes the panel: the panel is `position:
-    // fixed` precisely so the phone's sideways-scrolling tool row can scroll under it without
-    // affecting it (see `portal` above), but a capture-phase 'scroll' listener on window also
-    // sees that row's own internal scroll — including the one the browser performs to bring an
-    // off-screen toggle button into view before the very click that opens this panel. Reacting to
-    // that closed the panel it had just opened.
-    const scrolled = (e: Event) => { if (e.target === document) away(); };
+    /*
+     * Only a real page scroll (target is the document) concerns the panel: the panel is `position: fixed` precisely
+     * so the phone's sideways-scrolling tool row can scroll under it without affecting it (see `portal` above), but
+     * a capture-phase 'scroll' listener on window also sees that row's own internal scroll.
+     *
+     * A page scroll re-anchors the panel to its button rather than closing it. Closing looked tidier but was wrong
+     * on a phone: when the toggle is below the fold — which it is on the globe at 375 × 667, at y ≈ 754 of a 667 px
+     * screen — the browser scrolls the page to reveal it as part of the very tap that opens the panel, and that
+     * scroll event arrives *after* the click, so the menu closed itself every time it was opened. Re-anchoring is
+     * also simply what an anchored menu should do. Once the button itself has left the screen, the panel goes too.
+     */
+    const scrolled = (e: Event) => {
+      if (e.target !== document) return;
+      const r = button?.getBoundingClientRect();
+      if (!r || r.bottom < 0 || r.top > innerHeight) away(); else anchor();
+    };
     addEventListener('pointerdown', outside, true);
     addEventListener('resize', away);
     addEventListener('scroll', scrolled, true);
@@ -94,7 +117,10 @@
     </div>
   {/if}
 {/if}
-<p id="{idPrefix}-style-hint" class="visually-hidden">{t('map.style.hint')} {mapState.drawnMapStyle !== 'atlas' ? t(`map.style.source.${mapState.drawnMapStyle}`) : ''}</p>
+<!-- What the four styles are. The drawn style's source line is *not* repeated here: MapStage prints it as a visible
+     caption right under the map, so a screen reader already reaches it — saying it again made every visit to this
+     group read the same sentence twice. -->
+<p id="{idPrefix}-style-hint" class="visually-hidden">{t('map.style.hint')}</p>
 
 <style>
   /*
@@ -106,6 +132,8 @@
    */
   .style-menu { gap: var(--space-1); white-space: nowrap; }
   .style-menu svg { width: 1.1rem; height: 1.1rem; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-  .style-panel { position: fixed; z-index: 30; width: 14.5rem; display: grid; gap: var(--space-1); padding: var(--space-2); background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius); box-shadow: var(--shadow-3); }
+  /* max-height is the last resort behind the placement above: with very large text the four styles could still be
+     taller than a short phone screen, and a fixed panel's overflow is unreachable unless it scrolls itself. */
+  .style-panel { position: fixed; z-index: 30; width: 14.5rem; max-height: calc(100dvh - 1rem); overflow: auto; display: grid; gap: var(--space-1); padding: var(--space-2); background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius); box-shadow: var(--shadow-3); }
   .style-panel .btn { justify-content: flex-start; }
 </style>

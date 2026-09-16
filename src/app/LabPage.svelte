@@ -62,7 +62,16 @@
   .layout { display: grid; gap: var(--space-4); grid-template-columns: minmax(0, 1fr); }
   .layout.wide { grid-template-columns: minmax(0, 1fr) clamp(26rem, 25vw, 31rem); gap: var(--space-5); align-items: start; }
   .main { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
-  .panel { position: sticky; top: calc(var(--header-h) + var(--space-4)); }
+  /*
+   * The side panel is taller than any classroom screen — 1241 px at 1366×768, 1500 px once Seasons mode adds the
+   * orbit readout, 2211 px in presenter mode at 1920×1080 — so `position: sticky` alone did nothing: the panel is
+   * never shorter than the viewport, so it never had a chance to stick, and reaching the clocks at the bottom
+   * scrolled the maps off the top of the screen. Capping it at the height of what is left of the viewport lets it
+   * stick for real and scroll its own overflow, so the globe and the map stay on the projector while the teacher
+   * moves the Sun. It contains its own buttons and sliders, so it is reachable by keyboard without a tabindex of
+   * its own. The controls sit in a padded card inside it, so no focus ring reaches the scrolling box's edge.
+   */
+  .panel { position: sticky; top: calc(var(--header-h) + var(--space-4)); max-height: calc(100dvh - var(--header-h) - var(--space-8)); overflow: auto; }
   .dyk { display: flex; gap: var(--space-4); align-items: flex-start; background: var(--warm-soft); border: 1px solid color-mix(in srgb, var(--warm) 40%, transparent); border-radius: var(--radius-lg); padding: var(--space-4) var(--space-5); max-width: 62rem; }
   .dyk svg { flex: none; width: 2.25rem; height: 2.25rem; fill: none; stroke: var(--warm-text); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
   .dyk h2 { margin: 0 0 var(--space-1); font-size: var(--step-1); color: var(--warm-text); }

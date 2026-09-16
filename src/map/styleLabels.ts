@@ -15,6 +15,13 @@ export interface StyleLabel { id: string; text: string; x: number; y: number; si
 
 export const COUNTRY_FONT = 11;
 export const PHYSICAL_FONT = 11.5;
+/**
+ * `.country-name`'s letter-spacing (Places.svelte), in em. `labelWidth` measures plain text, so without adding this
+ * back a country name is reserved a box narrower than it is drawn — about 4 px for a seven-letter name — and two
+ * names the layout believed were clear of each other touched: "Germany" and "Belgium" overlapped by 3 px at a
+ * Central-European zoom. Keep the two in step.
+ */
+const COUNTRY_TRACKING = 0.05;
 
 const insideView = (ctx: ViewCtx, xy: [number, number]) => xy[0] >= 0 && xy[0] <= ctx.width && xy[1] >= 0 && xy[1] <= ctx.height;
 
@@ -40,7 +47,7 @@ export function placeCountryLabels(ctx: ViewCtx, lang: LangCode, obstacles: read
     const xy = ctx.project(c);
     if (!xy || !insideView(ctx, xy)) return [];
     const text = countryName(c.a2, lang);
-    const width = labelWidth(text, COUNTRY_FONT, ctx.px);
+    const width = labelWidth(text, COUNTRY_FONT, ctx.px) + text.length * COUNTRY_TRACKING * COUNTRY_FONT * ctx.px;
     const at = (dy: number) => {
       const y = xy[1] + size * 0.35 + dy;
       return { y, box: textBox(xy[0], y, width, size, 'middle') };

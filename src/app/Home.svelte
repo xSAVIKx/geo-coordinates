@@ -129,8 +129,8 @@
   @media (max-width: 479px) { .hero-art { display: none; } }
 
   .section-title { font-size: var(--step-2); margin: var(--space-8) 0 var(--space-4); }
-  /* Nine topics and three modes: one column on phones, two on tablets (an odd last card spans the
-     row instead of sitting alone), three from 1024px — a balanced 3×3 of topics over a row of 3 modes. */
+  /* Ten topics and five modes: one column on phones, two on tablets (an odd last card spans the
+     row instead of sitting alone), three from 1024px. */
   .cards { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-4); grid-template-columns: minmax(0, 1fr); }
   @media (min-width: 600px) {
     .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }

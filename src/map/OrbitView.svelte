@@ -75,7 +75,9 @@
   }
 </script>
 
-<figure class="orbit" aria-labelledby="{uid}-title">
+<!-- The name lives on the <svg role="group"> below, as it does on the globe and the flat map: naming the <figure>
+     with the same paragraph as well made a screen reader read the title twice on the way into the drawing. -->
+<figure class="orbit">
   <p id="{uid}-title" class="visually-hidden">{t('seasons.orbit.label')}</p>
   <p id="{uid}-hint" class="visually-hidden">{t('seasons.orbit.hint')}</p>
   <!-- svelte-ignore a11y_no_static_element_interactions -- pointer drag on the orbit moves the Earth; the Earth itself is the keyboard slider -->

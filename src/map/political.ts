@@ -77,9 +77,30 @@ export function countryLabels(): readonly CountryLabel[] {
     .map(({ id, p }) => ({ id, a2: p.a2, lat: p.ly, lon: p.lx, minZoom: labelMinZoom(p.ml) })));
 }
 
+/**
+ * The few names `Intl.DisplayNames` gives that do not belong on a school map (planning ruling R22). Each of these
+ * countries carries a label from zoom 1–4, so an 11-year-old meets them on the very first world map:
+ *
+ * - the disambiguated Congos, `Congo - Kinshasa` / `Congo - Brazzaville`, which read as a note rather than a name;
+ * - the renaming brackets of `Myanmar (Burma)`;
+ * - `Hong Kong SAR China` and its longer Polish and Ukrainian forms, administrative wording no lesson needs;
+ * - `Côte d’Ivoire` left in French for English and Polish readers, where both languages have their own name;
+ * - the full Polish and Ukrainian names of South Africa, which at world zoom are longer than the country.
+ *
+ * Only these; every other name Intl gives was read through in all three languages and is what a school atlas says.
+ * Anything not listed falls through to Intl, so the table stays small.
+ */
+export const COUNTRY_NAME_OVERRIDES: Partial<Record<LangCode, Record<string, string>>> = {
+  en: { CD: 'DR Congo', CG: 'Congo', MM: 'Myanmar', HK: 'Hong Kong', CI: 'Ivory Coast' },
+  pl: { CD: 'DR Konga', MM: 'Mjanma', HK: 'Hongkong', CI: 'Wybrzeże Kości Słoniowej', ZA: 'RPA' },
+  uk: { CD: 'ДР Конго', CG: 'Конго', MM: 'Мʼянма', HK: 'Гонконг', ZA: 'ПАР' },
+};
+
 const displayNames = new Map<LangCode, Intl.DisplayNames>();
-/** The country's name in the page language (spec §3: `Intl.DisplayNames`). */
+/** The country's name in the page language: the table above where it has one, otherwise `Intl.DisplayNames` (spec §3). */
 export function countryName(a2: string, lang: LangCode): string {
+  const override = COUNTRY_NAME_OVERRIDES[lang]?.[a2];
+  if (override) return override;
   let names = displayNames.get(lang);
   if (!names) { names = new Intl.DisplayNames([lang], { type: 'region' }); displayNames.set(lang, names); }
   return names.of(a2) ?? a2;
