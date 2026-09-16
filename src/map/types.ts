@@ -32,7 +32,7 @@ export type Overlay = OverlayKind & { animate?: boolean };
  * with the letters below; `both` the decimal pair with degrees, minutes and seconds below.
  */
 export type Readout = 'letters' | 'decimal' | 'both';
-export type LabControl = 'sun-time' | 'sun-date' | 'clocks' | 'now';
+export type LabControl = 'sun-time' | 'sun-date' | 'clocks' | 'now' | 'real-sun';
 export interface SceneSpec {
   views: ViewId[];                       // views shown, in order
   phoneView?: ViewId;                    // the view a phone opens with (must be in `views`); default: flat if shown, else the first

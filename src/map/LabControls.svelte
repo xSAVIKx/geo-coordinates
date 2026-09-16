@@ -126,7 +126,7 @@
 
 {#if mapState.sun}
   <div class="lab-box"><div class="lab" class:has-clocks={has('clocks')}>
-    {#if mapState.layers.daylight || has('sun-time') || has('sun-date') || has('now')}
+    {#if mapState.layers.daylight || has('sun-time') || has('sun-date') || has('now') || has('real-sun')}
     <div class="controls">
       {#if mapState.layers.daylight}
       <div class="legend" role="group" aria-label={t('map.daylight.label')}>
@@ -184,6 +184,15 @@
             <p class="speed-hint" id="spin-speed-hint">{speedHint}</p>
           </div>
         {/if}
+      {/if}
+      {#if has('real-sun')}
+        <div class="real-sun">
+          <button type="button" class="btn" aria-pressed={mapState.realSun} aria-describedby="real-sun-note" onclick={() => (mapState.realSun = !mapState.realSun)}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" /><path d="M12 3v2.2M12 18.8V21M3 12h2.2M18.8 12H21" /><path d="M16.5 5.5l2 2" /></svg>
+            {t('lab.realSun')}
+          </button>
+          <p id="real-sun-note" class="real-sun-note">{t('lab.realSunNote')}</p>
+        </div>
       {/if}
     </div>
     {/if}
@@ -246,6 +255,11 @@
   .speed-options .btn { padding-inline: var(--space-1); min-width: 0; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .speed-hint { margin: 0; font-size: var(--step--1); color: var(--text-muted); }
   .buttons svg { width: 1.25rem; height: 1.25rem; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+
+  .real-sun { display: grid; gap: var(--space-1); padding-top: var(--space-2); border-top: 1px dashed var(--border); }
+  .real-sun .btn { justify-self: start; }
+  .real-sun svg { width: 1.25rem; height: 1.25rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+  .real-sun-note { margin: 0; font-size: var(--step--1); color: var(--text-muted); max-width: 40ch; }
 
   .clocks-wrap { min-width: 0; }
   .clocks { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }

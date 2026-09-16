@@ -3,6 +3,9 @@ import { dateFromDayAndMinutes, meanSunPoint, solarParams, subsolarPoint, sunPoi
 import { apparentSolarMinutes, localSolarMinutes } from '../../src/geo/time';
 import { MapState } from '../../src/map/mapState.svelte';
 import { TOPICS } from '../../src/topics';
+import en from '../../src/i18n/en.json';
+import pl from '../../src/i18n/pl.json';
+import uk from '../../src/i18n/uk.json';
 
 const close = (a: number, b: number, tol: number) => expect(Math.abs(a - b)).toBeLessThanOrEqual(tol);
 const noon = (iso: string) => solarParams(new Date(`${iso}T12:00:00Z`));
@@ -58,4 +61,8 @@ describe('mean Sun and real Sun', () => {
   test('no topic scene can turn on the real Sun (lessons and topic 8 always use the mean Sun)', () => {
     for (const topic of Object.values(TOPICS)) for (const step of topic!.steps) expect(JSON.stringify(step.scene), `${topic!.id} ${step.id}`).not.toMatch(/realSun|real-sun/);
   });
+});
+
+test('the real-Sun note states the verified numbers in every language', () => {
+  for (const f of [en, pl, uk] as Record<string, string>[]) { expect(f['lab.realSunNote']).toMatch(/\b16\b/); expect(f['lab.realSunNote']).toContain('4°'); expect(f['lab.realSunNote']).toContain('12:00'); }
 });

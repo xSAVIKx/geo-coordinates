@@ -293,6 +293,8 @@
   "lab.keyDate.december": "Winter solstice",
   "lab.didYouKnowTitle": "Did you know?",
   "lab.didYouKnow": "Our clocks do not show solar time. A whole country uses one time zone, so in Warsaw the Sun is highest at about 11:36 in winter and about 12:36 in summer.",
+  "lab.realSun": "Advanced: real Sun",
+  "lab.realSunNote": "The real Sun can be up to 16 minutes ahead of or behind clock time during the year, so noon moves up to 4° from the 12:00 meridian. Lessons use the average Sun.",
   "footer.madeBy": "Made by {name}",
   "footer.mapData": "Map data: {source}",
   "footer.imagery": "Satellite images: {source}",

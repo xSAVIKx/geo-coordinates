@@ -299,6 +299,8 @@
   "lab.keyDate.december": "Przesilenie zimowe",
   "lab.didYouKnowTitle": "Czy wiesz, że…?",
   "lab.didYouKnow": "Zegarki nie pokazują czasu słonecznego. Cały kraj ma jedną strefę czasową, dlatego w Warszawie Słońce jest najwyżej zimą około 11:36, a latem około 12:36.",
+  "lab.realSun": "Dla zaawansowanych: prawdziwe Słońce",
+  "lab.realSunNote": "Prawdziwe Słońce w ciągu roku może wyprzedzać wskazania zegara albo się za nimi spóźniać nawet o 16 minut, więc południe przesuwa się nawet o 4° od południka 12:00. Na lekcjach używamy średniego Słońca.",
   "footer.madeBy": "Autor: {name}",
   "footer.mapData": "Dane mapy: {source}",
   "footer.imagery": "Zdjęcia satelitarne: {source}",
