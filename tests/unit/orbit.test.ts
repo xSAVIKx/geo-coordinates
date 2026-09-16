@@ -32,7 +32,14 @@ describe('where the Earth is on its orbit', () => {
     close(len(toCamera([0.3, -0.4, 0.5])), Math.hypot(0.3, 0.4, 0.5));
   });
   test('dragging: a screen position gives back its angle', () => {
-    for (let a = 0; a < 360; a += 17) { const [r, u] = earthOnOrbit(a, 250); close(angleFromScreen(r, u), a, 1e-6); }
+    for (let a = 0; a < 360; a += 17) { const [r, u] = earthOnOrbit(a, 250); close(angleFromScreen(r, u)!, a, 1e-6); }
+  });
+  // The Sun's own centre: atan2(0, -0) is pi, so without the guard a press there would read as 180 degrees and
+  // throw the date half a year. No direction means no date change.
+  test('a press on the Sun itself has no angle', () => {
+    expect(angleFromScreen(0, 0)).toBeNull();
+    expect(angleFromScreen(0.4, -0.3)).toBeNull();
+    expect(angleFromScreen(0, 2)).not.toBeNull();
   });
   test('an angle gives back its day; the four special days', () => {
     expect(dayForAngle(orbitAngle(dateFromDayAndMinutes(2026, 172, 720)), 2026)).toBe(172);

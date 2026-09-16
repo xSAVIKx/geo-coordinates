@@ -71,7 +71,9 @@
     const m = svg.getScreenCTM();
     if (!m) return;
     const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());
-    setDay(dayForAngle(angleFromScreen(p.x - CX, CY - p.y), year));
+    // Exactly on the Sun there is no direction to read a date from (see angleFromScreen): keep the date we have.
+    const a = angleFromScreen(p.x - CX, CY - p.y);
+    if (a !== null) setDay(dayForAngle(a, year));
   }
 </script>
 

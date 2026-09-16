@@ -56,8 +56,17 @@ export function litOutline(sun: Vec3, steps = 40): [number, number][] {
   return out;
 }
 
-/** The orbit angle of a point on the drawn orbit (screen right, screen up relative to the Sun; any radius). */
-export function angleFromScreen(right: number, up: number): number {
+/**
+ * The orbit angle of a point on the drawn orbit (screen right, screen up relative to the Sun; any radius), or
+ * `null` when the point carries no direction at all.
+ *
+ * The Sun sits at (0, 0), and a press exactly there has no angle: `atan2(0, -0)` is π, not 0, so the degenerate
+ * pixel would silently read as 180° and throw the date half a year across. Anything within a view unit of the
+ * centre is inside the Sun's own disc and equally meaningless, so the caller is told to keep the date it has.
+ */
+const CENTRE_EPS = 1; // view units, well under half a CSS pixel at every size the orbit is drawn
+export function angleFromScreen(right: number, up: number): number | null {
+  if (Math.hypot(right, up) < CENTRE_EPS) return null;
   const a = Math.atan2(right, -up / Math.sin(VIEW_ELEVATION * RAD)) / RAD;
   return (a + 360) % 360;
 }
