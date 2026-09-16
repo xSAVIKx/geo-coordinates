@@ -13,8 +13,8 @@ One self-contained file — works offline, on phones, tablets, laptops and big c
 
 Open `dist/geo-coordinates.html` in any modern browser (double-click works — no internet needed).
 
-- **Learn**: 9 topics with step-by-step interactive explanations, from the basics of the
-  grid to reading coordinates from a phone map app.
+- **Learn**: 10 topics with step-by-step interactive explanations, from the basics of the
+  grid to reading coordinates from a phone map app and why we have seasons.
 - **Practise**: 10-question rounds with instant feedback (easy / medium / hard) for topics 1–8,
   with a hint button for unanswered questions and a celebration on a perfect round.
 - **Test rehearsal**: 15 mixed questions with a review at the end.
