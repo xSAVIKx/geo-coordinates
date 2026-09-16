@@ -8,6 +8,7 @@
   import { renderText } from '../i18n/text';
   import MapStage from '../map/MapStage.svelte';
   import { mapState } from '../map/mapState.svelte';
+  import { MAP_STYLES, type MapStyle } from '../map/mapStyle';
   import Countdown from './Countdown.svelte';
   import { describeAnswer, generateSet, modulesForTopic } from './registry';
   import type { Difficulty } from './types';
@@ -28,6 +29,10 @@
   let revealed = $state(false);
   let timeUp = $state(false);
   let noTopics = $state(false);
+  // Spec §5: the teacher picks a style for this run (default: the style in use); it never changes the saved choice.
+  let runStyle = $state<MapStyle>(untrack(() => mapState.chosenMapStyle));
+  // Leaving the class quiz page (any route) ends the run style too.
+  $effect(() => () => { mapState.runStyle = null; });
 
   // In lesson order, not tick order: the same code and the same ticked topics always give the same questions.
   const questions = $derived(phase === 'run' ? generateSet(seed, inTopicOrder(chosen), difficulty, count) : []);
@@ -73,11 +78,13 @@
     navigate({ name: 'class-quiz', lang: i18n.lang, seed: clean }, { replace: true });
     index = 0;
     lastIndex = -1;
+    mapState.runStyle = runStyle;
     phase = 'run';
   }
 
   // Back to the setup: the page's heading takes focus (the End button, or the question, is gone).
   function end() {
+    mapState.runStyle = null;
     phase = 'setup';
     queueMicrotask(() => document.querySelector<HTMLElement>('#main h1')?.focus());
   }
@@ -147,6 +154,12 @@
         </div>
       </fieldset>
     </div>
+    <fieldset>
+      <legend>{t('classQuiz.mapStyle')}</legend>
+      <div class="seg">
+        {#each MAP_STYLES as s (s)}<label><input type="radio" name="cq-style" value={s} bind:group={runStyle} /> {t(`map.style.${s}`)}</label>{/each}
+      </div>
+    </fieldset>
     <button type="submit" class="btn primary lg">{t('classQuiz.start')} <span aria-hidden="true">→</span></button>
   </form>
 {:else if question}

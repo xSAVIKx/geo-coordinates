@@ -647,6 +647,7 @@
   "classQuiz.setup": "Set up the quiz",
   "classQuiz.seed": "Quiz code (the same code gives the same questions)",
   "classQuiz.topics": "Topics",
+  "classQuiz.mapStyle": "Map style for the class",
   "classQuiz.count": "Number of questions",
   "classQuiz.timer": "Time to think",
   "classQuiz.timerOff": "No timer",

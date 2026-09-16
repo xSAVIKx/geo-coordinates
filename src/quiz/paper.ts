@@ -65,6 +65,8 @@ export function paperScene(q: Question): SceneSpec {
   return {
     views: ['flat'],
     flatProjection: 'grid',
+    // Spec §5: worksheets and the cheat sheet are Atlas, whatever style is chosen for the screen.
+    mapStyle: 'atlas',
     flatView: s.flatView,
     flatPreset: s.flatView ? undefined : s.flatPreset,
     layers: { ...s.layers, daylight: false, schools: false },

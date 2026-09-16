@@ -655,6 +655,7 @@
   "classQuiz.setup": "Налаштуй вікторину",
   "classQuiz.seed": "Код вікторини (той самий код = ті самі питання)",
   "classQuiz.topics": "Теми",
+  "classQuiz.mapStyle": "Стиль карти для класу",
   "classQuiz.count": "Кількість запитань",
   "classQuiz.timer": "Час на роздуми",
   "classQuiz.timerOff": "Без таймера",

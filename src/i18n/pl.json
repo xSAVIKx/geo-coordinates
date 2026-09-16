@@ -655,6 +655,7 @@
   "classQuiz.setup": "Ustaw quiz",
   "classQuiz.seed": "Kod quizu (ten sam kod = te same pytania)",
   "classQuiz.topics": "Tematy",
+  "classQuiz.mapStyle": "Styl mapy dla klasy",
   "classQuiz.count": "Liczba pytań",
   "classQuiz.timer": "Czas do namysłu",
   "classQuiz.timerOff": "Bez limitu",
