@@ -26,7 +26,13 @@
 <path class="grid" d={d} />
 
 <style>
-  .grid-casing { fill: none; stroke: var(--map-casing); stroke-width: calc(2.75px * var(--stroke-scale)); stroke-opacity: 0.55; vector-effect: non-scaling-stroke; pointer-events: none; }
+  /* The casing separates a thin line from the picture under it; it is not the line. At 2.75 px under a 0.75 px
+     grid it was five-sixths casing, and on a phone that reads as a dark rope, not as a hairline with a halo
+     (the owner's photographs). 1.8 px leaves about half a pixel of casing showing on each side of the widest
+     grid line any style draws (Political's 0.95 px) — enough to carry it over bright ice and city lights, which
+     tests/e2e/map-style-readability.spec.ts measures against real pixels. The special lines keep their own 6 px
+     casing at full strength (SpecialLines.svelte, base.css), so the hierarchy between them widens. */
+  .grid-casing { fill: none; stroke: var(--map-casing); stroke-width: calc(1.8px * var(--stroke-scale)); stroke-opacity: 0.7; vector-effect: non-scaling-stroke; pointer-events: none; }
   /* Weight and opacity come from tokens (--grid-width / --grid-ink): Atlas's values are :root's, a style drawn
      over a picture takes the heavier pair in base.css, and dark-theme Political goes heavier still. */
   .grid { fill: none; stroke: var(--grid); stroke-width: calc(var(--grid-width) * var(--stroke-scale)); stroke-opacity: var(--grid-ink); vector-effect: non-scaling-stroke; pointer-events: none; }

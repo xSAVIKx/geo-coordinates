@@ -309,21 +309,25 @@
  * Political is the one style whose picture follows the theme: its country fills are pastels in light theme and deep
  * ones in dark, so — unlike Satellite's photograph, which has no theme — the ink on it may follow the theme too.
  *
- * In light theme the dark casing carries the graticule over the pale fills, and the painted line reaches a median
- * of 4.8–5.3:1 against them. In dark theme the casing is as dark as the fills and adds nothing, so only the line
- * itself is left, and at 0.75 px and 0.8 opacity its strongest pixels reached just 2.03–2.37:1 — under the 3:1
- * WCAG 1.4.11 asks of a graphical object a pupil reads coordinates off. A light *casing* would clear it (measured
- * 6.5–7.3:1) but paints a pale cage right across the map and drops light theme to 1.46–1.79, so the casing has to
- * stay shared and dark; the fix is the line. Fully opaque and 1.1 px wide, its painted pixels measure 4.64–5.20:1
- * over the four fills on screen at zoom 2 — level with light theme's own figures, and far calmer than the cage.
- * Light theme keeps today's 0.75 px at 0.8 (5.26/5.14/4.77/5.28 median), which is already well clear.
- * tests/e2e/map-style-readability.spec.ts holds both floors. Physical keeps the ambient values above: its relief
- * is bright in both themes, so its casing does the work there.
+ * In light theme the dark casing carries the graticule over the pale fills. In dark theme the casing is as dark as
+ * the fills and adds nothing, so only the line itself is left, and at 0.75 px and 0.8 opacity its strongest pixels
+ * reached just 2.03–2.37:1 — under the 3:1 WCAG 1.4.11 asks of a graphical object a pupil reads coordinates off.
+ * A light *casing* would clear it (measured 6.5–7.3:1) but paints a pale cage right across the map and drops light
+ * theme to 1.46–1.79, so the casing has to stay shared and dark; the fix is the line. Fully opaque, its painted
+ * pixels measure 4.05–4.73:1 over the four fills on screen at zoom 2 — level with light theme's own 3.86–4.41 and
+ * far calmer than the cage. tests/e2e/map-style-readability.spec.ts holds both floors.
+ *
+ * The width is 0.95 px, down from the 1.1 px this rule was born at. 1.1 px was chosen against a 2.75 px casing,
+ * where a heavier line was the only way to be seen at all; beside the 1.8 px casing the grid now carries (see
+ * Graticule.svelte) it was simply the widest line on the map, out-drawing the country borders it is supposed to
+ * sit behind. 0.95 px still fully covers a pixel, so the measured contrast above is the line's true colour, and
+ * it keeps half a pixel of casing showing on each side. Physical keeps the ambient values above: its relief is
+ * bright in both themes, so its casing does the work there.
  */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .frame[data-map-style="political"] { --grid: #9fb4c6; --grid-width: 1.1px; --grid-ink: 1; }
+  :root:not([data-theme="light"]) .frame[data-map-style="political"] { --grid: #9fb4c6; --grid-width: 0.95px; --grid-ink: 1; }
 }
-:root[data-theme="dark"] .frame[data-map-style="political"] { --grid: #9fb4c6; --grid-width: 1.1px; --grid-ink: 1; }
+:root[data-theme="dark"] .frame[data-map-style="political"] { --grid: #9fb4c6; --grid-width: 0.95px; --grid-ink: 1; }
 :root[data-large-text="true"] { --fs-scale: 1.25; }
 /* Big screens at 100% scaling: the whole interface steps up, so type, spacing and 44px targets keep their
  * proportions instead of shrinking to a strip in the middle. A quarter from 2560px (a 27" QHD monitor gets only a

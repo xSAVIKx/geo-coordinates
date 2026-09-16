@@ -168,8 +168,29 @@ for (const scheme of ['light', 'dark'] as const) {
  * the whole map and dropped light theme to 1.46-1.79 (the casing is shared, and an invariant below says so), so
  * the line, not the casing, carries dark theme. For scale, Atlas's own graticule, which is pixel-frozen, measures
  * 1.2-1.8:1 against its map; both of Political's themes are now well clear of it.
+ *
+ * Light theme used to be read at the *median* of the cross-section instead. That was wrong, and the grid-weight
+ * work is what exposed it: a median over a cross-section measures stroke width as much as it measures ink. Half
+ * the pixels under a 2.75 px casing are solid casing, so the median sat at 4.8-5.3 whatever the ink did; take the
+ * same ink and narrow the casing to 1.8 px and the median falls to 2.1-3.3 purely because a larger share of the
+ * cross-section is now antialiased edge. Nothing a reader sees got worse -- the *line*, the thing WCAG 1.4.11 is
+ * about, still measures 3.9-4.4 -- but the old floor failed. So both themes are now read where dark theme always
+ * was, at p90: the strongest pixels of the cross-section, which is the line itself. Measured at 1.8 px @ 0.7
+ * casing and 0.7 ink (tokens.css and Graticule.svelte today):
+ *
+ *   fill        #f6e3b4   #cfe6c1   #f5cfc6   #d6d9f2        #4a4231   #34462f   #4d3632   #383b52
+ *   p90 light      4.41      4.29      4.00      3.86
+ *   p50 light      3.23      3.27      2.94      2.13
+ *   p90 dark                                                    4.05      3.59      4.23      4.73
+ *   p50 dark                                                    2.38      2.21      3.14      4.16
+ *
+ * The p50 floor stays, lowered to 1.8 and applied to both themes, so that a grid made of nothing but antialiased
+ * fringe -- which would still show a fine p90 on its one strong pixel -- cannot pass. The pair together say: the
+ * line reads at 3:1, and it is a line and not a ghost.
  */
-const GRID_FLOOR = { light: { at: 0.5, min: 3 }, dark: { at: 0.9, min: 3 } } as const;
+const GRID_FLOOR = { at: 0.9, min: 3 } as const;
+/** A grid whose median painted pixel is below this is fringe, not a line, whatever its strongest pixel says. */
+const GRID_BODY_FLOOR = 1.8;
 for (const scheme of ['light', 'dark'] as const) {
   test(`Political (${scheme}): the grid stays visible over every country fill, not only over the ocean`, async ({ page }) => {
     await page.emulateMedia({ colorScheme: scheme });
@@ -186,10 +207,16 @@ for (const scheme of ['light', 'dark'] as const) {
       const want = rgbOf(fill);
       const near = (bg: [number, number, number]) => bg.every((c, i) => Math.abs(c - want[i]!) <= 2);
       const ratios = await paintedGridRatios(page, 'flat', near);
-      if (ratios.length < 200) continue; // that colour is barely on screen at this view; the others carry the check
+      // That colour is barely on screen at this view; the others carry the check. The cut is on the sample size a
+      // percentile needs, not on the ink: it used to be 200, which was a comfortable margin when the grid was a
+      // 2.75 px casing and quietly became a near-miss when the casing narrowed to 1.8 px and painted a third
+      // fewer pixels. #383b52, the smallest fill on screen, dropped from 217 samples to 122 without its contrast
+      // moving at all (p50 4.16, p90 4.73 — the best of the four). A hundred pixels of a line is plenty to read a
+      // median and a ninetieth off.
+      if (ratios.length < 100) continue;
       measured++;
-      const floor = GRID_FLOOR[scheme];
-      expect(percentile(ratios, floor.at), `grid over ${fill}`).toBeGreaterThanOrEqual(floor.min);
+      expect(percentile(ratios, GRID_FLOOR.at), `grid line over ${fill}`).toBeGreaterThanOrEqual(GRID_FLOOR.min);
+      expect(percentile(ratios, 0.5), `grid body over ${fill}`).toBeGreaterThanOrEqual(GRID_BODY_FLOOR);
     }
     expect(measured, 'at least four of the six fills have to be on screen').toBeGreaterThanOrEqual(4);
     expect(pageErrors(page)).toEqual([]);
@@ -251,6 +278,15 @@ test('every non-Atlas style draws halos under the grid and full-strength halos b
     await expect(page.locator('.view-flat path.grid-casing')).toHaveCount(1);
     const halo = await page.locator('.view-flat text.halo').first().evaluate((t) => { const cs = getComputedStyle(t); return [cs.strokeOpacity, cs.strokeWidth]; });
     expect(halo).toEqual(['1', '4px']);
+    // The contrast figures above are computed from the two strokes' colours and opacities, not their widths, so
+    // they would still pass if the casing were narrowed until it no longer showed either side of the line it is
+    // meant to separate from the picture. It has to actually be a casing: at least 0.4 px of it visible on each
+    // side of the widest grid line the style draws.
+    const [casingW, gridW] = await Promise.all([
+      page.locator('.view-flat path.grid-casing').evaluate((el) => parseFloat(getComputedStyle(el).strokeWidth)),
+      page.locator('.view-flat path.grid').evaluate((el) => parseFloat(getComputedStyle(el).strokeWidth)),
+    ]);
+    expect(casingW, `${style}: the casing has to show either side of the grid line`).toBeGreaterThanOrEqual(gridW + 0.8);
   }
 });
 

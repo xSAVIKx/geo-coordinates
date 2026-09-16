@@ -1,14 +1,14 @@
 import { describe, expect, test } from 'vitest';
 import { candidateValues, edgeTicks } from '../../src/map/edgeTicks';
 import { makeFlatCtx, makeGlobeCtx } from '../../src/map/geometry';
-import { AUTO_GRID_STEPS, chooseGridStep, gridExtent, gridUsesMinutes, pxPerDegreeAtCenter, resolveGridStep } from '../../src/map/gridStep';
+import { AUTO_GRID_STEPS, BRIDGE_GRID_STEPS, chooseGridStep, GRID_BAND_MAX_SPREAD, GRID_BAND_REF_PX, gridBand, gridExtent, gridUsesMinutes, pxPerDegreeAtCenter, resolveGridStep } from '../../src/map/gridStep';
 import { formatLat, formatLon } from '../../src/geo/format';
 
 describe('chooseGridStep', () => {
   test('lines land 40–120 CSS px apart whenever a listed step allows it', () => {
     for (let ppd = 1; ppd < 20_000; ppd *= 1.07) {
       const step = chooseGridStep(ppd);
-      expect(AUTO_GRID_STEPS).toContain(step);
+      expect([...AUTO_GRID_STEPS, ...BRIDGE_GRID_STEPS]).toContain(step);
       const fits = AUTO_GRID_STEPS.some((s) => s * ppd >= 40 && s * ppd <= 120);
       if (fits) {
         expect(step * ppd).toBeGreaterThanOrEqual(40);
@@ -16,18 +16,44 @@ describe('chooseGridStep', () => {
       }
     }
   });
-  test('typical maps', () => {
-    expect(chooseGridStep(573 / 360)).toBe(30);        // lab world map (573 CSS px wide)
-    expect(chooseGridStep((573 * 9) / 360)).toBe(5);   // Poland preset: 14.3 px/° → 5° = 72 px
-    expect(chooseGridStep((573 * 40) / 360)).toBe(1);  // 63.7 px/°
-    expect(chooseGridStep((573 * 80) / 360)).toBe(1 / 2); // 127 px/° → 30′ = 64 px
-    expect(chooseGridStep(300)).toBe(1 / 6);            // 10′ = 50 px
-    expect(chooseGridStep(3000)).toBe(1 / 60);          // 1′ = 50 px
-    expect(chooseGridStep(0.3)).toBe(30);               // tiny map: the coarsest step
+  test('typical maps (a map at or above the reference width keeps the original band)', () => {
+    expect(chooseGridStep(573 / 360, 573)).toBe(30);        // lab world map (573 CSS px wide)
+    expect(chooseGridStep((573 * 9) / 360, 573)).toBe(5);   // Poland preset: 14.3 px/° → 5° = 72 px
+    expect(chooseGridStep((573 * 40) / 360, 573)).toBe(1);  // 63.7 px/°
+    expect(chooseGridStep((573 * 80) / 360, 573)).toBe(1 / 2); // 127 px/° → 30′ = 64 px
+    expect(chooseGridStep(300, 573)).toBe(1 / 6);            // 10′ = 50 px
+    expect(chooseGridStep(3000, 573)).toBe(1 / 60);          // 1′ = 50 px
+    expect(chooseGridStep(0.3, 573)).toBe(30);               // tiny scale: the coarsest step
   });
   test('the 5° → 1° gap picks the nearer one on a log scale', () => {
-    expect(chooseGridStep(30)).toBe(5);   // 1° = 30 px (too dense) vs 5° = 150 px
-    expect(chooseGridStep(36)).toBe(1);   // 1° = 36 px vs 5° = 180 px
+    expect(chooseGridStep(30, 573)).toBe(5);   // 1° = 30 px (too dense) vs 5° = 150 px
+    expect(chooseGridStep(36, 573)).toBe(1);   // 1° = 36 px vs 5° = 180 px
+  });
+  test('a narrow map is given more room per line, so fewer of them cross the picture', () => {
+    const PHONE = 351; // the flat map in a 375-wide window
+    // The owner's Poland view: 5° put fourteen lines across the phone map; 10° puts eight.
+    expect(chooseGridStep((PHONE * 9) / 360, PHONE)).toBe(10);
+    expect(chooseGridStep((PHONE * 9) / 360, 875)).toBe(5); // the same view on a projector is untouched
+    // Europe at zoom 6 keeps 10°: six gaps is already right, and the band only nudges, it does not stampede.
+    expect(chooseGridStep((PHONE * 6) / 360, PHONE)).toBe(10);
+    // The whole world has nowhere coarser to go than 30°, so it stays there and weight has to carry it.
+    expect(chooseGridStep(PHONE / 360, PHONE)).toBe(30);
+  });
+  test('the bridging 2° rung only appears where no ordinary step fits at all', () => {
+    // A phone globe zoomed onto Poland: ~35 px per degree, where 1° is ten lines and 5° is two.
+    expect(chooseGridStep(35, 351)).toBe(2);
+    // On a wide map at the same scale 1° fits the band, so the bridge is never consulted and nothing changes.
+    expect(chooseGridStep(35, 875)).toBe(1);
+    expect(chooseGridStep(22, 875)).toBe(5);
+  });
+  test('the band opens in proportion below the reference width and stops at the spread cap', () => {
+    expect(gridBand(900)).toEqual([40, 120]);
+    expect(gridBand(GRID_BAND_REF_PX)).toEqual([40, 120]);
+    const [min] = gridBand(250);
+    expect(min).toBeCloseTo(40 * (GRID_BAND_REF_PX / 250), 6);
+    expect(gridBand(100)[0]).toBe(40 * GRID_BAND_MAX_SPREAD); // capped, however small the map gets
+    // However wide the spacing grows, three gaps still have to cross the map.
+    for (const w of [120, 200, 280, 351, 460, 575, 978]) expect(gridBand(w)[1]).toBeLessThanOrEqual(Math.max(gridBand(w)[0] * 1.5, w / 3));
   });
 });
 

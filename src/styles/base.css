@@ -93,10 +93,14 @@ svg text.halo { paint-order: stroke; stroke: var(--halo); stroke-width: 3px; str
 /* Over relief, photos and country colours every map text keeps a full, slightly wider halo (spec §3); presenter wider still. */
 .frame[data-map-style]:not([data-map-style="atlas"]) svg text.halo { stroke-opacity: 1; stroke-width: 4px; }
 :root[data-presenter="true"] .frame[data-map-style]:not([data-map-style="atlas"]) svg text.halo { stroke-width: 5.5px; }
-/* The graticule's line over a picture is drawn at full weight over that casing; Political in dark theme, whose
-   casing is as dark as its own fills, strengthens it further (src/styles/tokens.css). */
-.frame[data-map-style]:not([data-map-style="atlas"]) { --grid-ink: 0.8; }
-.frame[data-map-style]:not([data-map-style="atlas"]) .grid-casing,
+/* The graticule's line over a picture is drawn a little stronger than Atlas's over that casing; Political in dark
+   theme, whose casing is as dark as its own fills, strengthens it further (src/styles/tokens.css). 0.8 came from
+   the Political dark-theme contrast work and applied to every style over a picture; at 0.7 the measured line
+   still clears 3:1 everywhere (see map-style-readability.spec.ts) while the mesh stops competing with the relief.
+   The graticule's *casing* is deliberately not in the list below: everything there is a special line, a point
+   guide or a marker rim, which must stay the most prominent thing on the map. The grid comes last, so its
+   casing keeps the lighter weight Graticule.svelte gives it. */
+.frame[data-map-style]:not([data-map-style="atlas"]) { --grid-ink: 0.7; }
 .frame[data-map-style]:not([data-map-style="atlas"]) .guide-casing,
 .frame[data-map-style]:not([data-map-style="atlas"]) .casing,
 .frame[data-map-style]:not([data-map-style="atlas"]) .hl-casing,
