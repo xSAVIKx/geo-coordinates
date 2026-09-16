@@ -77,3 +77,40 @@ test('the canvas tier draws the same night, and the grid stays readable over it'
   expect((hi! + 0.05) / (lo! + 0.05)).toBeGreaterThanOrEqual(3);
   expect(pageErrors(page)).toEqual([]);
 });
+
+/*
+ * "Spin the Earth" moves the Sun inside an animation frame of its own, every frame. The texture layer must keep
+ * painting through that: the city lights have to travel with the night, and on the globe the image has to turn under
+ * the grid instead of standing still. This is the regression test for a bug that sat unnoticed from the texture
+ * layer's first commit until Task 15 — the draw effect scheduled an animation frame and cancelled it again in its
+ * cleanup, so each tick of the spin cancelled the frame it had just asked for and the layer never painted again.
+ * Both halves below would fail on that behaviour: the draw count stayed at its starting value for the whole spin, so
+ * the picture (and every pixel probe of it, which replays the last drawn frame) was frozen too.
+ */
+test('the picture keeps up with the Sun while the Earth spins', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await openPage(page, 'en/lab', '?test');
+  await setMapStyle(page, 'satellite');
+  await setSun(page, 3 * 60); // the Sun over the Pacific: the Sahara starts deep in the night side
+  await waitForTexture(page, 'flat');
+  // The night image is decoded after the first (day) frame; the Sahara is ~470 summed under the day image and ~130
+  // once the night side is blended in, so this waits for the night blend itself to be drawing.
+  const sahara = async () => { const p = await probe(page, 'flat', 23, 12, 2); return p ? p.avg[0] + p.avg[1] + p.avg[2] : 999; };
+  await expect.poll(sahara, { timeout: 15_000 }).toBeLessThan(250);
+  const drawCount = () => page.evaluate(() => (window as unknown as { __mapTextures: { drawCount(v: string): number } }).__mapTextures.drawCount('flat'));
+  const before = await drawCount();
+  await page.getByRole('button', { name: 'Spin the Earth' }).click();
+  // The flat map's own view never moves while the Earth spins — only the Sun does — so every frame counted here is
+  // the day/night blend being drawn again. Five is far below the ~45 a headless machine manages in three seconds.
+  await expect.poll(drawCount, { timeout: 10_000 }).toBeGreaterThan(before + 5);
+  // And the drawn pixels really follow: one turn takes 12 s by default, so the Sahara swings from night to full day
+  // well inside this window. Sampled until the swing appears rather than at fixed times, so a slow machine only
+  // takes longer instead of failing.
+  let low = Infinity, high = 0;
+  await expect.poll(async () => {
+    const sum = await sahara();
+    low = Math.min(low, sum); high = Math.max(high, sum);
+    return high - low;
+  }, { timeout: 25_000, intervals: [250] }).toBeGreaterThan(150);
+  expect(pageErrors(page)).toEqual([]);
+});
