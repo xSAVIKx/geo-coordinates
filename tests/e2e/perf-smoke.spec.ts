@@ -71,20 +71,24 @@ test('Satellite: first draw after choosing it, globe drag frame times under CPU 
    * The three wall-clock bounds below are backstops against something catastrophic, not performance limits. What
    * this environment can be relied on for, measured across six runs of the whole suite and several solo ones:
    *
-   *                       alone      whole suite, 6 workers   the six heaviest specs on 4 workers
-   *   firstDrawMs         654–832            1889                        2469
-   *   dragMedianMs         16.7              66.7                         100
-   *   switchBackMs        409–448          1005–1798                      1444
+   *                    alone, idle   alone, box at load 15–20   whole suite, 6 workers   6 heaviest, 4 workers
+   *   firstDrawMs       654–832            1686–2358                    1889                   2469
+   *   dragMedianMs       16.7               50–66.7                     66.7                    100
+   *   switchBackMs      409–448            944–1303                  1005–1798                1444
    *
    * SwiftShader rasterises and uploads on the CPU, so every number here moves with whatever else the machine is
    * doing — by 3× between an idle container and a loaded one. The brief's original 2500 / 120 / 400 were solo
-   * numbers and fail on a busy machine (all three came within 2 % of their limit or over it in runs that had
-   * nothing wrong with them), and a bound that fails for the weather teaches people to ignore the spec. They are
-   * set well clear of the worst honest run instead, and the sharp guard is the pair of counters below, which do
-   * not move with load at all. The real performance check is on the owner's hardware (see the Task 20 report).
+   * numbers: a bound that fails for the weather teaches people to ignore the spec.
+   *
+   * Each of these two is set at about 1.5× the worst value in the table, and no higher. Only `switchBack` below
+   * earned more room, because it actually overshot (1798 ms against 1500) *and* has the decode/upload counters
+   * standing behind it; these two have no counter, so every millimetre of slack here is a regression that could
+   * hide under it. If one of them ever fails on a loaded machine, raise that one and write the failing run into
+   * this table — do not round up in advance. The real performance check is on the owner's hardware (see the
+   * Task 20 report).
    */
-  expect(firstDraw).toBeLessThan(6000);
-  expect(median).toBeLessThan(300);
+  expect(firstDraw).toBeLessThan(3700);
+  expect(median).toBeLessThan(150);
   /*
    * What a later style switch must cost, asserted as work done rather than as elapsed time.
    *
