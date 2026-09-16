@@ -82,6 +82,11 @@
   --land: #f0e7cf;
   --land-stroke: #a8966f;
   --grid: #6d88a0;
+  /* The graticule's own line, apart from its colour, so a style whose picture the casing cannot help can
+   * strengthen the line itself without touching Atlas (Graticule.svelte reads both; the non-Atlas default for
+   * --grid-ink is in base.css beside the other over-a-picture rules). */
+  --grid-width: 0.75px;
+  --grid-ink: 0.5;
   --map-label: #3c4b5a;
   --ocean-label: #34617f;
   --halo: #f8fbfd;
@@ -302,17 +307,23 @@
 }
 /*
  * Political is the one style whose picture follows the theme: its country fills are pastels in light theme and deep
- * ones in dark. The dark casing above is what carries the graticule over the light fills (measured over the six
- * fills: the casing 9.0–9.9:1, the line itself 3.2–3.7:1), but over the dark fills it adds nothing and the line
- * alone fell to 2.0–2.3:1, noticeably fainter than the same map in light theme. A lighter line brings the two
- * themes back together at 3.2–4.7:1 — enough to read, and far from the bright cage that a light *casing* would
- * paint here (see the Satellite note above for what that looks like). Physical keeps the value above: its relief
+ * ones in dark, so — unlike Satellite's photograph, which has no theme — the ink on it may follow the theme too.
+ *
+ * In light theme the dark casing carries the graticule over the pale fills, and the painted line reaches a median
+ * of 4.8–5.3:1 against them. In dark theme the casing is as dark as the fills and adds nothing, so only the line
+ * itself is left, and at 0.75 px and 0.8 opacity its strongest pixels reached just 2.03–2.37:1 — under the 3:1
+ * WCAG 1.4.11 asks of a graphical object a pupil reads coordinates off. A light *casing* would clear it (measured
+ * 6.5–7.3:1) but paints a pale cage right across the map and drops light theme to 1.46–1.79, so the casing has to
+ * stay shared and dark; the fix is the line. Fully opaque and 1.1 px wide, its painted pixels measure 4.64–5.20:1
+ * over the four fills on screen at zoom 2 — level with light theme's own figures, and far calmer than the cage.
+ * Light theme keeps today's 0.75 px at 0.8 (5.26/5.14/4.77/5.28 median), which is already well clear.
+ * tests/e2e/map-style-readability.spec.ts holds both floors. Physical keeps the ambient values above: its relief
  * is bright in both themes, so its casing does the work there.
  */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .frame[data-map-style="political"] { --grid: #9fb4c6; }
+  :root:not([data-theme="light"]) .frame[data-map-style="political"] { --grid: #9fb4c6; --grid-width: 1.1px; --grid-ink: 1; }
 }
-:root[data-theme="dark"] .frame[data-map-style="political"] { --grid: #9fb4c6; }
+:root[data-theme="dark"] .frame[data-map-style="political"] { --grid: #9fb4c6; --grid-width: 1.1px; --grid-ink: 1; }
 :root[data-large-text="true"] { --fs-scale: 1.25; }
 /* Big screens at 100% scaling: the whole interface steps up, so type, spacing and 44px targets keep their
  * proportions instead of shrinking to a strip in the middle. A quarter from 2560px (a 27" QHD monitor gets only a

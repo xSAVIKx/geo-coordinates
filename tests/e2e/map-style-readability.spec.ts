@@ -152,21 +152,24 @@ for (const scheme of ['light', 'dark'] as const) {
 
 /*
  * Political is the one style whose picture follows the theme, and its two themes are not symmetric. In light theme
- * the dark casing does the work over the pale fills and the painted line reaches a median of 4.8–5.3:1. In dark
+ * the dark casing does the work over the pale fills and the painted line reaches a median of 4.8-5.3:1. In dark
  * theme the casing is dark like the fills, so only the line's own colour is left, and it is thin: the strongest
  * pixels of its cross-section are what read, not the median. Hence a floor on p90, and the numbers it separates,
  * measured per fill on painted pixels at zoom 2 with the night shading off:
  *
- *   fill      #4a4231   #34462f   #4d3632   #383b52
- *   --grid: #6d88a0     1.52      1.45      1.51      1.67   (the ambient token this style used to take)
- *   --grid: #9fb4c6     2.03      2.09      2.14      2.37   (tokens.css today)
+ *   fill                                  #4a4231   #34462f   #4d3632   #383b52
+ *   --grid: #6d88a0, 0.75px @ 0.8            1.52      1.45      1.51      1.67   (the ambient token this style used to take)
+ *   --grid: #9fb4c6, 0.75px @ 0.8            2.03      2.09      2.14      2.37   (tokens.css before the final fix wave)
+ *   --grid: #9fb4c6, 1.10px @ 1.0            4.64      4.76      5.20      5.13   (tokens.css today)
  *
- * so reverting the token fails this test on every fill. It is still short of the light theme's figures; closing
- * that gap needs a *light* casing in dark theme, which would break the Physical/Political shared-casing rule the
- * test below encodes. Left for the owner — see the Task 20 report. For scale, Atlas's own graticule, which is
- * pixel-frozen, measures 1.2–1.8:1 against its map, so this is the stronger of the two.
+ * so reverting either the token or the line weight fails this test on every fill. The last row clears the 3:1 that
+ * WCAG 1.4.11 asks of a graphical object a pupil reads coordinates off, and lands level with light theme's own
+ * figures. The alternative -- a *light* casing in dark theme -- measured 6.5-7.3:1 but painted a pale cage across
+ * the whole map and dropped light theme to 1.46-1.79 (the casing is shared, and an invariant below says so), so
+ * the line, not the casing, carries dark theme. For scale, Atlas's own graticule, which is pixel-frozen, measures
+ * 1.2-1.8:1 against its map; both of Political's themes are now well clear of it.
  */
-const GRID_FLOOR = { light: { at: 0.5, min: 3 }, dark: { at: 0.9, min: 1.9 } } as const;
+const GRID_FLOOR = { light: { at: 0.5, min: 3 }, dark: { at: 0.9, min: 3 } } as const;
 for (const scheme of ['light', 'dark'] as const) {
   test(`Political (${scheme}): the grid stays visible over every country fill, not only over the ocean`, async ({ page }) => {
     await page.emulateMedia({ colorScheme: scheme });

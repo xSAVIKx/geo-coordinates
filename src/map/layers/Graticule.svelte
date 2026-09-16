@@ -3,11 +3,15 @@
   import { MERCATOR_MAX_LAT, type ViewCtx } from '../geometry';
   import { gridExtent, resolveGridStep } from '../gridStep';
   import { useMapState } from '../mapStateContext';
+  import type { MapStyle } from '../mapStyle';
   const mapState = useMapState();
-  let { ctx }: { ctx: ViewCtx } = $props();
+  // `style` comes from Layers.svelte, the one place that decides what this map draws: a view with no texture
+  // layer under it (StaticMap, on paper) is handed 'atlas' there and must keep Atlas's grid, whatever style the
+  // page is showing. Reading the shared MapState here instead would quietly ignore that.
+  let { ctx, style }: { ctx: ViewCtx; style: MapStyle } = $props();
   const step = $derived(resolveGridStep(mapState.layers.graticuleStep, ctx));
   // Over relief, photos and country colours the thin grid needs a halo (spec §3); Atlas stays as it was.
-  const styled = $derived(mapState.drawnMapStyle !== 'atlas');
+  const styled = $derived(style !== 'atlas');
   const d = $derived.by(() => {
     // Only the visible part of the grid: a 1′ grid over the whole world would be 21 600 meridians.
     const extent = gridExtent(ctx.bounds, step);
@@ -23,6 +27,7 @@
 
 <style>
   .grid-casing { fill: none; stroke: var(--map-casing); stroke-width: calc(2.75px * var(--stroke-scale)); stroke-opacity: 0.55; vector-effect: non-scaling-stroke; pointer-events: none; }
-  .grid { fill: none; stroke: var(--grid); stroke-width: calc(0.75px * var(--stroke-scale)); stroke-opacity: 0.5; vector-effect: non-scaling-stroke; pointer-events: none; }
-  :global(.frame[data-map-style]:not([data-map-style="atlas"])) .grid { stroke-opacity: 0.8; }
+  /* Weight and opacity come from tokens (--grid-width / --grid-ink): Atlas's values are :root's, a style drawn
+     over a picture takes the heavier pair in base.css, and dark-theme Political goes heavier still. */
+  .grid { fill: none; stroke: var(--grid); stroke-width: calc(var(--grid-width) * var(--stroke-scale)); stroke-opacity: var(--grid-ink); vector-effect: non-scaling-stroke; pointer-events: none; }
 </style>
