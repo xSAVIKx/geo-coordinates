@@ -30,13 +30,22 @@ const clamp1 = (x: number) => Math.max(-1, Math.min(1, x));
  */
 function wrappedPastAntimeridian(v: TextureView, lambda: number, phi: number, x: number): boolean {
   if (v.projection === 3) return false;
-  let sx = lambda; // grid and Mercator: x = scale * lambda
-  if (v.projection === 1) {
+  // grid and Mercator: x = scale * lambda. Equal Earth scales it by a factor that, like the inverse's own Newton
+  // solve, depends only on the latitude — constant along a row of the canvas — so it is remembered the same way.
+  const sx = v.projection === 1 ? lambda * equalEarthScale(phi) : lambda;
+  return Math.abs(v.origin[0] + v.scale * sx - x) > 0.01;
+}
+
+/** d3's Equal Earth forward x, per unit of longitude, at latitude `phi`. One row's worth is remembered at a time. */
+const fwd = { phi: NaN, scale: 0 };
+function equalEarthScale(phi: number): number {
+  if (phi !== fwd.phi) {
     const l = Math.asin(clamp1(M * Math.sin(phi)));
     const l2 = l * l, l6 = l2 * l2 * l2;
-    sx = (lambda * Math.cos(l)) / (M * (A1 + 3 * A2 * l2 + l6 * (7 * A3 + 9 * A4 * l2)));
+    fwd.phi = phi;
+    fwd.scale = Math.cos(l) / (M * (A1 + 3 * A2 * l2 + l6 * (7 * A3 + 9 * A4 * l2)));
   }
-  return Math.abs(v.origin[0] + v.scale * sx - x) > 0.01;
+  return fwd.scale;
 }
 
 /** Bilinear sample at texture coordinates (u, v) ∈ [0, 1]², wrapping u when `wrap`, into rgb[0..2]. */

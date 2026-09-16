@@ -94,3 +94,28 @@ test('printing replaces the canvas with a snapshot of the same picture', async (
   await page.evaluate(() => dispatchEvent(new Event('afterprint')));
   await expect(page.locator('img.print-snapshot')).toHaveCount(0);
 });
+
+/*
+ * The note is a live region, and a live region only gets announced when text changes inside one the browser already
+ * knows about: `display: none` would keep it out of the accessibility tree until it is populated, which reads as a
+ * brand-new region and is not announced by most screen readers. axe cannot see this, so it is asserted here.
+ */
+test('the fallback note is one live region, present before it has anything to say and then updated in place', async ({ page }) => {
+  await openPage(page, 'en/lab', '?test&gl=off&canvas=off');
+  const note = page.locator('p.style-note[role="status"]');
+  await expect(note).toHaveCount(1);
+  await expect(note).toHaveText('');
+  const empty = await note.evaluate((el) => {
+    const s = getComputedStyle(el);
+    return { display: s.display, visibility: s.visibility, height: el.getBoundingClientRect().height };
+  });
+  expect(empty.display).not.toBe('none');      // still in the accessibility tree while it has nothing to say
+  expect(empty.visibility).not.toBe('hidden');
+  expect(empty.height).toBeLessThanOrEqual(1); // and out of flow, so it adds no spacing to the stage
+  const same = (await note.elementHandle())!;
+  await setMapStyle(page, 'physical');
+  await expect.poll(() => textureHooks(page).tier()).toBe('atlas');
+  await expect(note).toHaveText(NOTE);
+  // The very same node changed its text; a node replaced wholesale would be a new region the browser never announces.
+  expect(await same.evaluate((el) => [el.isConnected, el.textContent])).toEqual([true, NOTE]);
+});

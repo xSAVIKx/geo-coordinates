@@ -7,6 +7,33 @@ const EPS = 1e-6;
 
 export interface Inverse { lambda: number; phi: number; rho: number }
 
+/*
+ * Equal Earth's inverse needs a Newton solve for the parametric latitude `l`, and `l` — with the latitude and the two
+ * quantities the longitude is scaled by — depends only on Y, never on X. The canvas tier
+ * (src/map/texture/canvas2d.ts) shades one row of the view at a time, at constant y and so at constant Y, so
+ * remembering the last solve turns twelve iterations per pixel into twelve per row. `l` is a pure function of Y, so
+ * the remembered answer can never differ from solving again; the arithmetic that builds `lambda` and `phi` from it is
+ * unchanged, down to the order of operations.
+ */
+const row = { Y: NaN, phi: 0, D: 0, cosL: 0, bad: false };
+
+function equalEarthRow(Y: number): typeof row {
+  if (Y === row.Y) return row;
+  let l = Y;
+  for (let i = 0; i < 12; i++) {
+    const l2 = l * l, l6 = l2 * l2 * l2;
+    l -= (l * (A1 + A2 * l2 + l6 * (A3 + A4 * l2)) - Y) / (A1 + 3 * A2 * l2 + l6 * (7 * A3 + 9 * A4 * l2));
+  }
+  const l2 = l * l, l6 = l2 * l2 * l2;
+  const s = Math.sin(l) / M;
+  row.Y = Y;
+  row.bad = Math.abs(s) > 1;
+  row.phi = Math.asin(s);
+  row.D = A1 + 3 * A2 * l2 + l6 * (7 * A3 + 9 * A4 * l2);
+  row.cosL = Math.cos(l);
+  return row;
+}
+
 /**
  * The longitude and latitude (radians) under view point (x, y), or null off the map. The same arithmetic as the
  * fragment shader (src/map/texture/shaders.ts), used by the canvas fallback and by the tests against d3.
@@ -33,16 +60,10 @@ export function inverseProject(v: TextureView, x: number, y: number): Inverse | 
   } else if (v.projection === 2) {
     lambda = X; phi = 2 * Math.atan(Math.exp(Y)) - Math.PI / 2;
   } else {
-    let l = Y;
-    for (let i = 0; i < 12; i++) {
-      const l2 = l * l, l6 = l2 * l2 * l2;
-      l -= (l * (A1 + A2 * l2 + l6 * (A3 + A4 * l2)) - Y) / (A1 + 3 * A2 * l2 + l6 * (7 * A3 + 9 * A4 * l2));
-    }
-    const l2 = l * l, l6 = l2 * l2 * l2;
-    const s = Math.sin(l) / M;
-    if (Math.abs(s) > 1) return null;
-    lambda = (M * X * (A1 + 3 * A2 * l2 + l6 * (7 * A3 + 9 * A4 * l2))) / Math.cos(l);
-    phi = Math.asin(s);
+    const r = equalEarthRow(Y);
+    if (r.bad) return null;
+    lambda = (M * X * r.D) / r.cosL;
+    phi = r.phi;
   }
   if (!Number.isFinite(lambda)) return null;
   // d3's generic invert un-rotates with an identity rotation that still wraps longitude into (-pi, pi] (see
