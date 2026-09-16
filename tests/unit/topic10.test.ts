@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import en from '../../src/i18n/en.json';
 import pl from '../../src/i18n/pl.json';
 import uk from '../../src/i18n/uk.json';
@@ -6,6 +6,7 @@ import { formatLat } from '../../src/geo/format';
 import { AXIAL_TILT } from '../../src/geo/orbit';
 import { dateFromDayAndMinutes, dayLightMinutes, daysInYear, solarParams } from '../../src/geo/sun';
 import type { LangCode } from '../../src/geo/types';
+import { MapState } from '../../src/map/mapState.svelte';
 import { HOME, placeById } from '../../src/map/places';
 import { TOPICS } from '../../src/topics';
 
@@ -69,6 +70,40 @@ describe('topic 10: the numbers in the texts are what the model says', () => {
       for (const n of [16, 8, 10, 14]) expect(text, `${lang} ${n}`).toContain(HOURS[lang](n));
       expect(text).toContain(formatLat(HOME.lat, lang));
       expect(text).toContain(formatLat(sydney.lat, lang));
+    }
+  });
+});
+
+/*
+ * The scenes' dates. They used to be the common-year day numbers 172 / 266 / 355, which from 2028 would have put
+ * the "June solstice" step a day before the solstice — the very day the step is about. They now name the event,
+ * and MapState resolves it against the year the page is open in (src/geo/orbit.ts `eventDay`).
+ */
+describe('topic 10: the key dates are the real ones in every year', () => {
+  const topic = TOPICS[10]!;
+  const dayOf = (id: string, year: number) => {
+    vi.setSystemTime(new Date(Date.UTC(year, 0, 15)));
+    const s = new MapState();
+    s.applyScene(topic.steps.find((x) => x.id === id)!.scene);
+    return s.sun!.dayOfYear;
+  };
+  afterEach(() => vi.useRealTimers());
+
+  test('the scenes name events, never a fixed day number', () => {
+    for (const step of topic.steps) {
+      const sun = step.scene.sun;
+      if (!sun) continue;
+      expect(sun.event, `${step.id} scene sun`).toBeTruthy();
+      expect(sun.dayOfYear, `${step.id} scene sun`).toBeUndefined();
+    }
+  });
+
+  test('a common year and a leap year land on the same calendar date, a day apart in day numbers', () => {
+    expect([dayOf('june', 2026), dayOf('equinox', 2026), dayOf('tilt', 2026)]).toEqual([172, 266, 355]);
+    expect([dayOf('june', 2028), dayOf('equinox', 2028), dayOf('tilt', 2028)]).toEqual([173, 267, 356]);
+    for (const year of [2026, 2028]) {
+      expect(dateFromDayAndMinutes(year, dayOf('june', year), 720).getUTCMonth()).toBe(5);
+      expect(dateFromDayAndMinutes(year, dayOf('june', year), 720).getUTCDate()).toBe(21);
     }
   });
 });

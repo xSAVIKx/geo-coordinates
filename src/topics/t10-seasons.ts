@@ -3,10 +3,12 @@ import { HOME, placeById } from '../map/places';
 import type { TopicDef } from './types';
 
 // Explore only (spec §6.2): no question types, so Practise, the rehearsal, the class quiz and the worksheet leave it out.
-// Days of the year are for a common year: 21 June = 172, 23 September = 266, 21 December = 355 (a day earlier in a leap year).
-const JUNE = { utcMinutes: 720, dayOfYear: 172 };
-const SEPTEMBER = { utcMinutes: 720, dayOfYear: 266 };
-const DECEMBER = { utcMinutes: 720, dayOfYear: 355 };
+// The three key dates are named as events, not as day numbers: MapState.applyScene resolves each one against the
+// current year (src/geo/orbit.ts `eventDay`), so the solstice step still lands on the solstice in a leap year --
+// 21 June is day 172 in a common year and 173 in a leap one, and the texts say "around" only about the real event.
+const JUNE = { utcMinutes: 720, event: 'june' } as const;
+const SEPTEMBER = { utcMinutes: 720, event: 'september' } as const;
+const DECEMBER = { utcMinutes: 720, event: 'december' } as const;
 const SYDNEY = placeById('sydney');
 const LIGHT = { specialLines: true, tropics: true, daylight: true, places: false } satisfies SceneSpec['layers'];
 

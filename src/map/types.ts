@@ -1,3 +1,4 @@
+import type { SeasonEvent } from '../geo/orbit';
 import type { Axis, LatLon, Precision } from '../geo/types';
 import type { MapStyle } from './mapStyle';
 
@@ -50,7 +51,13 @@ export interface SceneSpec {
   projectionSwitch?: boolean;            // with flatProjection: keep the projection switch; a choice then applies to this scene only
   mapStyle?: MapStyle;                   // forces this map style for the scene (worksheets: 'atlas'); a pick with the switch then lasts for the scene only
   overlays?: Overlay[];
-  sun?: { utcMinutes: number; dayOfYear: number } | null;
+  /*
+   * The scene's date and time. `dayOfYear` is a fixed day number; `event` instead names an equinox or a solstice
+   * and is resolved against the year the scene is applied in — 21 June is day 172 in a common year and 173 in a
+   * leap year, so a scene *about* the solstice has to ask for the event, not for a number that goes a day out
+   * from 2028 (planning ruling: topic 10, MapState.applyScene).
+   */
+  sun?: ({ utcMinutes: number } & ({ dayOfYear: number; event?: never } | { dayOfYear?: never; event: SeasonEvent })) | null;
   labControls?: LabControl[];
   schoolsToggle?: boolean;               // offers the "Maple Bear schools" layer switch (the layer itself starts off)
 }

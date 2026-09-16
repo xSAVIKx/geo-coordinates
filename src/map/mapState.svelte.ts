@@ -2,6 +2,7 @@ import { untrack } from 'svelte';
 import { motionReduced } from '../app/settings.svelte';
 import { readString, writeString } from '../app/storage';
 import { clampLat, normalizeLon, roundTo } from '../geo/format';
+import { eventDay } from '../geo/orbit';
 import { dateFromDayAndMinutes, dayOfYear, daysInYear, sunPoint } from '../geo/sun';
 import type { LatLon, Precision } from '../geo/types';
 import { clampFlatCenter, flatMinZoom, panFlatCenter } from './geometry';
@@ -211,7 +212,13 @@ export class MapState {
     const p = this.point as LatLon | null;
     this.rotate = scene.rotate ? [...scene.rotate] : p ? [-p.lon, -Math.max(-60, Math.min(60, p.lat))] : [0, -20];
     this.overlays = [...(scene.overlays ?? [])];
-    this.sun = scene.sun ? { ...scene.sun, year: new Date().getUTCFullYear() } : null;
+    this.sun = null;
+    if (scene.sun) {
+      // A scene that names a season event gets that event's day *in this year*: 21 June is day 172 in a common
+      // year and 173 in a leap one (src/geo/orbit.ts `eventDay`), so a fixed number would drift from 2028 on.
+      const year = new Date().getUTCFullYear();
+      this.sun = { utcMinutes: scene.sun.utcMinutes, dayOfYear: scene.sun.event ? eventDay(year, scene.sun.event) : scene.sun.dayOfYear, year };
+    }
     this.realSun = false;
     this.labControls = [...(scene.labControls ?? [])];
     this.orbitToggle = (scene.labControls ?? []).includes('seasons') && !scene.views.includes('orbit');
