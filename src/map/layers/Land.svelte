@@ -5,11 +5,15 @@
   import type { MapStyle } from '../mapStyle';
   const mapState = useMapState();
   let { ctx, style = 'atlas' }: { ctx: ViewCtx; style?: MapStyle } = $props();
-  // Atlas draws the sea, land, lakes, rivers and coasts; texture styles show their image instead and keep only the borders.
+  // Atlas draws the sea, land, lakes, rivers and coasts; texture styles show their image instead and keep only the
+  // borders. Political takes the sea from here and draws its own countries, coasts and borders over it (Political.svelte),
+  // so this layer leaves the land, the borders and the voivodeships to it.
   const surface = $derived(style === 'atlas');
-  const oceanD = $derived(surface ? (ctx.path(sphere) ?? '') : '');
+  const ocean = $derived(style === 'atlas' || style === 'political');
+  const ownBorders = $derived(style !== 'political');
+  const oceanD = $derived(ocean ? (ctx.path(sphere) ?? '') : '');
   const layers = $derived(landFor(ctx.zoom, ctx.bounds));
-  const borderLayers = $derived(mapState.layers.borders ? bordersFor(ctx.zoom, ctx.bounds) : null);
+  const borderLayers = $derived(ownBorders && mapState.layers.borders ? bordersFor(ctx.zoom, ctx.bounds) : null);
   const landD = $derived(surface ? (ctx.path(layers.world) ?? '') : '');
   const bordersD = $derived(borderLayers ? (ctx.path(borderLayers.world) ?? '') : '');
   // Central Europe in detail (zoom ≥ 4): a sea-coloured box covers the coarse world land there.
@@ -21,7 +25,7 @@
     const detail = detailFor(ctx.zoom, ctx.bounds);
     return {
       rivers: detail && surface ? detail.rivers.map((river) => ({ id: river.id, d: path(river.line) ?? '' })) : [],
-      voivodeships: detail && mapState.layers.borders ? (path(detail.voivodeships) ?? '') : '',
+      voivodeships: detail && ownBorders && mapState.layers.borders ? (path(detail.voivodeships) ?? '') : '',
       mask: surface ? (path(r.mask) ?? '') : '',
       land: surface ? (path(r.land) ?? '') : '',
       lakes: surface ? (path(r.lakes) ?? '') : '',
@@ -31,10 +35,8 @@
   });
 </script>
 
-{#if surface}
-  <path class="ocean" d={oceanD} />
-  <path class="land" d={landD} />
-{/if}
+{#if ocean}<path class="ocean" d={oceanD} />{/if}
+{#if surface}<path class="land" d={landD} />{/if}
 {#if bordersD}<path class="borders" d={bordersD} />{/if}
 {#if region}
   <g class="region" data-detail="central-europe">

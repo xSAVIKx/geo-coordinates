@@ -124,6 +124,9 @@
   --school-border: #ffffff;
   --school-contrast: #ffffff;
   --school-text: #9d174d;
+  /* Political style: pastel country fills (neighbours never share one), their borders and coasts. */
+  --pol-0: #f6e3b4; --pol-1: #cfe6c1; --pol-2: #f5cfc6; --pol-3: #d6d9f2; --pol-4: #c9e7e5; --pol-5: #efd9ea;
+  --pol-border: #6b6152; --pol-coast: #7d8fa0;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -147,6 +150,8 @@
     --night: rgb(0 3 12 / 0.66); --twilight: rgb(0 3 12 / 0.28); --daylit: rgb(255 222 140 / 0.16); --sun: #fbbf24; --sun-stroke: #fde68a; --moon: #b4bdf5; --noon: #fbbf24;
     --river: #5ea8e6; --river-label: #9fd0f5;
     --school: #f9a8d4; --school-border: #161d26; --school-contrast: #0b1320; --school-text: #f9a8d4;
+    --pol-0: #4a4231; --pol-1: #34462f; --pol-2: #4d3632; --pol-3: #383b52; --pol-4: #2f4948; --pol-5: #463646;
+    --pol-border: #c9bfa6; --pol-coast: #8fa6ba;
   }
 }
 :root[data-theme="dark"] {
@@ -169,6 +174,8 @@
   --night: rgb(0 3 12 / 0.66); --twilight: rgb(0 3 12 / 0.28); --daylit: rgb(255 222 140 / 0.16); --sun: #fbbf24; --sun-stroke: #fde68a; --moon: #b4bdf5; --noon: #fbbf24;
     --river: #5ea8e6; --river-label: #9fd0f5;
     --school: #f9a8d4; --school-border: #161d26; --school-contrast: #0b1320; --school-text: #f9a8d4;
+  --pol-0: #4a4231; --pol-1: #34462f; --pol-2: #4d3632; --pol-3: #383b52; --pol-4: #2f4948; --pol-5: #463646;
+  --pol-border: #c9bfa6; --pol-coast: #8fa6ba;
 }
 /* Presenter mode (spec §3.4, §7): AAA contrast (7:1 for text; see the Task 18 report for the table), sizes that
  * follow the viewport (base.css) and thicker map lines. --ui-scale is the root font size / 16, written by

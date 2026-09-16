@@ -8,6 +8,9 @@
   import { bracketBoxes, CONTINENT_WIDTH, fitMapNames, markerLayout, noonLabel, NOON_LABEL, viewEdgeBoxes } from '../overlayLayout';
   import { bracketFmt, markerText, noonText, sceneLatEdgeBoxes, sceneLineLabels } from '../overlayText';
   import { MAP_LABELS, PLACES, tierVisible, tierZoom } from '../places';
+  import { CAPITALS } from '../political';
+  import { placeCountryLabels } from '../styleLabels';
+  import { reportHealth } from '../texture/health.svelte';
   import { SCHOOL_BADGE_H, schoolBadgeWidth, type SchoolCluster } from '../schools';
   import { LABELLED_RIVERS, REGION_DETAIL_ZOOM, regionActive, riverLabelPoints } from '../world';
   const mapState = useMapState();
@@ -30,7 +33,9 @@
   // cannot carry the same labels as a projected one). The globe shows half the world at once.
   const worldPx = $derived((ctx.width / ctx.px) * ctx.zoom);
   const roomy = $derived(worldPx >= 560);
-  const showContinents = $derived(roomy && ctx.zoom <= (ctx.kind === 'flat' ? 4 : 8));
+  // Political writes country names instead of continent names (spec §4).
+  const political = $derived(mapState.drawnMapStyle === 'political');
+  const showContinents = $derived(roomy && !political && ctx.zoom <= (ctx.kind === 'flat' ? 4 : 8));
 
   // Everything the overlay layers write (marker symbols and labels, brackets, "Noon 12:00") and the
   // special-line labels, placed exactly as Overlays.svelte and SpecialLines.svelte place them (shared in
@@ -103,6 +108,44 @@
     const halfH = (c.members.length === 1 ? 6 : SCHOOL_BADGE_H / 2 + 1) * ctx.px;
     return { left: c.x - halfW, right: c.x + halfW, top: c.y - halfH, bottom: c.y + halfH };
   }));
+  // Everything a name keeps clear of that is not itself a place or country name.
+  const baseObstacles = $derived([...lineObstacles, ...continentObstacles, ...edgeObstacles, ...pointObstacles, ...overlayObstacles, ...schoolMarks, ...chosenBoxes]);
+
+  // Political: the country names (spec §4). A country name has one spot only — Natural Earth's label point —
+  // while a place name can take any of four sides of its dot, so the order is: the lesson's featured cities
+  // (they anchor every question), then the country names around them, then the rest of the city names around
+  // those. `featuredBoxes` runs the same selection over the same candidates in the same order as `placements`
+  // below, so a featured name ends up in the very box reserved for it here.
+  const featuredBoxes = $derived.by<LabelBox[]>(() => {
+    if (!political) return [];
+    const featured = candidates.filter((c) => c.featured);
+    const chosen = selectStablePlacements(featured, (c) => c.options.map((o) => o.box), () => true, (c) => c.distance, () => false, baseObstacles);
+    return featured.flatMap((c, i) => (chosen[i]! >= 0 ? [c.options[chosen[i]!]!.box] : []));
+  });
+  // The dots and the capitals' rings are drawn over the names, so a country name steps a line clear of one
+  // rather than being written through it.
+  const placeMarks = $derived.by<LabelBox[]>(() => {
+    if (!political) return [];
+    return places.flatMap((p) => {
+      const xy = ctx.project(p);
+      if (!xy) return [];
+      const r = (CAPITALS.has(p.id) ? 7 : 4) * ctx.px;
+      return [{ left: xy[0] - r, right: xy[0] + r, top: xy[1] - r, bottom: xy[1] + r }];
+    });
+  });
+  const countryNames = $derived.by(() => {
+    if (!political || !mapState.layers.places) return [];
+    try {
+      return placeCountryLabels(ctx, i18n.lang, [...baseObstacles, ...featuredBoxes], placeMarks);
+    } catch (e) {
+      console.warn('country names:', e);
+      queueMicrotask(() => reportHealth({ type: 'vector-fail' }));
+      return [];
+    }
+  });
+  // Empty in every other style, so the Atlas layout is untouched.
+  const countryObstacles = $derived(countryNames.map((l) => l.box));
+
   const placements = $derived.by<Map<string, PlaceLabelOption>>(() => {
     const previousVisible = labelMemory.previous(mapState.sceneVersion);
     const chosen = selectStablePlacements(
@@ -111,7 +154,7 @@
       (c) => c.featured,
       (c) => c.distance,
       (c) => previousVisible.has(c.id),
-      [...lineObstacles, ...continentObstacles, ...edgeObstacles, ...pointObstacles, ...overlayObstacles, ...schoolMarks, ...chosenBoxes],
+      [...baseObstacles, ...countryObstacles],
     );
     const out = new Map<string, PlaceLabelOption>();
     candidates.forEach((c, i) => { if (chosen[i]! >= 0) out.set(c.id, c.options[chosen[i]!]!); });
@@ -125,7 +168,7 @@
   const RIVER_FONT = 11.5;
   const riverLabels = $derived.by(() => {
     if (!mapState.layers.places || ctx.zoom < REGION_DETAIL_ZOOM || !regionActive(ctx.zoom, ctx.bounds)) return [];
-    const placed: LabelBox[] = [...lineObstacles, ...continentObstacles, ...edgeObstacles, ...pointObstacles, ...overlayObstacles, ...[...placements.values()].map((o) => o.box)];
+    const placed: LabelBox[] = [...lineObstacles, ...continentObstacles, ...edgeObstacles, ...pointObstacles, ...overlayObstacles, ...[...placements.values()].map((o) => o.box), ...countryObstacles];
     const out: { id: string; x: number; y: number }[] = [];
     for (const id of LABELLED_RIVERS) {
       const width = labelWidth(t(`river.${id}`), RIVER_FONT, ctx.px);
@@ -172,6 +215,7 @@
       { left: -1e7, right: 1e7, top: -1e7, bottom: 0 }, { left: -1e7, right: 1e7, top: ctx.height, bottom: 1e7 },
       ...overlayObstacles,
       ...[...placements.values()].map((o) => o.box),
+      ...countryObstacles,
       ...riverLabels.map((r) => textBox(r.x, r.y, labelWidth(t(`river.${r.id}`), RIVER_FONT, ctx.px), RIVER_FONT * ctx.px, 'start')),
     ];
     const items = singles.map((c) => {
@@ -200,6 +244,9 @@
 </script>
 
 {#if mapState.layers.places}
+  {#each countryNames as l (l.id)}
+    <text class="halo country-name" data-country={l.id} x={l.x} y={l.y} text-anchor="middle" font-size={l.size}>{l.text}</text>
+  {/each}
   {#each continents as { l, xy } (l.id)}
     <text class="halo map-label {l.kind}" x={xy[0]} y={xy[1]} text-anchor="middle" font-size={(l.kind === 'ocean' ? 12 : 11.5) * ctx.px} lang={i18n.lang}>{t(`label.${l.id}`)}</text>
   {/each}
@@ -209,6 +256,7 @@
     {#if xy}
       {@const a = named ? placements.get(p.id) : undefined}
       <!-- A dot whose name did not fit is drawn small and soft, so crowded areas stay calm. -->
+      {#if political && CAPITALS.has(p.id)}<circle class="capital-ring" cx={xy[0]} cy={xy[1]} r={(a ? 6 : 4.5) * ctx.px} />{/if}
       <circle class="place" class:minor={!a} cx={xy[0]} cy={xy[1]} r={(a ? 3.2 : 2.2) * ctx.px} />
       {#if a}
         <text class="halo place-name" x={a.x} y={a.y} text-anchor={a.anchor} font-size={(roomy ? 12 : 10.5) * ctx.px}>{t(`place.${p.id}`)}</text>
@@ -229,6 +277,9 @@
   .place-name { fill: var(--text); }
   .school-name { fill: var(--school-text); font-weight: 650; }
   .river-name { fill: var(--river-label); font-style: italic; font-weight: 650; letter-spacing: 0.02em; }
+  .country-name { fill: var(--map-label); font-weight: 650; letter-spacing: 0.05em; }
+  /* A capital is a city with a ring around its dot; the name and the list say so too, so the ring is never the only signal. */
+  .capital-ring { fill: none; stroke: var(--text); stroke-width: calc(1.4px * var(--stroke-scale)); vector-effect: non-scaling-stroke; }
   .map-label { fill: var(--map-label); font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
   .map-label.ocean { fill: var(--ocean-label); font-style: italic; font-weight: 500; letter-spacing: 0.04em; text-transform: none; }
 </style>

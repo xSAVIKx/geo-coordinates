@@ -39,8 +39,8 @@ function boxPolygon(b: GeoBounds, step = 0.25): GeoJSON.Polygon {
   return { type: 'Polygon', coordinates: [ring] }; // clockwise: d3's exterior ring
 }
 
-interface Part<T> { bounds: GeoBounds; coordinates: T }
-function boundsOf(points: GeoJSON.Position[]): GeoBounds {
+export interface Part<T> { bounds: GeoBounds; coordinates: T }
+export function boundsOf(points: GeoJSON.Position[]): GeoBounds {
   const b = { west: Infinity, south: Infinity, east: -Infinity, north: -Infinity };
   for (const [x, y] of points) {
     b.west = Math.min(b.west, x!); b.east = Math.max(b.east, x!);
@@ -50,7 +50,7 @@ function boundsOf(points: GeoJSON.Position[]): GeoBounds {
 }
 /** Lines are cut into short runs (sharing their end vertex) so a view only draws the runs it can see. */
 const LINE_CHUNK = 48;
-const lineParts = (g: GeoJSON.MultiLineString): Part<GeoJSON.Position[]>[] =>
+export const lineParts = (g: GeoJSON.MultiLineString): Part<GeoJSON.Position[]>[] =>
   g.coordinates.flatMap((c) => {
     const out: Part<GeoJSON.Position[]>[] = [];
     for (let i = 0; i < c.length - 1; i += LINE_CHUNK) {
@@ -59,8 +59,34 @@ const lineParts = (g: GeoJSON.MultiLineString): Part<GeoJSON.Position[]>[] =>
     }
     return out;
   });
-const polygonParts = (g: GeoJSON.MultiPolygon): Part<GeoJSON.Position[][]>[] => g.coordinates.map((c) => ({ bounds: boundsOf(c[0]!), coordinates: c }));
-function asMultiPolygon(fc: GeoJSON.Feature | GeoJSON.FeatureCollection): GeoJSON.MultiPolygon {
+/** Twice a ring's signed planar area (the shoelace sum), zero once thinning has flattened the ring onto a line. */
+function ringArea2(ring: GeoJSON.Position[]): number {
+  let sum = 0;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) sum += ring[j]![0]! * ring[i]![1]! - ring[i]![0]! * ring[j]![1]!;
+  return sum;
+}
+/**
+ * A ring the way d3 wants it, or null when thinning has left nothing to draw. On the sphere d3 reads a ring by the
+ * way it is wound — an outline clockwise (negative above), a hole the other way — and takes anything else to mean
+ * "all of the sphere but this". Dropping vertices can flatten a small ring onto a line or turn what is left of it
+ * the other way round, and one islet of Norway and one of Greenland, simplified at the coarsest Political level,
+ * used to paint the whole map their country's colour. Such a ring is turned back, or dropped if it has no area.
+ */
+function oriented(ring: GeoJSON.Position[], outline: boolean): GeoJSON.Position[] | null {
+  if (ring.length < 4) return null;
+  const area = ringArea2(ring);
+  if (area === 0) return null;
+  return area < 0 === outline ? ring : [...ring].reverse();
+}
+/** A filled shape's parts, one per polygon, each with its outline first and its holes after it. */
+export const polygonParts = (g: GeoJSON.MultiPolygon): Part<GeoJSON.Position[][]>[] =>
+  g.coordinates.flatMap((rings) => {
+    const outline = oriented(rings[0]!, true);
+    if (!outline) return [];
+    const holes = rings.slice(1).map((r) => oriented(r, false)).filter((r): r is GeoJSON.Position[] => r !== null);
+    return [{ bounds: boundsOf(outline), coordinates: [outline, ...holes] }];
+  });
+export function asMultiPolygon(fc: GeoJSON.Feature | GeoJSON.FeatureCollection): GeoJSON.MultiPolygon {
   const features = fc.type === 'FeatureCollection' ? fc.features : [fc];
   const coordinates = features.flatMap((f) => (f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.type === 'MultiPolygon' ? f.geometry.coordinates : []));
   return { type: 'MultiPolygon', coordinates };
@@ -84,13 +110,47 @@ export const LABELLED_RIVERS: readonly RiverId[] = ['vistula', 'oder'];
 // So each zoom level from 4, 8, 16, 32 and 64 up gets its own copy with every arc thinned to
 // vertices at least half a pixel apart (arc ends are kept, so shared borders stay shared).
 const DETAIL_LEVELS = [4, 8, 16, 32, 64] as const;
-const decodedArcs: [number, number][][] = (() => {
-  const { scale: [kx, ky], translate: [dx, dy] } = regionTopo.transform!;
-  return regionTopo.arcs.map((arc) => {
+/** A TopoJSON topology as far as thinning cares: arcs, quantized (a `transform`) or not. */
+export interface ArcTopology { arcs: number[][][]; transform?: { scale: number[]; translate: number[] } }
+
+/**
+ * A topology's arcs as absolute `[lon, lat]` points. A *quantized* topology (one with a `transform`) stores each
+ * arc delta-encoded in integer grid steps, so its points are summed and then scaled and shifted; an unquantized
+ * topology already holds absolute coordinates, which are only copied.
+ */
+export function decodeArcs(topology: ArcTopology): [number, number][][] {
+  const transform = topology.transform;
+  if (!transform) return topology.arcs.map((arc) => arc.map(([x, y]) => [x!, y!] as [number, number]));
+  const [kx, ky] = transform.scale, [dx, dy] = transform.translate;
+  return topology.arcs.map((arc) => {
     let x = 0, y = 0;
-    return arc.map(([qx, qy]) => { x += qx!; y += qy!; return [x * kx + dx, y * ky + dy] as [number, number]; });
+    return arc.map(([qx, qy]) => { x += qx!; y += qy!; return [x * kx! + dx!, y * ky! + dy!] as [number, number]; });
   });
-})();
+}
+
+/**
+ * Level of detail, shared by the layers built from a simplified topology (Central Europe below, the Political
+ * style's countries, the Physical style's water): a view at flat-map `zoom` is served the highest `levels` entry
+ * it has reached, and that level's arcs are thinned once — to vertices at least half a pixel apart at that zoom —
+ * and cached. Thinning keeps arc ends, so shared borders stay shared, and the copy drops the `transform` because
+ * its arcs are now absolute coordinates. The source arcs are decoded on the first call, so a style nobody opens
+ * costs nothing.
+ */
+export function levelOfDetail<Topo extends ArcTopology, T>(topo: Topo, levels: readonly number[], build: (topology: Topo) => T): (zoom: number) => T {
+  const cache = new Map<number, T>();
+  let decoded: [number, number][][] | null = null;
+  return (zoom: number): T => {
+    const level = [...levels].reverse().find((l) => zoom >= l) ?? levels[0]!;
+    const cached = cache.get(level);
+    if (cached) return cached;
+    decoded ??= decodeArcs(topo);
+    // Half a pixel at this level's zoom on a 960-unit-wide flat map (960/360 units per degree at zoom 1).
+    const tolerance = 0.5 / ((960 / 360) * level);
+    const data = build({ ...topo, transform: undefined, arcs: decoded.map((a) => thinArc(a, tolerance)) } as unknown as Topo);
+    cache.set(level, data);
+    return data;
+  };
+}
 
 /** Radial-distance thinning: drops vertices closer than `tolerance` (degrees, longitude scaled for latitude) to the last kept one. */
 export function thinArc(arc: readonly [number, number][], tolerance: number): [number, number][] {
@@ -107,34 +167,22 @@ export function thinArc(arc: readonly [number, number][], tolerance: number): [n
   return out;
 }
 
-const levels = new Map<number, RegionData>();
-function regionData(zoom: number): RegionData {
-  const level = [...DETAIL_LEVELS].reverse().find((l) => zoom >= l) ?? DETAIL_LEVELS[0];
-  let data = levels.get(level);
-  if (!data) {
-    // Half a pixel at this level's zoom on a 960-unit-wide flat map (960/360 units per degree at zoom 1).
-    const tolerance = 0.5 / ((960 / 360) * level);
-    const topology = { ...regionTopo, transform: undefined, arcs: decodedArcs.map((a) => thinArc(a, tolerance)) } as unknown as typeof regionTopo;
-    data = {
-      land: polygonParts(asMultiPolygon(feature(topology, topology.objects.land))),
-      lakes: polygonParts(asMultiPolygon(feature(topology, topology.objects.lakes))),
-      coast: lineParts(mesh(topology, topology.objects.coast)),
-      borders: lineParts(mesh(topology, topology.objects.borders)),
-      // Only the lines between two voivodeships: Poland's outline is already a country border or coast.
-      voivodeships: lineParts(mesh(topology, topology.objects.voivodeships, (a, b) => a !== b)),
-      rivers: topology.objects.rivers.geometries.map((g) => ({
-        id: (g.properties as { id: RiverId }).id,
-        parts: lineParts(mesh(topology, { type: 'GeometryCollection', geometries: [g] })),
-      })),
-    };
-    levels.set(level, data);
-  }
-  return data;
-}
+const regionData = levelOfDetail(regionTopo, DETAIL_LEVELS, (topology): RegionData => ({
+  land: polygonParts(asMultiPolygon(feature(topology, topology.objects.land))),
+  lakes: polygonParts(asMultiPolygon(feature(topology, topology.objects.lakes))),
+  coast: lineParts(mesh(topology, topology.objects.coast)),
+  borders: lineParts(mesh(topology, topology.objects.borders)),
+  // Only the lines between two voivodeships: Poland's outline is already a country border or coast.
+  voivodeships: lineParts(mesh(topology, topology.objects.voivodeships, (a, b) => a !== b)),
+  rivers: topology.objects.rivers.geometries.map((g) => ({
+    id: (g.properties as { id: RiverId }).id,
+    parts: lineParts(mesh(topology, { type: 'GeometryCollection', geometries: [g] })),
+  })),
+}));
 const regionMask = boxPolygon(REGION);
 
 /** Only the parts whose box meets the view (a 10% margin keeps strokes that just enter the view). */
-function visibleParts<T>(parts: Part<T>[], view: GeoBounds): T[] {
+export function visibleParts<T>(parts: Part<T>[], view: GeoBounds): T[] {
   const padLon = (view.east - view.west) * 0.1, padLat = (view.north - view.south) * 0.1;
   const padded = { west: view.west - padLon, east: view.east + padLon, south: view.south - padLat, north: view.north + padLat };
   return parts.filter((p) => boundsIntersect(padded, p.bounds)).map((p) => p.coordinates);

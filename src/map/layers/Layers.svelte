@@ -7,6 +7,8 @@
   import Hemispheres from './Hemispheres.svelte';
   import Land from './Land.svelte';
   import Overlays from './Overlays.svelte';
+  import Political from './Political.svelte';
+  import { reportHealth } from '../texture/health.svelte';
   import { useMapState } from '../mapStateContext';
   import { isTextureStyle, type MapStyle } from '../mapStyle';
   import { badgeBox, guidesUnderLabel, layoutSchools } from '../chosenLabel';
@@ -35,10 +37,18 @@
   const chosenBoxes = $derived(schools?.label && schools.chosen ? [schools.label.box, { left: schools.chosen.x - 12 * ctx.px, right: schools.chosen.x + 12 * ctx.px, top: schools.chosen.y - 12 * ctx.px, bottom: schools.chosen.y + 12 * ctx.px }] : []);
   // Count badges and the chosen school are drawn over line names: every layer that places or avoids those names gets the same boxes to keep clear of.
   const lineAvoid = $derived([...schoolClusters.filter((c) => c.members.length > 1).map((c) => badgeBox(c, ctx.px)), ...chosenBoxes]);
+  // Spec §4 "any error → Atlas": an exception in a style's vector layer shows Atlas with the note.
+  function vectorFailed(error: unknown) {
+    console.warn('map style layer:', error);
+    queueMicrotask(() => reportHealth({ type: 'vector-fail' }));
+  }
 </script>
 
 <g class="geo" transform={offset ? `translate(${offset[0]} ${offset[1]})` : undefined}>
 <Land {ctx} {style} />
+{#if style === 'political'}
+  <svelte:boundary onerror={vectorFailed}><Political {ctx} /></svelte:boundary>
+{/if}
 {#if ctx.kind === 'globe' && !isTextureStyle(style)}
   <!-- Decorative sphere shading: a soft highlight up-left and a darker limb, so the disc reads as a ball. -->
   <defs>
