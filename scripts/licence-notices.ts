@@ -8,10 +8,14 @@ import type { Plugin } from 'vite';
 
 export interface Notice { name: string; version: string; license: string; text: string; url?: string }
 
-/** Data bundled without a package of its own: the map data world-atlas, the world borders (Poland point of view) and the Central Europe detail are made from. */
+/** Data bundled without a package of its own: the map data world-atlas, the world borders (Poland point of view) and
+ * the Central Europe detail are made from, and the NASA satellite imagery the map style textures are made from. */
 export const DATA_NOTICES: Notice[] = [{
   name: 'Natural Earth', version: 'map data', license: 'Public domain', url: 'https://www.naturalearthdata.com/',
   text: 'Made with Natural Earth. Free vector and raster map data @ naturalearthdata.com. Natural Earth data is in the public domain.',
+}, {
+  name: 'NASA Earth Observatory', version: 'images', license: 'Public domain', url: 'https://earthobservatory.nasa.gov/',
+  text: 'Satellite images: Blue Marble Next Generation (July 2004) and Black Marble 2016 by NASA Earth Observatory. NASA imagery is not subject to copyright in the United States; credit: NASA Earth Observatory.',
 }];
 
 /** The package a bundled module belongs to (its innermost node_modules folder), or null for the project's own code. */
