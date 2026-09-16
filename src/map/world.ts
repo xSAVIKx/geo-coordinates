@@ -181,10 +181,15 @@ const regionData = levelOfDetail(regionTopo, DETAIL_LEVELS, (topology): RegionDa
 }));
 const regionMask = boxPolygon(REGION);
 
+/** The view's box with a 10% margin, which keeps strokes that just enter the view. */
+export function paddedView(view: GeoBounds): GeoBounds {
+  const padLon = (view.east - view.west) * 0.1, padLat = (view.north - view.south) * 0.1;
+  return { west: view.west - padLon, east: view.east + padLon, south: view.south - padLat, north: view.north + padLat };
+}
+
 /** Only the parts whose box meets the view (a 10% margin keeps strokes that just enter the view). */
 export function visibleParts<T>(parts: Part<T>[], view: GeoBounds): T[] {
-  const padLon = (view.east - view.west) * 0.1, padLat = (view.north - view.south) * 0.1;
-  const padded = { west: view.west - padLon, east: view.east + padLon, south: view.south - padLat, north: view.north + padLat };
+  const padded = paddedView(view);
   return parts.filter((p) => boundsIntersect(padded, p.bounds)).map((p) => p.coordinates);
 }
 
