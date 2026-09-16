@@ -62,7 +62,12 @@ float cosT(float x) {
   return sinT(x + HALF_PI);
 }
 
-/** asin, refined by one Newton step from the driver's own (a hundred times closer, quadratic convergence). */
+/**
+ * asin, refined by one Newton step from the driver's own (a hundred times closer, quadratic convergence).
+ * Within 1e-3 of the poles (|latitude| above about 89.94°) the step would divide by a vanishing cosine, so the
+ * driver's own value stands there and keeps its own error — about 1e-4 rad, 0.007°, on a pixel already inside the
+ * polar cap of the image. The parity test skips the same band (|lat| > 89.9°).
+ */
 float asinT(float s) {
   float c = clamp(s, -1.0, 1.0);
   float p = asin(c);

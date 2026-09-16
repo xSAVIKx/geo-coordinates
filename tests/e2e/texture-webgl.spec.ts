@@ -1,8 +1,26 @@
 import { expect, test } from '@playwright/test';
-import { makeFlatCtx, makeGlobeCtx } from '../../src/map/geometry';
+import { makeFlatCtx, makeGlobeCtx, type ViewCtx } from '../../src/map/geometry';
+import { inverseProject } from '../../src/map/texture/inverse';
+import { textureView } from '../../src/map/texture/viewParams';
 import { expectNoAxeViolations, openPage, pageErrors, probe, setMapStyle, textureHooks, waitForTexture } from './helpers';
 
 type S = { flat: { center: { lat: number; lon: number }; zoom: number }; flatProjection: 'grid' | 'equal-earth' | 'mercator'; rotate: [number, number]; globeZoom: number; setFlatView(c: { lat: number; lon: number }, z: number): void; chooseProjection(p: string): void };
+/**
+ * Whether inverse.ts puts this view point on the map, the way the shader's own `ok` decides it: a point whose
+ * longitude ran past ±180 is not. The shader clips there (outside Equal Earth's oval, and beside Mercator's world
+ * when the view is wider than it, stay empty); inverse.ts, like d3's own invert, wraps such a longitude round the
+ * antimeridian and still returns a point, which forward-projects a whole world away from where it came from.
+ * The difference is deliberate — a second, repeated world beside the oval would be wrong — and asserting it here
+ * at every sample point is what stops the GLSL and the TypeScript drifting apart: Task 8's canvas tier has to clip
+ * the same way. Only points inside [0, width] × [0, height] are passed in; inverse.ts does not check that itself.
+ */
+const onMap = (ctx: ViewCtx, x: number, y: number): boolean => {
+  const ll = inverseProject(textureView(ctx), x, y);
+  if (!ll) return false;
+  const back = ctx.projection([(ll.lambda * 180) / Math.PI, (ll.phi * 180) / Math.PI]);
+  return !!back && Math.abs(back[0] - x) < 0.5 && Math.abs(back[1] - y) < 0.5;
+};
+
 const state = (page: import('@playwright/test').Page) => page.evaluate(() => { const s = (window as unknown as { __mapState: S }).__mapState; return { flat: s.flat, projection: s.flatProjection, rotate: s.rotate, globeZoom: s.globeZoom }; });
 
 test('the shader\'s inverse projections match d3 to 0.01° on every projection and the globe', async ({ page }) => {
@@ -18,7 +36,9 @@ test('the shader\'s inverse projections match d3 to 0.01° on every projection a
       await page.waitForTimeout(150);
       const st = await state(page);
       const ctx = makeFlatCtx(960, 480, st.flat.center, st.flat.zoom, 1, st.projection);
-      const got = await hooks.debugCoords('flat', pts(960, 480));
+      const points = pts(960, 480);
+      const got = await hooks.debugCoords('flat', points);
+      expect(got.map((g) => g !== null), `${projection} ${zoom}: where the shader draws`).toEqual(points.map(([x, y]) => onMap(ctx, x, y)));
       let compared = 0;
       for (const g of got) {
         const d3 = g && ctx.invert([g.x, g.y]);
@@ -35,7 +55,9 @@ test('the shader\'s inverse projections match d3 to 0.01° on every projection a
     await page.waitForTimeout(150);
     const st = await state(page);
     const ctx = makeGlobeCtx(500, st.rotate, 1, st.globeZoom);
-    const got = await hooks.debugCoords('globe', pts(500, 500));
+    const globePoints = pts(500, 500);
+    const got = await hooks.debugCoords('globe', globePoints);
+    expect(got.map((g) => g !== null), `globe ${rotate}: where the shader draws`).toEqual(globePoints.map(([x, y]) => onMap(ctx, x, y)));
     for (const g of got) {
       const d3 = g && ctx.invert([g.x, g.y]);
       if (!g || !d3 || Math.abs(d3.lat) > 89.9) continue;
@@ -92,6 +114,15 @@ test('a device that allows only 2048 px textures still draws with WebGL, from sm
   await waitForTexture(page, 'flat');
   expect(await textureHooks(page).health()).toMatchObject({ tier: 'webgl', maxTexture: 2048 });
   expect((await probe(page, 'flat', 23, 12))!.avg[0]).toBeGreaterThan(100);
+});
+
+test('a render failure after the images are ready falls all the way back to Atlas', async ({ page }) => {
+  await openPage(page, 'en/lab', '?test&gl=render-fail');
+  await setMapStyle(page, 'physical');
+  await expect.poll(() => textureHooks(page).health()).toMatchObject({ tier: 'canvas', ready: { physical: false } });
+  await expect(page.locator('.view-flat .frame')).toHaveAttribute('data-map-style', 'atlas');
+  await expect(page.locator('.view-flat path.land')).toHaveCount(1);
+  await expect(page.locator('.view-globe path.land')).toHaveCount(1);
 });
 
 test('Atlas draws no canvas at all', async ({ page }) => {

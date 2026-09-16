@@ -31,7 +31,9 @@
 </script>
 
 <svg class="static-map" viewBox="{-P} {-P} {W + 2 * P} {H + 2 * P}" role="img" aria-label={label}>
-  <Layers {ctx} idPrefix={uid} />
+  <!-- Paper has no texture layer under it (TextureLayer.svelte is only for the interactive views), so the sea, land
+       and coasts must keep being drawn here whatever style the app is showing. -->
+  <Layers {ctx} idPrefix={uid} style="atlas" />
   <!-- The world's own edge, thin, where the view is the whole world (the ocean is white on paper). -->
   {#if ctx.zoom <= 1}<rect class="world" x="0" y="0" width={W} height={H} />{/if}
   <rect class="frame" x={-P + 0.5} y={-P + 0.5} width={W + 2 * P - 1} height={H + 2 * P - 1} />

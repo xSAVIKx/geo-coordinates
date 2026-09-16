@@ -23,6 +23,8 @@
   let loaded = $state<TextureStyle | null>(null);
   let draws = 0;
   let lastInput: DrawInputs | null = null;
+  // The view the last frame was drawn from: what a test probe has to project through to hit the pixels on screen.
+  let lastCtx: ViewCtx | null = null;
 
   const style = $derived(mapState.mapStyle);
   const tier = $derived(renderHealth.state.tier);
@@ -36,7 +38,7 @@
     reportHealth({ type: 'fail', reason: e instanceof RenderFailure ? e.reason : 'render' });
   }
 
-  $effect(() => registerTextureView(view, { renderer: () => renderer, input: () => lastInput, ctx: () => ctx, drawCount: () => draws }));
+  $effect(() => registerTextureView(view, { renderer: () => renderer, input: () => lastInput, ctx: () => lastCtx ?? ctx, drawCount: () => draws }));
 
   // 1. A renderer while a texture style is active.
   $effect(() => {
@@ -69,8 +71,12 @@
     const v = textureView(ctx);
     const input: DrawInputs = { view: v, regionMix: regionMix(v, REGION, REGION_MIN_ZOOM), night: null, limb: v.projection === 3, glow: style === 'satellite' && v.projection === 3, quality: 'full', debug: 0 };
     const w = cssWidth, h = cssHeight;
+    const c = ctx;
     const frame = requestAnimationFrame(() => {
-      try { r.resize(w, h, devicePixelRatio); r.draw(input); lastInput = input; draws++; } catch (e) { fail(e); }
+      // Before the canvas has been laid out its size is 0: drawing then would leave a 1 x 1 buffer and count as a
+      // frame (tests wait for the count), so wait for the layout instead.
+      if (!w || !h) return;
+      try { r.resize(w, h, devicePixelRatio); r.draw(input); lastInput = input; lastCtx = c; draws++; } catch (e) { fail(e); }
     });
     return () => cancelAnimationFrame(frame);
   });

@@ -26,7 +26,11 @@ export const textureTestHooks = {
   tier: () => renderHealth.state.tier,
   health: () => JSON.parse(JSON.stringify({ ...renderHealth.state, ready: renderHealth.ready })) as unknown,
   drawCount: (view: 'flat' | 'globe') => handles.get(view)?.drawCount() ?? 0,
-  /** Mean colour and brightest pixel (r+g+b) within `radius` CSS px of a place, as drawn by the texture layer. */
+  /**
+   * Mean colour and brightest pixel (r+g+b) within `radius` CSS px of a place, as drawn by the texture layer.
+   * `ctx()` is the view the last frame was drawn from — the one `input.view` came from — so the place is projected
+   * into the very pixels being read, even when the live view has moved on since.
+   */
   probe(view: 'flat' | 'globe', lat: number, lon: number, radius = 2): ProbeResult | null {
     const s = ready(view);
     const xy = s?.h.ctx().project({ lat, lon });
