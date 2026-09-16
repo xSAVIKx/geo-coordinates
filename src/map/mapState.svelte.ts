@@ -2,7 +2,7 @@ import { untrack } from 'svelte';
 import { motionReduced } from '../app/settings.svelte';
 import { readString, writeString } from '../app/storage';
 import { clampLat, normalizeLon, roundTo } from '../geo/format';
-import { dateFromDayAndMinutes, dayOfYear, daysInYear } from '../geo/sun';
+import { dateFromDayAndMinutes, dayOfYear, daysInYear, sunPoint } from '../geo/sun';
 import type { LatLon, Precision } from '../geo/types';
 import { clampFlatCenter, flatMinZoom, panFlatCenter } from './geometry';
 import { isolatingFlatZoom, isolatingGlobeZoom, schoolById, type School } from './schools';
@@ -57,6 +57,8 @@ export class MapState {
   flat = $state<{ center: LatLon; zoom: number }>({ center: { lat: 0, lon: 0 }, zoom: 1 });
   overlays = $state<Overlay[]>([]);
   sun = $state<{ utcMinutes: number; dayOfYear: number; year: number } | null>(null);
+  /** The lab's "Advanced: real Sun" switch (spec §6.3): off by default, not saved, off again with every scene. */
+  realSun = $state(false);
   labControls = $state<LabControl[]>([]);
   phoneView = $state<ViewId>('flat');
   lastChange = $state<ChangeSource>('program');
@@ -208,6 +210,7 @@ export class MapState {
     this.rotate = scene.rotate ? [...scene.rotate] : p ? [-p.lon, -Math.max(-60, Math.min(60, p.lat))] : [0, -20];
     this.overlays = [...(scene.overlays ?? [])];
     this.sun = scene.sun ? { ...scene.sun, year: new Date().getUTCFullYear() } : null;
+    this.realSun = false;
     this.labControls = [...(scene.labControls ?? [])];
     this.schoolsToggle = scene.schoolsToggle ?? false;
     this.chosenSchool = null;
@@ -222,6 +225,12 @@ export class MapState {
 
   sunDate(): Date | null {
     return this.sun ? dateFromDayAndMinutes(this.sun.year, this.sun.dayOfYear, this.sun.utcMinutes) : null;
+  }
+
+  /** Where the Sun stands overhead at the scene's date and time: the mean Sun, or the real Sun with the switch on. */
+  sunPoint(): LatLon | null {
+    const d = this.sunDate();
+    return d ? sunPoint(d, this.realSun) : null;
   }
 
   /** Rounds to the scene's precision — or, when the readout shows decimals, to 4 decimals like a map app. */

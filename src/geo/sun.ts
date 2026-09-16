@@ -4,7 +4,10 @@ import type { LatLon } from './types';
 const RAD = Math.PI / 180;
 const DEG = 180 / Math.PI;
 
-function sunParams(date: Date): { declination: number; eqTimeMin: number } {
+export interface SolarParams { declination: number; eqTimeMin: number; appLongitude: number }
+
+/** NOAA's solar position series: declination (°), equation of time (minutes: apparent − mean solar time) and the Sun's apparent ecliptic longitude (°, 0–360). */
+export function solarParams(date: Date): SolarParams {
   const jd = date.getTime() / 86_400_000 + 2440587.5;
   const t = (jd - 2451545) / 36525;
   const L0 = (280.46646 + t * (36000.76983 + t * 0.0003032)) % 360;
@@ -27,11 +30,11 @@ function sunParams(date: Date): { declination: number; eqTimeMin: number } {
     - 0.5 * y * y * Math.sin(4 * L0 * RAD)
     - 1.25 * e * e * Math.sin(2 * M * RAD)
   );
-  return { declination, eqTimeMin };
+  return { declination, eqTimeMin, appLongitude: ((appLong % 360) + 360) % 360 };
 }
 
 export function subsolarPoint(date: Date): LatLon {
-  const { declination, eqTimeMin } = sunParams(date);
+  const { declination, eqTimeMin } = solarParams(date);
   const utcHours = date.getUTCHours() + date.getUTCMinutes() / 60 + date.getUTCSeconds() / 3600;
   return { lat: declination, lon: normalizeLon(-15 * (utcHours - 12 + eqTimeMin / 60)) };
 }
@@ -44,7 +47,12 @@ export function subsolarPoint(date: Date): LatLon {
  */
 export function meanSunPoint(date: Date): LatLon {
   const utcHours = date.getUTCHours() + date.getUTCMinutes() / 60 + date.getUTCSeconds() / 3600;
-  return { lat: sunParams(date).declination, lon: normalizeLon(-15 * (utcHours - 12)) };
+  return { lat: solarParams(date).declination, lon: normalizeLon(-15 * (utcHours - 12)) };
+}
+
+/** The Sun the scene uses: the lesson's mean Sun, or (the lab's advanced switch, spec §6.3) the real Sun. */
+export function sunPoint(date: Date, real: boolean): LatLon {
+  return real ? subsolarPoint(date) : meanSunPoint(date);
 }
 
 /** Elevation of the Sun (degrees) seen from `p` when it stands overhead at `sun`. */

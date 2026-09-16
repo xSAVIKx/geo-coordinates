@@ -1,7 +1,7 @@
 <script lang="ts">
   import { bracketModel, labelWidth } from '../brackets';
   import { hemisphere, meridianLine, parallelLine, type ViewCtx } from '../geometry';
-  import { meanSunPoint } from '../../geo/sun';
+  import { sunPoint } from '../../geo/sun';
   import type { LabelBox } from '../labelLayout';
   import { useMapState } from '../mapStateContext';
   import { bracketBoxes, markerLayout, noonLabel, NOON_LABEL } from '../overlayLayout';
@@ -28,7 +28,7 @@
     const brackets = bracketBoxes(mapState.overlays, ctx, fmt, labelRoom);
     const lineLabels = sceneLineLabels(ctx, mapState.layers, mapState.overlays, lineAvoid).map((l) => l.box);
     const obstacles = [...markers.symbols, ...markers.labels, ...brackets, ...lineLabels, ...lineAvoid];
-    return noonLabel(ctx, meanSunPoint(date).lon, labelWidth(noonText(), NOON_LABEL, ctx.px), obstacles);
+    return noonLabel(ctx, sunPoint(date, mapState.realSun).lon, labelWidth(noonText(), NOON_LABEL, ctx.px), obstacles);
   });
 
   function shape(tone: MarkerTone, r: number): string {
@@ -56,7 +56,7 @@
     {@const date = mapState.sunDate()}
     {#if date}
       {#if lines}
-        {@const d = ctx.path(meridianLine(meanSunPoint(date).lon)) ?? ''}
+        {@const d = ctx.path(meridianLine(sunPoint(date, mapState.realSun).lon)) ?? ''}
         <path class="noon-casing" {d} />
         <path class="noon" {d} />
       {/if}

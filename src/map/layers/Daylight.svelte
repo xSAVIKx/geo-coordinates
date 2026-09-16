@@ -1,7 +1,7 @@
 <script lang="ts">
   import { geoCircle } from 'd3-geo';
   import { normalizeLon } from '../../geo/format';
-  import { meanSunPoint } from '../../geo/sun';
+  import { sunPoint } from '../../geo/sun';
   import type { ViewCtx } from '../geometry';
   import { useMapState } from '../mapStateContext';
   const mapState = useMapState();
@@ -13,7 +13,7 @@
   const date = $derived(mapState.layers.daylight ? mapState.sunDate() : null);
   const shapes = $derived.by(() => {
     if (!date) return null;
-    const sun = meanSunPoint(date);
+    const sun = sunPoint(date, mapState.realSun);
     const anti: [number, number] = [normalizeLon(sun.lon + 180), -sun.lat];
     const circle = (radius: number) => ctx.path(geoCircle().center(anti).radius(radius).precision(1.5)()) ?? '';
     const day = ctx.path(geoCircle().center([sun.lon, sun.lat]).radius(90).precision(1.5)()) ?? '';

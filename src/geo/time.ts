@@ -15,6 +15,11 @@ export function localSolarMinutes(utcMinutes: number, lon: number): number {
   return wrapDayMinutes(utcMinutes + normalizeLon(lon) * MINUTES_PER_DEGREE);
 }
 
+/** Apparent (real Sun) solar time: local mean solar time plus the equation of time, in whole minutes. */
+export function apparentSolarMinutes(utcMinutes: number, lon: number, eqTimeMin: number): number {
+  return wrapDayMinutes(utcMinutes + normalizeLon(lon) * MINUTES_PER_DEGREE + eqTimeMin);
+}
+
 export function formatClock(minutes: number): string {
   const m = wrapDayMinutes(minutes);
   return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;

@@ -8,8 +8,8 @@
 <script lang="ts">
   import { motionReduced } from '../app/settings.svelte';
   import { formatLon } from '../geo/format';
-  import { dayLightMinutes, dayOfYear, daysInYear, elevationFrom, meanSunPoint } from '../geo/sun';
-  import { formatClock, localSolarMinutes } from '../geo/time';
+  import { dayLightMinutes, dayOfYear, daysInYear, elevationFrom, solarParams, sunPoint as sunPointAt } from '../geo/sun';
+  import { apparentSolarMinutes, formatClock, localSolarMinutes } from '../geo/time';
   import { i18n, t } from '../i18n/i18n.svelte';
   import { mapState } from './mapState.svelte';
   import { placeById } from './places';
@@ -60,13 +60,13 @@
   });
 
   const date = $derived(mapState.sunDate());
-  const sunPoint = $derived(date ? meanSunPoint(date) : null);
+  const sunHere = $derived(date ? sunPointAt(date, mapState.realSun) : null);
   const dateLabel = $derived(date ? new Intl.DateTimeFormat(i18n.lang, { day: 'numeric', month: 'long', timeZone: 'UTC' }).format(date) : '');
 
   // The time slider's track is the sky over Greenwich on the chosen day: night, dawn, day, dusk, night.
   const skyTrack = $derived.by(() => {
-    if (!sunPoint) return undefined;
-    const light = dayLightMinutes(GREENWICH_LAT, sunPoint.lat);
+    if (!sunHere) return undefined;
+    const light = dayLightMinutes(GREENWICH_LAT, sunHere.lat);
     const pct = (m: number) => `${Math.max(0, Math.min(100, (m / 1440) * 100)).toFixed(1)}%`;
     const rise = 720 - light / 2, set = 720 + light / 2;
     return `linear-gradient(90deg, var(--sky-night) ${pct(rise - 50)}, var(--sky-dawn) ${pct(rise)}, var(--sky-day) ${pct(rise + 70)}, var(--sky-noon) 50%, var(--sky-day) ${pct(set - 70)}, var(--sky-dawn) ${pct(set)}, var(--sky-night) ${pct(set + 50)})`;
@@ -81,7 +81,8 @@
 
   const clocks = $derived.by(() => {
     const sun = mapState.sun;
-    if (!sun || !sunPoint || !has('clocks')) return [];
+    if (!sun || !sunHere || !has('clocks')) return [];
+    const eq = mapState.realSun && date ? solarParams(date).eqTimeMin : 0;
     // Whole-degree meridians, as in the lesson's sums: London 0°, Katowice 19°E, Kyiv 31°E.
     const rows = CLOCK_PLACES.map((id) => {
       const p = placeById(id);
@@ -90,8 +91,8 @@
     if (mapState.point) rows.push({ id: 'point', name: t('lab.thePoint', { lon: formatLon(mapState.point.lon, i18n.lang) }), lat: mapState.point.lat, lon: Math.round(mapState.point.lon) + 0 });
     return rows
       .map((r) => {
-        const minutes = localSolarMinutes(sun.utcMinutes, r.lon);
-        const elevation = elevationFrom(sunPoint, r);
+        const minutes = mapState.realSun ? apparentSolarMinutes(sun.utcMinutes, r.lon, eq) : localSolarMinutes(sun.utcMinutes, r.lon);
+        const elevation = elevationFrom(sunHere, r);
         const light: Light = elevation > 0 ? 'day' : elevation > -6 ? (minutes < 720 ? 'dawn' : 'dusk') : 'night';
         return { ...r, minutes, time: formatClock(minutes), light, lonText: formatLon(r.lon, i18n.lang) };
       })

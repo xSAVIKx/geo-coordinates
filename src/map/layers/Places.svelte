@@ -2,7 +2,7 @@
   import { i18n, t } from '../../i18n/i18n.svelte';
   import { labelWidth } from '../brackets';
   import type { ViewCtx } from '../geometry';
-  import { meanSunPoint } from '../../geo/sun';
+  import { sunPoint } from '../../geo/sun';
   import { createLabelMemory, overlaps, placeLabelOptions, pointBox, selectStablePlacements, textBox, type LabelBox, type PlaceLabelOption } from '../labelLayout';
   import { useMapState } from '../mapStateContext';
   import { bracketBoxes, CONTINENT_WIDTH, fitMapNames, markerLayout, noonLabel, NOON_LABEL, viewEdgeBoxes } from '../overlayLayout';
@@ -46,7 +46,7 @@
     const brackets = bracketBoxes(mapState.overlays, ctx, bracketFmt, m.room);
     const out = [...m.symbols, ...m.labels, ...brackets];
     const date = mapState.overlays.some((o) => o.kind === 'noon-meridian') ? mapState.sunDate() : null;
-    const noon = date ? noonLabel(ctx, meanSunPoint(date).lon, labelWidth(noonText(), NOON_LABEL, ctx.px), [...out, ...lineObstacles, ...lineAvoid]) : null;
+    const noon = date ? noonLabel(ctx, sunPoint(date, mapState.realSun).lon, labelWidth(noonText(), NOON_LABEL, ctx.px), [...out, ...lineObstacles, ...lineAvoid]) : null;
     return noon ? [...out, noon.box] : out;
   });
   const lineObstacles = $derived.by<LabelBox[]>(() => { void i18n.lang; return sceneLineLabels(ctx, mapState.layers, mapState.overlays, lineAvoid).map((l) => l.box); });
