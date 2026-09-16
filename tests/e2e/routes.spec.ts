@@ -52,9 +52,11 @@ for (const scheme of ['light', 'dark'] as const) {
   }
 }
 
-test('size budget: dist/geo-coordinates.html stays under 1 MiB', async () => {
+test('size budget: dist/geo-coordinates.html stays under 5 MiB', async () => {
   const { statSync } = await import('node:fs');
-  expect(statSync(DIST_FILE).size).toBeLessThan(1_048_576);
+  // Limit kept in sync by hand with `scripts/size-check.ts` (the authority; not imported here since running it has
+  // side effects — it reads the built file itself and exits the process on failure).
+  expect(statSync(DIST_FILE).size).toBeLessThan(5_242_880);
 });
 
 test('first visit with reduced-motion preference turns the setting on', async ({ page }) => {
