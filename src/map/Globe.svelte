@@ -4,6 +4,7 @@
   import { ui } from '../app/presenter.svelte';
   import { makeGlobeCtx } from './geometry';
   import Layers from './layers/Layers.svelte';
+  import TextureLayer from './texture/TextureLayer.svelte';
   import { GLOBE_MAX_ZOOM, mapState } from './mapState.svelte';
   import { clusterClick, type School } from './schools';
   import SchoolPopover from './SchoolPopover.svelte';
@@ -172,7 +173,8 @@
 </script>
 
 <figure class="globe" bind:this={figure}>
-  <div class="frame" bind:clientWidth>
+  <div class="frame" bind:clientWidth data-map-style={mapState.drawnMapStyle}>
+    <TextureLayer {ctx} view="globe" />
     <!-- svelte-ignore a11y_no_noninteractive_tabindex -- keyboard-operable globe (spec §7): the SVG is a compound control (rotate/point/zoom), not static content -->
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -- pointer/keyboard handlers drive globe rotation, point editing and zoom per spec §7 -->
     <svg
@@ -213,8 +215,8 @@
 <style>
   /* A size container: the toolbar adapts to the globe's column, not the window (see the @container rules). */
   .globe { position: relative; margin: 0; display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; container-type: inline-size; }
-  .frame { max-width: min(100%, 70vh); margin-inline: auto; width: 100%; }
-  svg { display: block; width: 100%; height: auto; touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; overflow: visible; }
+  .frame { position: relative; max-width: min(100%, 70vh); margin-inline: auto; width: 100%; }
+  svg { position: relative; display: block; width: 100%; height: auto; touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; overflow: visible; }
   svg:active { cursor: grabbing; }
   svg:focus-visible { outline: 3px solid var(--focus); border-radius: 50%; }
   .toolbar { display: flex; flex-wrap: wrap; gap: var(--space-1); justify-content: center; }

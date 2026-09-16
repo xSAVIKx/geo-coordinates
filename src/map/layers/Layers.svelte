@@ -8,6 +8,7 @@
   import Land from './Land.svelte';
   import Overlays from './Overlays.svelte';
   import { useMapState } from '../mapStateContext';
+  import { isTextureStyle } from '../mapStyle';
   import { badgeBox, guidesUnderLabel, layoutSchools } from '../chosenLabel';
   import Places from './Places.svelte';
   import PointMarker from './PointMarker.svelte';
@@ -18,6 +19,9 @@
   // `offset` slides it to where the map is now; `edgeCtx` is the live view, for the edge numbers.
   let { ctx, idPrefix, edgeCtx, offset = null }: { ctx: ViewCtx; idPrefix: string; edgeCtx?: ViewCtx; offset?: [number, number] | null } = $props();
   const sphereD = $derived(ctx.kind === 'globe' ? (ctx.path(sphere) ?? '') : '');
+  // Physical and Satellite draw the sphere themselves (the texture layer under this SVG): only the borders and the
+  // lesson's own marks stay in SVG over them.
+  const style = $derived(mapState.drawnMapStyle);
   // Grouped in the drawing's coordinates, so the badges slide with everything else while the flat
   // map is dragged; the flat grouping itself is cached per zoom (see schools.ts), so a pan never regroups.
   // The school chosen from a list is left out of the groups and drawn alone, named.
@@ -32,8 +36,8 @@
 </script>
 
 <g class="geo" transform={offset ? `translate(${offset[0]} ${offset[1]})` : undefined}>
-<Land {ctx} />
-{#if ctx.kind === 'globe'}
+<Land {ctx} {style} />
+{#if ctx.kind === 'globe' && !isTextureStyle(style)}
   <!-- Decorative sphere shading: a soft highlight up-left and a darker limb, so the disc reads as a ball. -->
   <defs>
     <radialGradient id="{idPrefix}-shade" cx="0.38" cy="0.32" r="0.72">

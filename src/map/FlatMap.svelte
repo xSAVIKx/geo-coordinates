@@ -5,6 +5,7 @@
   import type { LatLon } from '../geo/types';
   import { CLIP_PAD, makeFlatCtx } from './geometry';
   import Layers from './layers/Layers.svelte';
+  import TextureLayer from './texture/TextureLayer.svelte';
   import { FLAT_MAX_ZOOM, mapState } from './mapState.svelte';
   import { clusterClick, type School } from './schools';
   import SchoolPopover from './SchoolPopover.svelte';
@@ -185,7 +186,8 @@
 </script>
 
 <figure class="flat" bind:this={figure}>
-  <div class="frame" bind:clientWidth>
+  <div class="frame" bind:clientWidth data-map-style={mapState.drawnMapStyle}>
+    <TextureLayer {ctx} view="flat" />
     <!-- svelte-ignore a11y_no_noninteractive_tabindex -- keyboard-operable map (spec §7): the SVG is a compound control (pan/zoom/point), not static content -->
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -- pointer/keyboard handlers drive map pan/zoom/point editing per spec §7 -->
     <svg
@@ -240,9 +242,11 @@
 
 <style>
   .flat { position: relative; margin: 0; display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
-  .frame { border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; background: var(--ocean); box-shadow: var(--shadow-2); }
-  svg { display: block; width: 100%; height: auto; user-select: none; -webkit-user-select: none; }
+  .frame { position: relative; border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; background: var(--ocean); box-shadow: var(--shadow-2); }
+  svg { position: relative; display: block; width: 100%; height: auto; user-select: none; -webkit-user-select: none; }
   svg:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
+  /* Satellite's night sea is nearly black: the frame behind the image matches, so no --ocean rim shows at the edges. */
+  .frame[data-map-style='satellite'] { background: #04070d; }
   .toolbar { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
   .toolbar .btn { padding: 0 var(--space-3); font-size: var(--step--1); }
   .toolbar .btn.icon { padding: 0; }

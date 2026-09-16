@@ -2,12 +2,15 @@
   import type { ViewCtx } from '../geometry';
   import { bordersFor, detailFor, landFor, sphere } from '../world';
   import { useMapState } from '../mapStateContext';
+  import type { MapStyle } from '../mapStyle';
   const mapState = useMapState();
-  let { ctx }: { ctx: ViewCtx } = $props();
-  const oceanD = $derived(ctx.path(sphere) ?? '');
+  let { ctx, style = 'atlas' }: { ctx: ViewCtx; style?: MapStyle } = $props();
+  // Atlas draws the sea, land, lakes, rivers and coasts; texture styles show their image instead and keep only the borders.
+  const surface = $derived(style === 'atlas');
+  const oceanD = $derived(surface ? (ctx.path(sphere) ?? '') : '');
   const layers = $derived(landFor(ctx.zoom, ctx.bounds));
   const borderLayers = $derived(mapState.layers.borders ? bordersFor(ctx.zoom, ctx.bounds) : null);
-  const landD = $derived(ctx.path(layers.world) ?? '');
+  const landD = $derived(surface ? (ctx.path(layers.world) ?? '') : '');
   const bordersD = $derived(borderLayers ? (ctx.path(borderLayers.world) ?? '') : '');
   // Central Europe in detail (zoom ≥ 4): a sea-coloured box covers the coarse world land there.
   const region = $derived.by(() => {
@@ -17,27 +20,31 @@
     // From zoom 6: rivers, and the voivodeships as thin dashed lines (with the other borders).
     const detail = detailFor(ctx.zoom, ctx.bounds);
     return {
-      rivers: detail ? detail.rivers.map((river) => ({ id: river.id, d: path(river.line) ?? '' })) : [],
+      rivers: detail && surface ? detail.rivers.map((river) => ({ id: river.id, d: path(river.line) ?? '' })) : [],
       voivodeships: detail && mapState.layers.borders ? (path(detail.voivodeships) ?? '') : '',
-      mask: path(r.mask) ?? '',
-      land: path(r.land) ?? '',
-      lakes: path(r.lakes) ?? '',
-      coast: path(r.coast) ?? '',
+      mask: surface ? (path(r.mask) ?? '') : '',
+      land: surface ? (path(r.land) ?? '') : '',
+      lakes: surface ? (path(r.lakes) ?? '') : '',
+      coast: surface ? (path(r.coast) ?? '') : '',
       borders: borderLayers?.region ? (path(borderLayers.region) ?? '') : '',
     };
   });
 </script>
 
-<path class="ocean" d={oceanD} />
-<path class="land" d={landD} />
+{#if surface}
+  <path class="ocean" d={oceanD} />
+  <path class="land" d={landD} />
+{/if}
 {#if bordersD}<path class="borders" d={bordersD} />{/if}
 {#if region}
   <g class="region" data-detail="central-europe">
-    <path class="mask" d={region.mask} />
-    <path class="region-land" d={region.land} />
-    <path class="lakes" d={region.lakes} />
-    {#each region.rivers as river (river.id)}<path class="river" data-river={river.id} d={river.d} />{/each}
-    <path class="coast" d={region.coast} />
+    {#if surface}
+      <path class="mask" d={region.mask} />
+      <path class="region-land" d={region.land} />
+      <path class="lakes" d={region.lakes} />
+      {#each region.rivers as river (river.id)}<path class="river" data-river={river.id} d={river.d} />{/each}
+      <path class="coast" d={region.coast} />
+    {/if}
     {#if region.voivodeships}<path class="voivodeships" d={region.voivodeships} />{/if}
     {#if region.borders}<path class="borders" d={region.borders} />{/if}
   </g>
