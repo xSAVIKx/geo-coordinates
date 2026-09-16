@@ -14,9 +14,12 @@ function paeth(a: number, b: number, c: number): number {
 }
 
 export const PNG = {
-  /** The image as tightly packed RGBA rows. */
+  /** The image at `path` as tightly packed RGBA rows. */
   read(path: string): Pixels {
-    const buf = readFileSync(path);
+    return PNG.decode(readFileSync(path));
+  },
+  /** The same, from bytes already in hand — a Playwright screenshot buffer, say. */
+  decode(buf: Buffer): Pixels {
     let pos = 8, width = 0, height = 0, channels = 0;
     const idat: Buffer[] = [];
     while (pos < buf.length) {

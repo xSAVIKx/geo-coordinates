@@ -46,7 +46,11 @@
     if (!button) return;
     const r = button.getBoundingClientRect(), h = panel?.offsetHeight ?? 0, below = r.bottom + 4;
     const top = h && below + h > innerHeight - 8 ? Math.max(8, Math.min(r.top - 4 - h, innerHeight - 8 - h)) : below;
-    place = { top, left: Math.max(8, Math.min(r.left, innerWidth - 8 - 232)) };
+    const left = Math.max(8, Math.min(r.left, innerWidth - 8 - 232));
+    // A scroll can leave the panel exactly where it was (a sideways scroll, or one the toolbar absorbed); writing
+    // the same numbers back would still re-render. The browser already coalesces scroll events to one a frame, so
+    // this is the whole of the throttling this needs — a rAF debounce would only add a frame of drift.
+    if (top !== place.top || left !== place.left) place = { top, left };
   }
 
   function toggle() {

@@ -2,6 +2,7 @@ import manifest from '../data/textures/manifest.json';
 import { testFlag } from '../../app/testMode';
 import type { TextureStyle } from '../mapStyle';
 import { RenderFailure, type StyleTextures } from './renderer';
+import { countTextureDecode } from './testHooks';
 
 /*
  * The embedded map textures (scripts/textures-plugin.ts puts each WebP into the page as base64 in a
@@ -42,6 +43,7 @@ export function loadTexture(id: TextureId, maxSize: number): Promise<ImageBitmap
       const size = fitWithin(t.width, t.height, maxSize);
       try {
         const blob = new Blob([decodeBase64(block.textContent)], { type: t.mime });
+        countTextureDecode(); // a cache miss: this image is really being decoded (tests/e2e/perf-smoke.spec.ts)
         return await createImageBitmap(blob, { imageOrientation: 'none', premultiplyAlpha: 'none', colorSpaceConversion: 'none', ...(size.width < t.width ? { resizeWidth: size.width, resizeHeight: size.height, resizeQuality: 'high' as const } : {}) });
       } catch (e) {
         throw new RenderFailure('decode', `texture ${id}: ${(e as Error).message}`);

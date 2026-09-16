@@ -11,6 +11,18 @@ export interface ProbeResult { avg: [number, number, number]; maxSum: number }
 
 const handles = new Map<'flat' | 'globe', TextureViewHandle>();
 
+/*
+ * Two counters the performance smoke spec asserts on instead of the clock (tests/e2e/perf-smoke.spec.ts):
+ * `decodes` counts the times an image was really decoded — a miss in assets.ts's cache, the expensive thing that
+ * must happen once per image per page session — and `uploads` counts the times a style's images were handed to a
+ * view's renderer, which is what a later style switch costs. A wall-clock bound cannot tell those apart on a
+ * machine whose own speed varies by 2×; these can. They are two integers incremented on paths that already do far
+ * more work, and are only ever read back through window.__mapTextures, which exists only under `?test`.
+ */
+const counts = { decodes: 0, uploads: 0 };
+export const countTextureDecode = (): void => { counts.decodes++; };
+export const countTextureUpload = (): void => { counts.uploads++; };
+
 export function registerTextureView(view: 'flat' | 'globe', handle: TextureViewHandle): () => void {
   handles.set(view, handle);
   return () => { if (handles.get(view) === handle) handles.delete(view); };
@@ -26,6 +38,8 @@ export const textureTestHooks = {
   tier: () => renderHealth.state.tier,
   health: () => JSON.parse(JSON.stringify({ ...renderHealth.state, ready: renderHealth.ready })) as unknown,
   drawCount: (view: 'flat' | 'globe') => handles.get(view)?.drawCount() ?? 0,
+  /** How many image decodes and renderer uploads have happened in this page session (see `counts` above). */
+  counts: () => ({ ...counts }),
   /**
    * Mean colour and brightest pixel (r+g+b) within `radius` CSS px of a place, as drawn by the texture layer.
    * `ctx()` is the view the last frame was drawn from — the one `input.view` came from — so the place is projected

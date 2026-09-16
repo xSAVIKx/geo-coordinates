@@ -10,7 +10,7 @@
   import { markReady, renderHealth, reportHealth } from './health.svelte';
   import { regionMix } from './inverse';
   import { RenderFailure, sunVector, type DrawInputs, type TextureRenderer } from './renderer';
-  import { registerTextureView } from './testHooks';
+  import { countTextureUpload, registerTextureView } from './testHooks';
   import { textureView } from './viewParams';
   import { createWebGLRenderer } from './webgl';
 
@@ -87,7 +87,7 @@
     // Re-runs when a scene first asks for the night side: the day images come back from the decode cache, the Black
     // Marble is decoded once and added. The style stays `loaded` throughout, so the day picture never blinks.
     loadStyleTextures(s, max, withNight).then(
-      (t) => { if (cancelled) return; try { r.setTextures(t); loaded = s; loadedNight = t.night !== null; markReady(s); } catch (e) { fail(e); } },
+      (t) => { if (cancelled) return; try { r.setTextures(t); countTextureUpload(); loaded = s; loadedNight = t.night !== null; markReady(s); } catch (e) { fail(e); } },
       (e) => { if (!cancelled) fail(e); },
     ).finally(() => { if (renderHealth.loading === s) renderHealth.loading = null; });
     return () => { cancelled = true; };
