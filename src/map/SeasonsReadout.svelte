@@ -12,7 +12,17 @@
     const s = mapState.sun, p = mapState.point;
     return s && p ? dayInfo(p.lat, dateFromDayAndMinutes(s.year, s.dayOfYear, 720), mapState.realSun) : null;
   });
-  const limits = $derived(info ? polarLimits(info.declination) : null);
+  /**
+   * How close to an equinox counts as "the Sun is over the equator". Within a degree of declination the polar
+   * circles have shrunk to within a degree of the poles themselves, and "polar day south of 89°57′S" is true but
+   * says nothing to a pupil — the readout says the Sun is over the equator instead. One degree (not the half a
+   * degree the picture alone would need) so that the lab's own key dates, 20 March and 23 September, fall inside
+   * it in every year: their declination at 12:00 UTC runs up to about 0.4° as the real equinox drifts by a day.
+   * That is roughly two and a half days either side of each equinox — the polar limits show on the other ~355.
+   * The maths in geo/seasons.ts stays exact; this is only what is worth printing.
+   */
+  const NEAR_EQUINOX = 1;
+  const limits = $derived(info && Math.abs(info.declination) >= NEAR_EQUINOX ? polarLimits(info.declination) : null);
   const duration = (m: number) => { const { h, m: min } = splitMinutes(m); return t('seasons.duration', { h, m: String(min).padStart(2, '0') }); };
   const lat = (v: number) => keepTogether(formatLat(v, i18n.lang, 'minute'));
 </script>

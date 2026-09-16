@@ -56,6 +56,31 @@ test('the Seasons readout in Polish and Ukrainian notation', async ({ page }) =>
   await expect(readout).toContainText(/7 год 51 хв/); // 50°N on 21 December
 });
 
+// Near an equinox the polar circles shrink onto the poles, and "Polar day south of 89°57′S" tells a pupil nothing:
+// SeasonsReadout prints seasons.equinoxNoPolar instead while |declination| < 1°. In 2026 that is day 79 (20 March,
+// declination −0.04°, the lab's own key date); day 82 (23 March) is 1.14° — the first day back outside the threshold.
+const EQUINOX_TEXT = {
+  en: { readout: 'Seasons at the point', equinox: 'No polar day or night: the Sun is over the equator', polar: /Polar day north of 88°\d\d′N/, notPolar: /Polar day north of/ },
+  pl: { readout: 'Pory roku w punkcie', equinox: 'Nie ma dnia ani nocy polarnej: Słońce jest nad równikiem', polar: /Dzień polarny na północ od 88°\d\d′N/, notPolar: /Dzień polarny na północ od/ },
+  uk: { readout: 'Пори року в точці', equinox: 'Немає полярного дня чи ночі: Сонце над екватором', polar: /Полярний день на північ від 88°\d\d′\s?пн\.\s?ш\./, notPolar: /Полярний день на північ від/ },
+} as const;
+
+for (const [lang, text] of Object.entries(EQUINOX_TEXT)) {
+  test(`at an equinox the readout says the Sun is over the equator, not a polar circle at the pole (${lang})`, async ({ page }) => {
+    await openPage(page, `${lang}/lab`, '?test');
+    const setDay = (d: number) => page.evaluate((day) => { const s = (window as unknown as { __mapState: { sun: { utcMinutes: number; dayOfYear: number; year: number } | null } }).__mapState; s.sun = { utcMinutes: 720, dayOfYear: day, year: 2026 }; }, d);
+    await setDay(79);
+    await page.locator('.seasons-toggle').click();
+    const readout = page.getByRole('region', { name: text.readout });
+    await expect(readout).toContainText(text.equinox);
+    await expect(readout).not.toContainText(text.notPolar);
+    await setDay(82);
+    await expect(readout).toContainText(text.polar);
+    await expect(readout).not.toContainText(text.equinox);
+    expect(pageErrors(page)).toEqual([]);
+  });
+}
+
 test('on a phone the orbit is one of the views, and nothing scrolls sideways', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 640 });
   await openPage(page, 'pl/lab');
