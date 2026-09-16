@@ -12,18 +12,24 @@
 // download-dir defaults to .cache/natural-earth (git-ignored, shared with data:borders).
 //
 // Processing: countries of MIN_AREA square degrees or more → one topology (shared borders simplify identically) →
-// Visvalingam weights, vertices under MIN_WEIGHT dropped → rings under RING_MIN_AREA dropped → quantized. Colours
-// by DSatur over shared arcs (scripts/political-colours.ts). Properties per country: a2 (ISO_A2_EH, '' if none),
-// c (colour), lr (LABELRANK), ml (MIN_LABEL), lx/ly (LABEL_X/LABEL_Y).
+// Visvalingam weights, vertices under MIN_WEIGHT dropped → rings under RING_MIN_AREA dropped (except each country's
+// own largest ring, which always survives — RING_MIN_AREA only ever removes a secondary ring: a hole, or a smaller
+// island of a multi-part country) → quantized. Colours by DSatur over shared arcs (scripts/political-colours.ts).
+// Properties per country: a2 (ISO_A2_EH, '' if none), c (colour), lr (LABELRANK), ml (MIN_LABEL), lx/ly
+// (LABEL_X/LABEL_Y).
 //
 // Tuning (brief step 6): MIN_WEIGHT 0.004 gave a 515 KiB file (over the 300 KiB limit); raised to 0.02, which keeps
-// Sevastopol inside Ukraine and lands at about 240 KiB. QUANTIZATION left at 1e5.
+// Sevastopol inside Ukraine and lands at about 240 KiB. QUANTIZATION left at 1e5. Raising MIN_WEIGHT this far
+// simplifies small countries' single ring down near RING_MIN_AREA — without the "keep the largest ring" carve-out
+// above, that combination used to delete 17 whole countries (Malta, Andorra, Singapore, Bahrain, Seychelles,
+// Kiribati, Grenada, Saint Vincent and the Grenadines, Antigua and Barbuda, Micronesia among them) instead of only
+// the intended islets; see tests/unit/political-data.test.ts's completeness check.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Feature, FeatureCollection, MultiPolygon, Polygon } from 'geojson';
 import { geoArea } from 'd3-geo';
 import { topology } from 'topojson-server';
-import { filter, filterWeight, presimplify, simplify } from 'topojson-simplify';
+import { filter, filterWeight, planarRingArea, presimplify, simplify } from 'topojson-simplify';
 import { feature, neighbors, quantize } from 'topojson-client';
 import type { GeometryCollection, Topology } from 'topojson-specification';
 import { colourCountries } from './political-colours.ts';
@@ -58,6 +64,38 @@ function areaSqDeg(f: Feature): number {
   return Math.min(a, 4 * Math.PI - a) * SQ_DEG_PER_STERADIAN;
 }
 
+/** Every polygon part's exterior ring (arc-index array) of a country geometry: one for a Polygon, one per part of a MultiPolygon. */
+function exteriorRings(g: { type: string | null; arcs?: unknown }): number[][] {
+  if (g.type === 'Polygon') return [(g.arcs as number[][])[0]!];
+  if (g.type === 'MultiPolygon') return (g.arcs as number[][][]).map((poly) => poly[0]!);
+  return [];
+}
+
+/** A ring's planar area (arc-index array, resolved to coordinates via the topology it belongs to). */
+function ringArea(topo: Topology, ring: number[]): number {
+  const poly = feature(topo, { type: 'Polygon', arcs: [ring] } as unknown as Parameters<typeof feature>[1]);
+  return planarRingArea((poly as unknown as Feature<Polygon>).geometry.coordinates[0] as unknown as Parameters<typeof planarRingArea>[0]);
+}
+
+/**
+ * Each country's single largest ring (by reference, so it can be tested with Set.has against the same arrays
+ * `filter()` walks). RING_MIN_AREA should only ever drop a secondary ring — a hole, or a smaller island of a
+ * multi-part country — never a country's only or main shape, however small that shape simplified down to.
+ */
+function primaryRings(topo: Topology<{ countries: GeometryCollection<CountryProps> }>): Set<number[]> {
+  const keep = new Set<number[]>();
+  for (const g of topo.objects.countries.geometries) {
+    let best: number[] | undefined;
+    let bestArea = -1;
+    for (const ring of exteriorRings(g)) {
+      const a = ringArea(topo, ring);
+      if (a > bestArea) { bestArea = a; best = ring; }
+    }
+    if (best) keep.add(best);
+  }
+  return keep;
+}
+
 async function main() {
   const args = process.argv.slice(2);
   const dir = args.find((a) => !a.startsWith('--')) ?? DEFAULT_DIR;
@@ -76,7 +114,9 @@ async function main() {
 
   const raw = topology({ countries: { type: 'FeatureCollection', features } as FeatureCollection }) as unknown as Topology<{ countries: GeometryCollection<CountryProps> }>;
   const simple = simplify(presimplify(raw), MIN_WEIGHT);
-  const filtered = filter(simple, filterWeight(simple, RING_MIN_AREA)) as typeof raw;
+  const keep = primaryRings(simple);
+  const byArea = filterWeight(simple, RING_MIN_AREA) as unknown as (ring: number[], interior: boolean) => boolean;
+  const filtered = filter(simple, ((ring: number[], interior: boolean) => keep.has(ring) || byArea(ring, interior)) as unknown as Parameters<typeof filter>[1]) as typeof raw;
   const out = quantize(filtered, QUANTIZATION) as typeof raw;
 
   const geoms = out.objects.countries.geometries;

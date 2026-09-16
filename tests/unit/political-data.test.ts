@@ -27,6 +27,14 @@ describe('political shapes: Natural Earth, Poland point of view', () => {
     expect(geoms.length).toBeGreaterThan(180);
   });
 
+  // Regression: MIN_WEIGHT tuned up for the size budget once simplified a small country's only ring down near
+  // RING_MIN_AREA, so the ring-area filter deleted the whole country instead of only an islet (see build-political.ts).
+  // These are small but real, internationally recognised UN member states — none is a dependency or uninhabited islet.
+  test('small sovereign countries survive simplification, not just large ones', () => {
+    const ids = geoms.map((g) => g.id as string);
+    for (const id of ['MLT', 'SGP', 'BHR', 'AND', 'SYC', 'KIR', 'GRD', 'VCT', 'ATG', 'FSM']) expect(ids, id).toContain(id);
+  });
+
   test('Crimea, Sevastopol and Donbas are in Ukraine; Kosovo, Western Sahara, Moscow and Warsaw where Poland sees them', () => {
     for (const [name, lon, lat] of [['Simferopol', 34.10, 44.95], ['Sevastopol', 33.60, 44.56], ['Donetsk', 37.80, 48.00], ['Luhansk', 39.31, 48.57], ['Kyiv', 30.52, 50.45]] as const) {
       expect(at(lon, lat), name).toEqual(['UKR']);
