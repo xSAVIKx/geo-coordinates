@@ -5,7 +5,7 @@
   import { mapState } from '../mapState.svelte';
   import { isTextureStyle, type TextureStyle } from '../mapStyle';
   import { REGION, REGION_MIN_ZOOM } from '../world';
-  import { loadStyleTextures } from './assets';
+  import { loadStyleTextures, releaseTexturesExcept } from './assets';
   import { createCanvasRenderer } from './canvas2d';
   import { markReady, renderHealth, reportHealth } from './health.svelte';
   import { regionMix } from './inverse';
@@ -87,10 +87,26 @@
     // Re-runs when a scene first asks for the night side: the day images come back from the decode cache, the Black
     // Marble is decoded once and added. The style stays `loaded` throughout, so the day picture never blinks.
     loadStyleTextures(s, max, withNight).then(
-      (t) => { if (cancelled) return; try { r.setTextures(t); countTextureUpload(); loaded = s; loadedNight = t.night !== null; markReady(s); } catch (e) { fail(e); } },
+      (t) => {
+        if (cancelled) return;
+        try {
+          r.setTextures(t); countTextureUpload(); loaded = s; loadedNight = t.night !== null; markReady(s);
+          // This renderer now holds its own copy, so the *other* style's decoded images (and any left over from a
+          // larger `max` before a tier or size fallback) are dead weight: about 107 MB of RGBA once both styles
+          // have been opened. Giving them back here, rather than on a timer, keeps it deterministic — coming back
+          // to that style decodes it again (tests/e2e/perf-smoke.spec.ts measures both halves of that trade).
+          releaseTexturesExcept(s, max);
+        } catch (e) { fail(e); }
+      },
       (e) => { if (!cancelled) fail(e); },
     ).finally(() => { if (renderHealth.loading === s) renderHealth.loading = null; });
     return () => { cancelled = true; };
+  });
+
+  // Atlas and Political draw no texture at all: whatever was decoded for a texture style is pure overhead from
+  // here on, so it goes back too. (Both views run this; the second call finds nothing left to free.)
+  $effect(() => {
+    if (!isTextureStyle(style)) releaseTexturesExcept(null, 0);
   });
 
   /**

@@ -1,4 +1,5 @@
 import type { ViewCtx } from '../geometry';
+import { cachedTextureBytes } from './assets';
 import { renderHealth } from './health.svelte';
 import type { DrawInputs, TextureRenderer } from './renderer';
 
@@ -38,8 +39,12 @@ export const textureTestHooks = {
   tier: () => renderHealth.state.tier,
   health: () => JSON.parse(JSON.stringify({ ...renderHealth.state, ready: renderHealth.ready })) as unknown,
   drawCount: (view: 'flat' | 'globe') => handles.get(view)?.drawCount() ?? 0,
-  /** How many image decodes and renderer uploads have happened in this page session (see `counts` above). */
-  counts: () => ({ ...counts }),
+  /**
+   * How many image decodes and renderer uploads have happened in this page session (see `counts` above), and how
+   * much decoded RGBA the asset cache is holding right now — the number the release in assets.ts exists to keep
+   * down (tests/e2e/perf-smoke.spec.ts).
+   */
+  counts: () => ({ ...counts, bytes: cachedTextureBytes() }),
   /**
    * Mean colour and brightest pixel (r+g+b) within `radius` CSS px of a place, as drawn by the texture layer.
    * `ctx()` is the view the last frame was drawn from — the one `input.view` came from — so the place is projected
