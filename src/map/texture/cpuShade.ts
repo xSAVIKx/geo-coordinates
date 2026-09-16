@@ -66,8 +66,16 @@ function sample(s: Sampled, u: number, v: number, wrap: boolean, rgb: Float64Arr
 
 const day = new Float64Array(3), other = new Float64Array(3);
 
-/** Premultiplied RGBA of one view point into out[at..at+3]. (x, y) are view units, the same frame the SVG draws in. */
-export function shadePixel(input: DrawInputs, t: CpuTextures, x: number, y: number, out: Uint8ClampedArray, at: number): void {
+/**
+ * Straight (un-premultiplied) RGBA of one view point into out[at..at+3]. (x, y) are view units, the same frame the
+ * SVG draws in; `viewPx` is drawing-buffer pixels per view unit, the shader's `uViewPx`.
+ *
+ * Straight, not premultiplied: the caller's buffer is an `ImageData`, and `putImageData` reads it as straight
+ * alpha. Writing `rgb·α` there and letting the canvas composite it again made the globe's rim and the Satellite
+ * glow come out at `rgb·α²` — invisible on this tier alone. Only the globe's rim and that glow have α < 1, which
+ * is why the tier-parity test, which reads interior pixels, never saw it.
+ */
+export function shadePixel(input: DrawInputs, t: CpuTextures, x: number, y: number, out: Uint8ClampedArray, at: number, viewPx: number): void {
   const v = input.view;
   const inv = inverseProject(v, x, y);
   if (!inv || wrappedPastAntimeridian(v, inv.lambda, inv.phi, x)) {
@@ -77,7 +85,10 @@ export function shadePixel(input: DrawInputs, t: CpuTextures, x: number, y: numb
       const k = Math.max(0, Math.min(1, 1 - ((rho - 1) * v.scale) / 6)); // 6 view units wide
       a = 0.55 * k * k;
     }
-    out[at] = 0.45 * a * 255; out[at + 1] = 0.7 * a * 255; out[at + 2] = a * 255; out[at + 3] = a * 255;
+    // Straight alpha: the glow's own colour, not that colour times its alpha. Off the glow (and off the globe)
+    // the shader writes vec4(0.0), so a fully transparent pixel stays all-zero here too.
+    const lit = a > 0 ? 255 : 0;
+    out[at] = 0.45 * lit; out[at + 1] = 0.7 * lit; out[at + 2] = lit; out[at + 3] = a * 255;
     return;
   }
   const { lambda, phi, rho } = inv;
@@ -101,7 +112,8 @@ export function shadePixel(input: DrawInputs, t: CpuTextures, x: number, y: numb
   let alpha = 1;
   if (v.projection === 3) {
     if (input.limb) { const k = 0.78 + 0.22 * Math.pow(Math.sqrt(Math.max(0, 1 - rho * rho)), 0.35); for (let c = 0; c < 3; c++) day[c] = day[c]! * k; }
-    alpha = Math.max(0, Math.min(1, (1 - rho) * v.scale + 0.5));
+    // `* viewPx` like the shader's line: the rim's fade is one *drawing-buffer* pixel wide, not one view unit.
+    alpha = Math.max(0, Math.min(1, (1 - rho) * v.scale * viewPx + 0.5));
   }
-  out[at] = day[0]! * alpha; out[at + 1] = day[1]! * alpha; out[at + 2] = day[2]! * alpha; out[at + 3] = alpha * 255;
+  out[at] = day[0]!; out[at + 1] = day[1]!; out[at + 2] = day[2]!; out[at + 3] = alpha * 255;
 }

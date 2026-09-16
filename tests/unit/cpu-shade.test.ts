@@ -11,7 +11,7 @@ const solid = (w: number, h: number, f: (x: number, y: number) => [number, numbe
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const [r, g, b] = f(x, y); data.set([r, g, b, 255], (y * w + x) * 4); }
   return { width: w, height: h, data };
 };
-const px = (input: DrawInputs, t: Parameters<typeof shadePixel>[1], x: number, y: number) => { const out = new Uint8ClampedArray(4); shadePixel(input, t, x, y, out, 0); return [...out]; };
+const px = (input: DrawInputs, t: Parameters<typeof shadePixel>[1], x: number, y: number, viewPx = 1) => { const out = new Uint8ClampedArray(4); shadePixel(input, t, x, y, out, 0, viewPx); return [...out]; };
 const inputFor = (ctx: ReturnType<typeof makeFlatCtx>, extra: Partial<DrawInputs> = {}): DrawInputs => {
   const view = textureView(ctx);
   return { view, regionMix: regionMix(view, REGION, REGION_MIN_ZOOM), night: null, limb: false, glow: false, quality: 'full', debug: 0, ...extra };
@@ -76,6 +76,41 @@ describe('the canvas path shades pixels like the shader', () => {
       }
     }
     expect(clipped, 'points that inverseProject wrapped and the shader clips').toBeGreaterThan(100);
+  });
+
+  /*
+   * The canvas tier's buffer is an ImageData, and `putImageData` reads it as *straight* alpha. Writing rgb·α into
+   * it (what this function used to do) let the canvas multiply by α a second time, so the globe's rim and the
+   * Satellite glow -- the only pixels here with α < 1 -- composited at rgb·α². The parity test above reads
+   * interior pixels, where α is exactly 1, which is why it could not see this.
+   */
+  test('partly transparent pixels carry their full colour, not colour times alpha', () => {
+    const t = { day: white, region: black, night: null };
+    const globe = makeGlobeCtx(500, [0, 0], 1, 1); // rim at radius 244
+    const g = { ...inputFor(globe as never), limb: false, glow: true };
+    const glow = px(g, t, 250 + 246, 250);
+    expect(glow[3]!, 'the glow is faint').toBeLessThan(100);
+    expect(glow[0]!, 'but its blue is the full 0.45/0.70/1.00, not that times the alpha').toBeGreaterThan(100);
+    expect(glow[2]).toBe(255);
+    const rim = px(g, t, 250 + 243.7, 250);
+    expect(rim[3]!, 'the rim pixel is half-covered').toBeGreaterThan(0);
+    expect(rim[3]!).toBeLessThan(255);
+    expect(rim[0], 'and still the white of the texture under it').toBe(255);
+  });
+
+  /*
+   * The shader fades the globe's rim over one *drawing-buffer pixel* (`uScale * uViewPx`, shaders.ts); the CPU
+   * copy used to leave `uViewPx` out, so at any resolution other than one buffer pixel per view unit its rim was
+   * softer than the shader's. Twice the resolution, half the fade in view units.
+   */
+  test("the rim's fade follows the drawing resolution, like the shader's uViewPx", () => {
+    const t = { day: white, region: black, night: null };
+    const g = { ...inputFor(makeGlobeCtx(500, [0, 0], 1, 1) as never), limb: false, glow: false };
+    const at1 = px(g, t, 250 + 243.7, 250)[3]!;
+    const at2 = px(g, t, 250 + 243.7, 250, 2)[3]!;
+    expect(at1).toBeGreaterThan(0);
+    expect(at1).toBeLessThan(255);
+    expect(at2, 'at twice the buffer resolution the same view point is further inside the rim').toBeGreaterThan(at1);
   });
 
   test('day and night blend across a twilight band from 0° to −6°', () => {

@@ -44,9 +44,12 @@ export function createCanvasRenderer(canvas: HTMLCanvasElement, forced: string |
       const w = Math.max(1, Math.round(canvas.width * scale)), h = Math.max(1, Math.round(canvas.height * scale));
       const img = new ImageData(w, h);
       const v = input.view;
+      // The shader's `uViewPx`: buffer pixels per view unit, at the resolution this frame is really shaded at (a
+      // 'fast' frame is a quarter of it and is scaled up afterwards), so the globe's rim fades over one drawn pixel.
+      const viewPx = w / v.width;
       for (let j = 0; j < h; j++) {
         const y = ((j + 0.5) * v.height) / h;
-        for (let i = 0; i < w; i++) shadePixel(input, tex, ((i + 0.5) * v.width) / w, y, img.data, (j * w + i) * 4);
+        for (let i = 0; i < w; i++) shadePixel(input, tex, ((i + 0.5) * v.width) / w, y, img.data, (j * w + i) * 4, viewPx);
       }
       g.clearRect(0, 0, canvas.width, canvas.height);
       if (scale === 1) { g.putImageData(img, 0, 0); return; }
