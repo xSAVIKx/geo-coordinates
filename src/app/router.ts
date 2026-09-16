@@ -28,7 +28,7 @@ export function parseRoute(hash: string, fallbackLang: LangCode): Route {
     const seed = new URLSearchParams(query).get('seed');
     return { name: 'class-quiz', lang, seed: seed && /^[\w-]{1,32}$/.test(seed) ? seed : null };
   }
-  const m = /^topic-(\d)$/.exec(head ?? '');
+  const m = /^topic-([1-9]\d?)$/.exec(head ?? '');
   if (!m) return home;
   const n = Number(m[1]);
   if (!(TOPIC_IDS as readonly number[]).includes(n)) return home;

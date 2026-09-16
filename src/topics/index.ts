@@ -8,9 +8,10 @@ import { topic6 } from './t6-differences';
 import { topic7 } from './t7-distance';
 import { topic8 } from './t8-time';
 import { topic9 } from './t9-phone';
+import { topic10 } from './t10-seasons';
 import type { TopicDef } from './types';
 
-export const TOPICS: Partial<Record<TopicId, TopicDef>> = { 1: topic1, 2: topic2, 3: topic3, 4: topic4, 5: topic5, 6: topic6, 7: topic7, 8: topic8, 9: topic9 };
+export const TOPICS: Partial<Record<TopicId, TopicDef>> = { 1: topic1, 2: topic2, 3: topic3, 4: topic4, 5: topic5, 6: topic6, 7: topic7, 8: topic8, 9: topic9, 10: topic10 };
 
 export function getTopic(id: TopicId): TopicDef | undefined {
   return TOPICS[id];

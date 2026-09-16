@@ -48,7 +48,7 @@ test('topic 9 is Explore only: no Practise tab or card button, its practice addr
   await expect(page).toHaveURL(/#en\/topic-9\/explore$/);
   await expect(page.locator('#step-title')).toHaveText('Your phone knows where it is');
   await expect(page.getByRole('navigation', { name: 'Topic sections' }).getByRole('link')).toHaveText(['Learn']);
-  await expect(page.getByRole('link', { name: /Next topic/ })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Next topic: Why we have seasons' })).toBeVisible();
 
   await page.goto(page.url().replace(/#.*/, '#en/topic-9/explore/8'));
   await expect(page.getByRole('link', { name: 'Back to all topics' })).toBeVisible();

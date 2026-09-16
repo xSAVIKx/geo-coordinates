@@ -40,7 +40,7 @@ test('topic 9 is Explore only: no question types or modules, so rehearsal and cl
   expect(modulesForTopic(9)).toEqual([]);
   // The filter Rehearsal.svelte and ClassQuiz.svelte use for their topic lists.
   expect(TOPIC_IDS.filter((id) => modulesForTopic(id).length > 0)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
-  for (const id of TOPIC_IDS) if (id !== 9) expect(TOPICS[id]!.questionTypes.length, `topic ${id}`).toBeGreaterThan(0);
+  for (const id of TOPIC_IDS) if (id !== 9 && id !== 10) expect(TOPICS[id]!.questionTypes.length, `topic ${id}`).toBeGreaterThan(0);
 });
 
 test('topic 9 texts: the numbers in the steps match the formatting helpers and the scenes', async () => {
