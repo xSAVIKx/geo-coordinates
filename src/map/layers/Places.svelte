@@ -224,7 +224,7 @@
 {/each}
 
 <style>
-  .place { fill: var(--text); stroke: var(--halo); stroke-width: calc(1.5px * var(--stroke-scale)); vector-effect: non-scaling-stroke; }
+  .place { fill: var(--text); stroke: var(--map-casing); stroke-width: calc(1.5px * var(--stroke-scale)); vector-effect: non-scaling-stroke; }
   .place.minor { fill: var(--map-label); fill-opacity: 0.55; stroke-width: calc(1px * var(--stroke-scale)); }
   .place-name { fill: var(--text); }
   .school-name { fill: var(--school-text); font-weight: 650; }

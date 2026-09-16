@@ -22,7 +22,7 @@
 <path class="grid" d={d} />
 
 <style>
-  .grid-casing { fill: none; stroke: var(--halo); stroke-width: calc(2.75px * var(--stroke-scale)); stroke-opacity: 0.55; vector-effect: non-scaling-stroke; pointer-events: none; }
+  .grid-casing { fill: none; stroke: var(--map-casing); stroke-width: calc(2.75px * var(--stroke-scale)); stroke-opacity: 0.55; vector-effect: non-scaling-stroke; pointer-events: none; }
   .grid { fill: none; stroke: var(--grid); stroke-width: calc(0.75px * var(--stroke-scale)); stroke-opacity: 0.5; vector-effect: non-scaling-stroke; pointer-events: none; }
   :global(.frame[data-map-style]:not([data-map-style="atlas"])) .grid { stroke-opacity: 0.8; }
 </style>

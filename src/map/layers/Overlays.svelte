@@ -89,18 +89,18 @@
 
 <style>
   .hl-region { fill: var(--accent); fill-opacity: 0.16; stroke: var(--accent); stroke-width: calc(2px * var(--stroke-scale)); vector-effect: non-scaling-stroke; }
-  .hl-casing { fill: none; stroke: var(--halo); stroke-width: calc(9px * var(--stroke-scale)); stroke-opacity: 0.6; vector-effect: non-scaling-stroke; }
-  .noon-casing { fill: none; stroke: var(--halo); stroke-width: calc(8px * var(--stroke-scale)); stroke-opacity: 0.7; vector-effect: non-scaling-stroke; pointer-events: none; }
+  .hl-casing { fill: none; stroke: var(--map-casing); stroke-width: calc(9px * var(--stroke-scale)); stroke-opacity: 0.6; vector-effect: non-scaling-stroke; }
+  .noon-casing { fill: none; stroke: var(--map-casing); stroke-width: calc(8px * var(--stroke-scale)); stroke-opacity: 0.7; vector-effect: non-scaling-stroke; pointer-events: none; }
   .noon { fill: none; stroke: var(--noon); stroke-width: calc(4px * var(--stroke-scale)); stroke-dasharray: 10 6; stroke-linecap: round; vector-effect: non-scaling-stroke; pointer-events: none; }
   .noon-t { fill: var(--text); font-weight: 800; }
   .hl-line { fill: none; stroke: var(--accent); stroke-width: calc(5px * var(--stroke-scale)); stroke-opacity: 0.9; stroke-linecap: round; vector-effect: non-scaling-stroke; }
-  .marker path { stroke-width: calc(3px * var(--stroke-scale)); vector-effect: non-scaling-stroke; stroke: var(--halo); paint-order: stroke; stroke-linejoin: round; }
+  .marker path { stroke-width: calc(3px * var(--stroke-scale)); vector-effect: non-scaling-stroke; stroke: var(--map-casing); paint-order: stroke; stroke-linejoin: round; }
   .marker text { fill: var(--text); font-weight: 750; }
   .tone-a path { fill: var(--marker-a); } .tone-b path { fill: var(--marker-b); }
   .tone-c path { fill: var(--marker-c); } .tone-d path { fill: var(--marker-d); }
   .tone-answer path { fill: color-mix(in srgb, var(--marker-answer) 18%, transparent); stroke: var(--marker-answer); stroke-width: calc(4px * var(--stroke-scale)); stroke-linecap: round; }
   .diff { pointer-events: none; }
-  .bracket-casing { fill: none; stroke: var(--halo); stroke-width: calc(8px * var(--stroke-scale)); stroke-opacity: 0.75; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+  .bracket-casing { fill: none; stroke: var(--map-casing); stroke-width: calc(8px * var(--stroke-scale)); stroke-opacity: 0.75; stroke-linecap: round; vector-effect: non-scaling-stroke; }
   .bracket { fill: none; stroke: var(--marker-c); stroke-width: calc(4px * var(--stroke-scale)); stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
   .split { fill: var(--surface); stroke: var(--marker-c); stroke-width: calc(3px * var(--stroke-scale)); vector-effect: non-scaling-stroke; }
   .diff .total { fill: var(--marker-c); font-weight: 800; }

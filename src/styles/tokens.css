@@ -85,6 +85,11 @@
   --map-label: #3c4b5a;
   --ocean-label: #34617f;
   --halo: #f8fbfd;
+  /* The casing stroke under the grid, special lines, point guides and marker rims. Defaults to the
+   * ambient text halo (`var()` re-resolves per theme, so this tracks --halo automatically), but
+   * Physical and Political override it below to a value that stays robust over their own imagery,
+   * which --halo alone cannot guarantee (see the note by that override). */
+  --map-casing: var(--halo);
   --equator: #c2410c;
   --prime: #6d28d9;
   --antimeridian: #0f766e;
@@ -220,6 +225,23 @@
 :root[data-presenter="true"] .frame[data-map-style="satellite"] {
   --text: #ffffff; --map-label: #ffffff; --ocean-label: #e1f0fb; --grid: #eef4fa;
   --equator-text: #ffe3c2; --prime-text: #ede9fe; --antimeridian-text: #ccfbf1; --tropics-text: #fef08a; --river-label: #e6f3fc;
+}
+/* Physical's relief (ice to ocean depths) and Political's country fills can be very bright in either
+ * theme — unlike Satellite, which is always dark, so a single fixed --halo covers it. A casing tied to
+ * the ambient --halo then gives *no* contrast boost at all where the ambient halo is itself light
+ * (light theme's near-white `#f8fbfd`): over Greenland or Antarctica the grid casing, special-line
+ * casing, point-guide casing and marker rims all nearly vanish (measured: ~3.9:1 for the bare grid
+ * line alone, well under this element's own halo-assisted design intent, and the casing itself added
+ * no separation from the ice). Fixing --map-casing (not --halo) keeps map *text* untouched: text
+ * already pairs light/dark ink with the opposite-extreme --halo and was never the problem. This value
+ * matches dark theme's own --halo, which the same over-ice check already passes. --grid also gets a
+ * fixed value: dark theme's ambient --grid (#7f9ab3) is deliberately light so it shows on a dark
+ * *page*, but composited over this dark casing that same light blue washes the line's core back out
+ * over bright ice (measured over Antarctica: 2.88:1, just under AA). Light theme's own ambient --grid
+ * already measures comfortably over both real bright regions, so both themes now use that value. */
+.frame[data-map-style="physical"], .frame[data-map-style="political"] {
+  --map-casing: #0f2233;
+  --grid: #6d88a0;
 }
 :root[data-large-text="true"] { --fs-scale: 1.25; }
 /* Big screens at 100% scaling: the whole interface steps up, so type, spacing and 44px targets keep their

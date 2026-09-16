@@ -34,10 +34,10 @@
 {/if}
 
 <style>
-  .guide-casing { fill: none; stroke: var(--halo); stroke-width: calc(4px * var(--stroke-scale)); stroke-opacity: 0.6; vector-effect: non-scaling-stroke; pointer-events: none; }
+  .guide-casing { fill: none; stroke: var(--map-casing); stroke-width: calc(4px * var(--stroke-scale)); stroke-opacity: 0.6; vector-effect: non-scaling-stroke; pointer-events: none; }
   .guide { fill: none; stroke: var(--accent); stroke-width: calc(1.75px * var(--stroke-scale)); stroke-dasharray: 7 4; vector-effect: non-scaling-stroke; pointer-events: none; }
   .hit { fill: transparent; }
-  .halo-ring { fill: none; stroke: var(--halo); stroke-width: calc(7px * var(--stroke-scale)); vector-effect: non-scaling-stroke; }
+  .halo-ring { fill: none; stroke: var(--map-casing); stroke-width: calc(7px * var(--stroke-scale)); vector-effect: non-scaling-stroke; }
   .ring { fill: var(--accent); fill-opacity: 0.22; stroke: var(--accent); stroke-width: calc(3px * var(--stroke-scale)); vector-effect: non-scaling-stroke; }
   .dot { fill: var(--accent); }
   .editable { cursor: grab; touch-action: none; }

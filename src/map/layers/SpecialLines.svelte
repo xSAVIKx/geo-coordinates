@@ -39,7 +39,7 @@
 {/if}
 
 <style>
-  .casing { fill: none; stroke: var(--halo); stroke-width: calc(6px * var(--stroke-scale)); stroke-opacity: 0.55; vector-effect: non-scaling-stroke; pointer-events: none; }
+  .casing { fill: none; stroke: var(--map-casing); stroke-width: calc(6px * var(--stroke-scale)); stroke-opacity: 0.55; vector-effect: non-scaling-stroke; pointer-events: none; }
   .line { fill: none; vector-effect: non-scaling-stroke; stroke-linecap: butt; }
   path.equator { stroke: var(--equator); stroke-width: calc(3px * var(--stroke-scale)); }
   path.prime { stroke: var(--prime); stroke-width: calc(3px * var(--stroke-scale)); stroke-dasharray: 12 5; }

@@ -93,6 +93,7 @@ svg text.halo { paint-order: stroke; stroke: var(--halo); stroke-width: 3px; str
 /* Over relief, photos and country colours every map text keeps a full, slightly wider halo (spec §3); presenter wider still. */
 .frame[data-map-style]:not([data-map-style="atlas"]) svg text.halo { stroke-opacity: 1; stroke-width: 4px; }
 :root[data-presenter="true"] .frame[data-map-style]:not([data-map-style="atlas"]) svg text.halo { stroke-width: 5.5px; }
+.frame[data-map-style]:not([data-map-style="atlas"]) .grid-casing,
 .frame[data-map-style]:not([data-map-style="atlas"]) .guide-casing,
 .frame[data-map-style]:not([data-map-style="atlas"]) .casing,
 .frame[data-map-style]:not([data-map-style="atlas"]) .hl-casing,
