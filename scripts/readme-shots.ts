@@ -34,7 +34,9 @@ for (const shot of SHOTS) {
     // The style (set before goto) and the Sun (set here, before the layer's first paint) both land inside the
     // texture layer's very first draw, so the WebGL tier never needs a second frame: wait for that one frame
     // (>= 1, matching tests/e2e/helpers.ts's waitForTexture) rather than a redraw an already-correct picture
-    // never produces.
+    // never produces. This condition alone doesn't guarantee THIS is that frame — under host contention a
+    // stale draw from before the Sun was set could already satisfy >= 1 — so don't drop the fixed 600ms wait
+    // below: it, not this poll, is what gives the correct (Sun-including) frame time to land on screen.
     await page.evaluate((sun) => { (window as any).__mapState.sun = { ...sun, year: 2026 }; }, shot.sun);
     await page.waitForFunction(() => (window as any).__mapTextures.drawCount('flat') >= 1, null, { timeout: 15_000 });
   }
