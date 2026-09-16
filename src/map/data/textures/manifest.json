@@ -1,0 +1,75 @@
+{
+  "generatedBy": "scripts/build-textures.py",
+  "textures": {
+    "physical-world": {
+      "file": "physical-world.webp",
+      "width": 4096,
+      "height": 2048,
+      "bounds": [
+        -180,
+        -90,
+        180,
+        90
+      ],
+      "source": "Natural Earth HYP_50M_SR_W 2.0.0 (public domain), https://www.naturalearthdata.com/",
+      "bytes": 411236,
+      "mime": "image/webp"
+    },
+    "physical-region": {
+      "file": "physical-region.webp",
+      "width": 720,
+      "height": 420,
+      "bounds": [
+        8,
+        44,
+        32,
+        58
+      ],
+      "source": "Natural Earth HYP_50M_SR_W 2.0.0 (public domain), https://www.naturalearthdata.com/; native 30 px/deg crop",
+      "bytes": 34246,
+      "mime": "image/webp"
+    },
+    "satellite-day": {
+      "file": "satellite-day.webp",
+      "width": 4096,
+      "height": 2048,
+      "bounds": [
+        -180,
+        -90,
+        180,
+        90
+      ],
+      "source": "NASA Earth Observatory, Blue Marble Next Generation, July 2004 (public domain), https://earthobservatory.nasa.gov/; 5400 x 2700 source",
+      "bytes": 529126,
+      "mime": "image/webp"
+    },
+    "satellite-region": {
+      "file": "satellite-region.webp",
+      "width": 1440,
+      "height": 840,
+      "bounds": [
+        8,
+        44,
+        32,
+        58
+      ],
+      "source": "NASA Earth Observatory, Blue Marble Next Generation, July 2004 (public domain), https://earthobservatory.nasa.gov/; 21600 x 10800 source, native 60 px/deg crop",
+      "bytes": 154198,
+      "mime": "image/webp"
+    },
+    "satellite-night": {
+      "file": "satellite-night.webp",
+      "width": 4096,
+      "height": 2048,
+      "bounds": [
+        -180,
+        -90,
+        180,
+        90
+      ],
+      "source": "NASA Earth Observatory, Black Marble 2016 (public domain), https://earthobservatory.nasa.gov/; 13500 x 6750 source",
+      "bytes": 233286,
+      "mime": "image/webp"
+    }
+  }
+}

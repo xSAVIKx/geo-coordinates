@@ -21,7 +21,8 @@
     "shots:readme": "node --experimental-strip-types scripts/readme-shots.ts",
     "brand": "node --experimental-strip-types scripts/brand-assets.ts",
     "data:regional": "node --experimental-strip-types scripts/build-regional-data.ts",
-    "data:borders": "node --experimental-strip-types scripts/build-world-borders.ts"
+    "data:borders": "node --experimental-strip-types scripts/build-world-borders.ts",
+    "data:textures": "python3 scripts/build-textures.py"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
