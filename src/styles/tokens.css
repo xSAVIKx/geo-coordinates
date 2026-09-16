@@ -124,6 +124,11 @@
   --school-border: #ffffff;
   --school-contrast: #ffffff;
   --school-text: #9d174d;
+  /* Physical style: the rivers and lakes drawn over the relief, and the names of mountains, deserts and seas.
+     The relief texture is the same image in either theme (it has no theme), so these keep one value in all of
+     them: dark inks on --relief-halo, a fixed light halo, the same reasoning as the fixed --map-casing below. */
+  --physical-water: #9cc9e8; --physical-water-edge: #3f7fb5;
+  --relief-label: #5a3a1c; --sea-label: #1d4f7a; --relief-halo: #f8fbfd;
   /* Political style: pastel country fills (neighbours never share one), their borders and coasts. */
   --pol-0: #f6e3b4; --pol-1: #cfe6c1; --pol-2: #f5cfc6; --pol-3: #d6d9f2; --pol-4: #c9e7e5; --pol-5: #efd9ea;
   --pol-border: #6b6152; --pol-coast: #7d8fa0;
@@ -150,7 +155,9 @@
     --night: rgb(0 3 12 / 0.66); --twilight: rgb(0 3 12 / 0.28); --daylit: rgb(255 222 140 / 0.16); --sun: #fbbf24; --sun-stroke: #fde68a; --moon: #b4bdf5; --noon: #fbbf24;
     --river: #5ea8e6; --river-label: #9fd0f5;
     --school: #f9a8d4; --school-border: #161d26; --school-contrast: #0b1320; --school-text: #f9a8d4;
-    --pol-0: #4a4231; --pol-1: #34462f; --pol-2: #4d3632; --pol-3: #383b52; --pol-4: #2f4948; --pol-5: #463646;
+    --physical-water: #9cc9e8; --physical-water-edge: #3f7fb5;
+    --relief-label: #5a3a1c; --sea-label: #1d4f7a; --relief-halo: #f8fbfd;
+  --pol-0: #4a4231; --pol-1: #34462f; --pol-2: #4d3632; --pol-3: #383b52; --pol-4: #2f4948; --pol-5: #463646;
     --pol-border: #c9bfa6; --pol-coast: #8fa6ba;
   }
 }
@@ -174,6 +181,8 @@
   --night: rgb(0 3 12 / 0.66); --twilight: rgb(0 3 12 / 0.28); --daylit: rgb(255 222 140 / 0.16); --sun: #fbbf24; --sun-stroke: #fde68a; --moon: #b4bdf5; --noon: #fbbf24;
     --river: #5ea8e6; --river-label: #9fd0f5;
     --school: #f9a8d4; --school-border: #161d26; --school-contrast: #0b1320; --school-text: #f9a8d4;
+  --physical-water: #9cc9e8; --physical-water-edge: #3f7fb5;
+  --relief-label: #5a3a1c; --sea-label: #1d4f7a; --relief-halo: #f8fbfd;
   --pol-0: #4a4231; --pol-1: #34462f; --pol-2: #4d3632; --pol-3: #383b52; --pol-4: #2f4948; --pol-5: #463646;
   --pol-border: #c9bfa6; --pol-coast: #8fa6ba;
 }
@@ -246,6 +255,9 @@
  * *page*, but composited over this dark casing that same light blue washes the line's core back out
  * over bright ice (measured over Antarctica: 2.88:1, just under AA). Light theme's own ambient --grid
  * already measures comfortably over both real bright regions, so both themes now use that value. */
+/* Presenter mode is AAA: the two relief inks step darker against the same fixed light --relief-halo (both are
+ * already past 7:1, so this is headroom for the bright terrain showing through the halo's edges). */
+:root[data-presenter="true"] .frame[data-map-style="physical"] { --relief-label: #3f2812; --sea-label: #123a5c; }
 .frame[data-map-style="physical"], .frame[data-map-style="political"] {
   --map-casing: #0f2233;
   --grid: #6d88a0;

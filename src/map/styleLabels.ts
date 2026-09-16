@@ -1,17 +1,20 @@
 import type { LangCode } from '../geo/types';
+import { t } from '../i18n/i18n.svelte';
 import { labelWidth } from './brackets';
 import type { ViewCtx } from './geometry';
 import { overlaps, selectLabelPlacements, textBox, type LabelBox } from './labelLayout';
+import { PHYSICAL_NAMES, type PhysicalKind } from './physical';
 import { tierZoom } from './places';
 import { countryLabels, countryName } from './political';
 
 /*
- * Names that only some map styles write (spec §4): country names (Political), and from Task 13 physical names
- * (Physical). Placed with the place names by Places.svelte, clear of everything already on the map (labelLayout.ts).
+ * Names that only some map styles write (spec §4): country names (Political) and physical names (Physical).
+ * Placed with the place names by Places.svelte, clear of everything already on the map (labelLayout.ts).
  */
 export interface StyleLabel { id: string; text: string; x: number; y: number; size: number; box: LabelBox }
 
 export const COUNTRY_FONT = 11;
+export const PHYSICAL_FONT = 11.5;
 
 const insideView = (ctx: ViewCtx, xy: [number, number]) => xy[0] >= 0 && xy[0] <= ctx.width && xy[1] >= 0 && xy[1] <= ctx.height;
 
@@ -52,5 +55,46 @@ export function placeCountryLabels(ctx: ViewCtx, lang: LangCode, obstacles: read
   return items.flatMap((i, k) => {
     const o = chosen[k]! >= 0 ? i.options[chosen[k]!]! : null;
     return o ? [{ id: i.id, text: i.text, x: i.x, y: o.y, size, box: o.box }] : [];
+  });
+}
+
+/**
+ * The Physical style's names of mountains, deserts, plateaux, seas and great rivers (physical.ts), from the zoom an
+ * atlas would first print each at. Most important (smallest `minZoom`) first, so on a crowded view the Alps beat the
+ * Tatras. A name belongs to a whole range, not to a dot, so it keeps its own spot unless an `obstacle` — every name
+ * already on the map — is on it; then it steps one line up, down, left or right, and is left out only if none is free.
+ * (Without that step a single city name erased a name the size of the Sahara, and the Physical world map, which has
+ * no continent names to fall back on, came out nearly bare.) A name that would run off the side is always left out.
+ */
+export function placePhysicalLabels(ctx: ViewCtx, lang: LangCode, obstacles: readonly LabelBox[]): (StyleLabel & { kind: PhysicalKind })[] {
+  // The plain view zoom, not `tierZoom` (which place and country names use to thin themselves out on a narrow
+  // map): these minZooms are the zooms an atlas first prints each name at, and on a narrow map the names are
+  // drawn proportionally larger, so the placement below already drops the ones that no longer fit. Scaling the
+  // zoom down as well would leave the Physical world map with no names at all — and it has no continent names
+  // to fall back on, since these replace them.
+  const zoom = ctx.zoom;
+  const size = PHYSICAL_FONT * ctx.px;
+  const items = PHYSICAL_NAMES.flatMap((p, rank) => {
+    if (zoom < p.minZoom) return [];
+    const xy = ctx.project(p);
+    if (!xy || !insideView(ctx, xy)) return [];
+    const text = t(`physical.${p.id}`, undefined, lang);
+    // Mountain names are spaced out capitals (wider); seas, rivers and deserts are italic.
+    const width = labelWidth(text, PHYSICAL_FONT, ctx.px) * (p.kind === 'mountains' ? 1.25 : 1);
+    const at = (dx: number, dy: number) => {
+      const x = xy[0] + dx, y = xy[1] + size * 0.35 + dy;
+      return { x, y, box: textBox(x, y, width, size, 'middle') };
+    };
+    const step = size * STEP;
+    const own = at(0, 0);
+    const inside = (o: { box: LabelBox }) => o.box.left >= 0 && o.box.right <= ctx.width && o.box.top >= 0 && o.box.bottom <= ctx.height;
+    if (!inside(own)) return [];
+    const options = [own, at(0, -step), at(0, step), at(-step, 0), at(step, 0)].filter(inside);
+    return [{ rank: p.minZoom * 100 + rank, id: p.id, text, kind: p.kind, options }];
+  });
+  const chosen = selectLabelPlacements(items, (i) => i.options.map((o) => o.box), (i) => i.rank, obstacles);
+  return items.flatMap((i, k) => {
+    const o = chosen[k]! >= 0 ? i.options[chosen[k]!]! : null;
+    return o ? [{ id: i.id, text: i.text, x: o.x, y: o.y, size, box: o.box, kind: i.kind }] : [];
   });
 }

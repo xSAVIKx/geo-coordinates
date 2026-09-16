@@ -7,6 +7,7 @@
   import Hemispheres from './Hemispheres.svelte';
   import Land from './Land.svelte';
   import Overlays from './Overlays.svelte';
+  import PhysicalWater from './PhysicalWater.svelte';
   import Political from './Political.svelte';
   import { reportHealth } from '../texture/health.svelte';
   import { useMapState } from '../mapStateContext';
@@ -48,6 +49,9 @@
 <Land {ctx} {style} />
 {#if style === 'political'}
   <svelte:boundary onerror={vectorFailed}><Political {ctx} /></svelte:boundary>
+{/if}
+{#if style === 'physical'}
+  <svelte:boundary onerror={vectorFailed}><PhysicalWater {ctx} /></svelte:boundary>
 {/if}
 {#if ctx.kind === 'globe' && !isTextureStyle(style)}
   <!-- Decorative sphere shading: a soft highlight up-left and a darker limb, so the disc reads as a ball. -->

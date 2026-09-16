@@ -9,7 +9,7 @@
   import { bracketFmt, markerText, noonText, sceneLatEdgeBoxes, sceneLineLabels } from '../overlayText';
   import { MAP_LABELS, PLACES, tierVisible, tierZoom } from '../places';
   import { CAPITALS } from '../political';
-  import { placeCountryLabels } from '../styleLabels';
+  import { placeCountryLabels, placePhysicalLabels } from '../styleLabels';
   import { reportHealth } from '../texture/health.svelte';
   import { SCHOOL_BADGE_H, schoolBadgeWidth, type SchoolCluster } from '../schools';
   import { LABELLED_RIVERS, REGION_DETAIL_ZOOM, regionActive, riverLabelPoints } from '../world';
@@ -33,9 +33,10 @@
   // cannot carry the same labels as a projected one). The globe shows half the world at once.
   const worldPx = $derived((ctx.width / ctx.px) * ctx.zoom);
   const roomy = $derived(worldPx >= 560);
-  // Political writes country names instead of continent names (spec §4).
+  // Political writes country names instead of continent names, Physical the names of mountains, deserts and seas (spec §4).
   const political = $derived(mapState.drawnMapStyle === 'political');
-  const showContinents = $derived(roomy && !political && ctx.zoom <= (ctx.kind === 'flat' ? 4 : 8));
+  const physical = $derived(mapState.drawnMapStyle === 'physical');
+  const showContinents = $derived(roomy && !political && !physical && ctx.zoom <= (ctx.kind === 'flat' ? 4 : 8));
 
   // Everything the overlay layers write (marker symbols and labels, brackets, "Noon 12:00") and the
   // special-line labels, placed exactly as Overlays.svelte and SpecialLines.svelte place them (shared in
@@ -111,13 +112,14 @@
   // Everything a name keeps clear of that is not itself a place or country name.
   const baseObstacles = $derived([...lineObstacles, ...continentObstacles, ...edgeObstacles, ...pointObstacles, ...overlayObstacles, ...schoolMarks, ...chosenBoxes]);
 
-  // Political: the country names (spec §4). A country name has one spot only — Natural Earth's label point —
-  // while a place name can take any of four sides of its dot, so the order is: the lesson's featured cities
-  // (they anchor every question), then the country names around them, then the rest of the city names around
-  // those. `featuredBoxes` runs the same selection over the same candidates in the same order as `placements`
-  // below, so a featured name ends up in the very box reserved for it here.
+  // Political: the country names, Physical: the names of mountains, deserts and seas (spec §4). Such a name has
+  // one spot only — Natural Earth's label point, or the middle of a range — while a place name can take any of
+  // four sides of its dot, so the order is: the lesson's featured cities (they anchor every question), then the
+  // style's own names around them, then the rest of the city names around those. `featuredBoxes` runs the same
+  // selection over the same candidates in the same order as `placements` below, so a featured name ends up in
+  // the very box reserved for it here.
   const featuredBoxes = $derived.by<LabelBox[]>(() => {
-    if (!political) return [];
+    if (!political && !physical) return [];
     const featured = candidates.filter((c) => c.featured);
     const chosen = selectStablePlacements(featured, (c) => c.options.map((o) => o.box), () => true, (c) => c.distance, () => false, baseObstacles);
     return featured.flatMap((c, i) => (chosen[i]! >= 0 ? [c.options[chosen[i]!]!.box] : []));
@@ -146,6 +148,22 @@
   // Empty in every other style, so the Atlas layout is untouched.
   const countryObstacles = $derived(countryNames.map((l) => l.box));
 
+  // Physical: the names of mountains, deserts, plateaux, seas and great rivers (styleLabels.ts), in place of the
+  // continent names. Like the country names they are placed after the featured cities and before the rest, and
+  // only in this style, so the label order every other style depends on is untouched.
+  const physicalNames = $derived.by(() => {
+    if (!physical || !mapState.layers.places) return [];
+    try {
+      return placePhysicalLabels(ctx, i18n.lang, [...baseObstacles, ...featuredBoxes]);
+    } catch (e) {
+      console.warn('physical names:', e);
+      queueMicrotask(() => reportHealth({ type: 'vector-fail' }));
+      return [];
+    }
+  });
+  // Empty in every other style, so the Atlas layout is untouched.
+  const physicalObstacles = $derived(physicalNames.map((l) => l.box));
+
   const placements = $derived.by<Map<string, PlaceLabelOption>>(() => {
     const previousVisible = labelMemory.previous(mapState.sceneVersion);
     const chosen = selectStablePlacements(
@@ -154,7 +172,7 @@
       (c) => c.featured,
       (c) => c.distance,
       (c) => previousVisible.has(c.id),
-      [...baseObstacles, ...countryObstacles],
+      [...baseObstacles, ...countryObstacles, ...physicalObstacles],
     );
     const out = new Map<string, PlaceLabelOption>();
     candidates.forEach((c, i) => { if (chosen[i]! >= 0) out.set(c.id, c.options[chosen[i]!]!); });
@@ -168,7 +186,7 @@
   const RIVER_FONT = 11.5;
   const riverLabels = $derived.by(() => {
     if (!mapState.layers.places || ctx.zoom < REGION_DETAIL_ZOOM || !regionActive(ctx.zoom, ctx.bounds)) return [];
-    const placed: LabelBox[] = [...lineObstacles, ...continentObstacles, ...edgeObstacles, ...pointObstacles, ...overlayObstacles, ...[...placements.values()].map((o) => o.box), ...countryObstacles];
+    const placed: LabelBox[] = [...lineObstacles, ...continentObstacles, ...edgeObstacles, ...pointObstacles, ...overlayObstacles, ...[...placements.values()].map((o) => o.box), ...countryObstacles, ...physicalObstacles];
     const out: { id: string; x: number; y: number }[] = [];
     for (const id of LABELLED_RIVERS) {
       const width = labelWidth(t(`river.${id}`), RIVER_FONT, ctx.px);
@@ -216,6 +234,7 @@
       ...overlayObstacles,
       ...[...placements.values()].map((o) => o.box),
       ...countryObstacles,
+      ...physicalObstacles,
       ...riverLabels.map((r) => textBox(r.x, r.y, labelWidth(t(`river.${r.id}`), RIVER_FONT, ctx.px), RIVER_FONT * ctx.px, 'start')),
     ];
     const items = singles.map((c) => {
@@ -246,6 +265,9 @@
 {#if mapState.layers.places}
   {#each countryNames as l (l.id)}
     <text class="halo country-name" data-country={l.id} x={l.x} y={l.y} text-anchor="middle" font-size={l.size}>{l.text}</text>
+  {/each}
+  {#each physicalNames as l (l.id)}
+    <text class="halo physical-name {l.kind}" data-physical={l.id} x={l.x} y={l.y} text-anchor="middle" font-size={l.size} lang={i18n.lang}>{l.text}</text>
   {/each}
   {#each continents as { l, xy } (l.id)}
     <text class="halo map-label {l.kind}" x={xy[0]} y={xy[1]} text-anchor="middle" font-size={(l.kind === 'ocean' ? 12 : 11.5) * ctx.px} lang={i18n.lang}>{t(`label.${l.id}`)}</text>
@@ -280,6 +302,13 @@
   .country-name { fill: var(--map-label); font-weight: 650; letter-spacing: 0.05em; }
   /* A capital is a city with a ring around its dot; the name and the list say so too, so the ring is never the only signal. */
   .capital-ring { fill: none; stroke: var(--text); stroke-width: calc(1.4px * var(--stroke-scale)); vector-effect: non-scaling-stroke; }
+  /* Physical names sit on the relief, which is the same light image in either theme: they keep a fixed dark ink on
+     a fixed light halo (--relief-halo, tokens.css) rather than the theme's ambient pair, which in dark theme would
+     be a dark ink on a dark halo over bright terrain. Kind is told by the word itself, never by colour alone. */
+  .physical-name { fill: var(--relief-label); font-weight: 650; stroke: var(--relief-halo); }
+  .physical-name.mountains { text-transform: uppercase; letter-spacing: 0.12em; }
+  .physical-name.sea, .physical-name.river { fill: var(--sea-label); font-style: italic; letter-spacing: 0.03em; }
+  .physical-name.desert, .physical-name.plateau { font-style: italic; }
   .map-label { fill: var(--map-label); font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
   .map-label.ocean { fill: var(--ocean-label); font-style: italic; font-weight: 500; letter-spacing: 0.04em; text-transform: none; }
 </style>

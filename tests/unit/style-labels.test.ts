@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest';
 import { makeFlatCtx } from '../../src/map/geometry';
 import { overlaps } from '../../src/map/labelLayout';
-import { placeCountryLabels } from '../../src/map/styleLabels';
+import { placeCountryLabels, placePhysicalLabels } from '../../src/map/styleLabels';
 
 test('country names on a Europe view: Poland and its neighbours, none overlapping', () => {
   const ctx = makeFlatCtx(960, 480, { lat: 52, lon: 15 }, 3.5, 1, 'grid');
@@ -42,4 +42,22 @@ test('a name steps clear of a dot drawn over it, and stays put when it cannot', 
   const wall = { left: pol.x - 5, right: pol.x + 5, top: pol.y - 60, bottom: pol.y + 60 };
   const stuck = placeCountryLabels(ctx, 'en', [], [wall]).find((l) => l.id === 'POL')!;
   expect(stuck.y).toBe(pol.y);
+});
+
+test('physical names: the Alps on a Europe view, the Tatras only from zoom 6, clear of obstacles', () => {
+  const europe = makeFlatCtx(960, 480, { lat: 52, lon: 15 }, 3.5, 1, 'grid');
+  const ids = placePhysicalLabels(europe, 'en', []).map((l) => l.id);
+  expect(ids).toContain('alps');
+  expect(ids).toContain('baltic');
+  expect(ids).not.toContain('tatra');
+  const tatras = makeFlatCtx(960, 480, { lat: 49.5, lon: 20 }, 12, 1, 'grid');
+  const t = placePhysicalLabels(tatras, 'pl', []).find((l) => l.id === 'tatra')!;
+  expect(t.text).toBe('Tatry');
+  expect(t.kind).toBe('mountains');
+  // A name already on the map on its spot pushes it one line clear; a name that fills the whole area leaves
+  // it out altogether, so a physical name never covers one.
+  const stepped = placePhysicalLabels(tatras, 'pl', [t.box]).find((l) => l.id === 'tatra')!;
+  expect(overlaps(stepped.box, t.box)).toBe(false);
+  const wall = { left: t.box.left - 200, right: t.box.right + 200, top: t.box.top - 200, bottom: t.box.bottom + 200 };
+  expect(placePhysicalLabels(tatras, 'pl', [wall]).map((l) => l.id)).not.toContain('tatra');
 });
