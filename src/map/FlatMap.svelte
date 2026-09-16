@@ -5,6 +5,8 @@
   import type { LatLon } from '../geo/types';
   import { CLIP_PAD, makeFlatCtx } from './geometry';
   import Layers from './layers/Layers.svelte';
+  import MapStyleSwitch from './MapStyleSwitch.svelte';
+  import { styleFade } from './styleFade';
   import TextureLayer from './texture/TextureLayer.svelte';
   import { FLAT_MAX_ZOOM, mapState } from './mapState.svelte';
   import { clusterClick, type School } from './schools';
@@ -186,7 +188,7 @@
 </script>
 
 <figure class="flat" bind:this={figure}>
-  <div class="frame" bind:clientWidth data-map-style={mapState.drawnMapStyle}>
+  <div class="frame" bind:clientWidth data-map-style={mapState.drawnMapStyle} use:styleFade={mapState.drawnMapStyle}>
     <TextureLayer {ctx} view="flat" />
     <!-- svelte-ignore a11y_no_noninteractive_tabindex -- keyboard-operable map (spec §7): the SVG is a compound control (pan/zoom/point), not static content -->
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -- pointer/keyboard handlers drive map pan/zoom/point editing per spec §7 -->
@@ -196,7 +198,7 @@
       role="group"
       aria-roledescription={t('map.view.flat')}
       aria-label={t('map.flat.label')}
-      aria-describedby="{uid}-hint"
+      aria-describedby="{uid}-hint {uid}-style-desc"
       tabindex="0"
       style:touch-action={mapState.canPanFlat ? 'none' : 'pan-y'}
       {onpointerdown} {onpointermove} {onpointerup} {onpointercancel} {onkeydown}
@@ -206,6 +208,7 @@
     </svg>
   </div>
   <p id="{uid}-hint" class="visually-hidden">{t('map.flat.hint')}</p>
+  <p id="{uid}-style-desc" class="visually-hidden">{t(`map.style.description.${mapState.drawnMapStyle}`)}</p>
   <div class="toolbar">
     <div class="btn-group" role="group" aria-label={t('map.zoomGroup')}>
       <button type="button" class="btn icon" onclick={() => mapState.zoomFlat(1.5)} aria-label={t('map.zoomIn')} title={t('map.zoomIn')}>
@@ -222,6 +225,7 @@
         <button type="button" class="btn" onclick={() => mapState.setFlatPreset(p)}>{t(`map.preset.${p}`)}</button>
       {/each}
     </div>
+    <MapStyleSwitch idPrefix={uid} />
     {#if mapState.projectionOverride === null || mapState.projectionSwitch}
       <div class="projection-group seg" role="group" aria-label={t('map.projection')} aria-describedby="{uid}-projection-hint">
         {#each PROJECTIONS as proj (proj)}

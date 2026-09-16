@@ -1,3 +1,5 @@
+import { readString, writeString } from '../app/storage';
+
 // The map styles (Map styles spec §3): Atlas (the lesson's own map), Physical (relief), Satellite (NASA imagery) and
 // Political (countries). Physical and Satellite are drawn from textures (src/map/texture/); the others in SVG.
 export type MapStyle = 'atlas' | 'physical' | 'satellite' | 'political';
@@ -11,3 +13,8 @@ export const isTextureStyle = (s: MapStyle): s is TextureStyle => s === 'physica
 
 /** A saved or typed value as a style: anything that is not exactly a style name (null, 'Satellite', a number) is Atlas. */
 export const parseMapStyle = (v: unknown): MapStyle => (isMapStyle(v) ? v : DEFAULT_MAP_STYLE);
+
+/** Remembered like the grid / Equal Earth choice, under its own key (planning ruling R1). */
+export const MAP_STYLE_KEY = 'geo-coords:map-style';
+export const readMapStyle = (): MapStyle => parseMapStyle(readString(MAP_STYLE_KEY));
+export const writeMapStyle = (s: MapStyle): void => writeString(MAP_STYLE_KEY, s);

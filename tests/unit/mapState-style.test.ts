@@ -48,3 +48,18 @@ test('the drawn style waits for decoded images and falls back to Atlas when the 
   reportHealth({ type: 'fail', reason: 'decode' });
   expect([s.chosenMapStyle, s.mapStyle, s.drawnMapStyle]).toEqual(['satellite', 'atlas', 'atlas']);
 });
+
+test('the preference is saved; a new MapState starts with it; scene and run picks are never saved', () => {
+  const store = new Map<string, string>();
+  globalThis.localStorage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v) } as unknown as Storage;
+  const a = new MapState();
+  a.chooseMapStyle('physical');
+  expect(store.get('geo-coords:map-style')).toBe('physical');
+  expect(new MapState().stylePreference).toBe('physical');
+  a.applyScene({ views: ['flat'], mapStyle: 'atlas' });
+  a.chooseMapStyle('satellite');
+  a.applyScene({ views: ['flat'] });
+  a.runStyle = 'political';
+  a.chooseMapStyle('satellite');
+  expect(store.get('geo-coords:map-style')).toBe('physical');
+});

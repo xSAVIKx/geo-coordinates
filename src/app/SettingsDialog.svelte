@@ -1,5 +1,7 @@
 <script lang="ts">
   import { t } from '../i18n/i18n.svelte';
+  import { mapState } from '../map/mapState.svelte';
+  import { MAP_STYLES } from '../map/mapStyle';
   import { settings, type Theme } from './settings.svelte';
 
   let { open = $bindable(false) }: { open?: boolean } = $props();
@@ -18,6 +20,12 @@
     <legend>{t('settings.theme')}</legend>
     {#each THEMES as theme (theme)}
       <label class="row"><input type="radio" name="theme" value={theme} bind:group={settings.theme} /> {t(`settings.theme.${theme}`)}</label>
+    {/each}
+  </fieldset>
+  <fieldset>
+    <legend>{t('settings.mapStyle')}</legend>
+    {#each MAP_STYLES as s (s)}
+      <label class="row"><input type="radio" name="map-style" value={s} checked={mapState.stylePreference === s} onchange={() => mapState.setStylePreference(s)} /> {t(`map.style.${s}`)}</label>
     {/each}
   </fieldset>
   <label class="row"><input type="checkbox" bind:checked={settings.largeText} /> {t('settings.largeText')}</label>

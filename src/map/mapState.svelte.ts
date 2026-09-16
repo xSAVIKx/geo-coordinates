@@ -6,7 +6,7 @@ import { dateFromDayAndMinutes, dayOfYear, daysInYear } from '../geo/sun';
 import type { LatLon, Precision } from '../geo/types';
 import { clampFlatCenter, flatMinZoom, panFlatCenter } from './geometry';
 import { isolatingFlatZoom, isolatingGlobeZoom, schoolById, type School } from './schools';
-import { DEFAULT_MAP_STYLE, type MapStyle } from './mapStyle';
+import { readMapStyle, writeMapStyle, type MapStyle } from './mapStyle';
 import { drawnStyle, effectiveStyle } from './texture/fallback';
 import { renderHealth } from './texture/health.svelte';
 import type { FlatPreset, FlatProjection, LabControl, LayerFlags, Overlay, Readout, SceneSpec, ViewId } from './types';
@@ -69,8 +69,8 @@ export class MapState {
   projectionSwitch = $state(false);
   /** Whether the scene offers the Maple Bear schools switch (`SceneSpec.schoolsToggle`). */
   schoolsToggle = $state(false);
-  /** The remembered map style (Task 9 reads and writes it in storage). */
-  stylePreference = $state<MapStyle>(DEFAULT_MAP_STYLE);
+  /** The remembered map style, read from storage; `setStylePreference` writes it back. */
+  stylePreference = $state<MapStyle>(readMapStyle());
   /** The style the scene sets (`SceneSpec.mapStyle`), if any. */
   styleOverride = $state<MapStyle | null>(null);
   /** A style picked with the switch while the scene sets its own: lasts until the next `applyScene`. */
@@ -129,6 +129,7 @@ export class MapState {
 
   setStylePreference(s: MapStyle): void {
     this.stylePreference = s;
+    writeMapStyle(s);
   }
 
   setProjectionPreference(p: SavedProjection): void {

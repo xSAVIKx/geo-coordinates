@@ -4,6 +4,8 @@
   import { ui } from '../app/presenter.svelte';
   import { makeGlobeCtx } from './geometry';
   import Layers from './layers/Layers.svelte';
+  import MapStyleSwitch from './MapStyleSwitch.svelte';
+  import { styleFade } from './styleFade';
   import TextureLayer from './texture/TextureLayer.svelte';
   import { GLOBE_MAX_ZOOM, mapState } from './mapState.svelte';
   import { clusterClick, type School } from './schools';
@@ -173,7 +175,7 @@
 </script>
 
 <figure class="globe" bind:this={figure}>
-  <div class="frame" bind:clientWidth data-map-style={mapState.drawnMapStyle}>
+  <div class="frame" bind:clientWidth data-map-style={mapState.drawnMapStyle} use:styleFade={mapState.drawnMapStyle}>
     <TextureLayer {ctx} view="globe" />
     <!-- svelte-ignore a11y_no_noninteractive_tabindex -- keyboard-operable globe (spec §7): the SVG is a compound control (rotate/point/zoom), not static content -->
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -- pointer/keyboard handlers drive globe rotation, point editing and zoom per spec §7 -->
@@ -183,7 +185,7 @@
       role="group"
       aria-roledescription={t('map.view.globe')}
       aria-label={t('map.globe.label')}
-      aria-describedby="{uid}-hint"
+      aria-describedby="{uid}-hint {uid}-style-desc"
       tabindex="0"
       {onpointerdown} {onpointermove} {onpointerup} {onpointercancel} {onkeydown}
     >
@@ -192,6 +194,7 @@
     </svg>
   </div>
   <p id="{uid}-hint" class="visually-hidden">{t('map.globe.hint')}</p>
+  <p id="{uid}-style-desc" class="visually-hidden">{t(`map.style.description.${mapState.drawnMapStyle}`)}</p>
   <div class="toolbar">
     <div class="btn-group" role="group" aria-label={t('map.turnGroup')}>
       <button type="button" class="btn icon" onclick={() => rotateBy(turnStep(false), 0)} aria-label={t('map.turnWest')} title={t('map.turnWest')}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6" /></svg></button>
@@ -208,6 +211,7 @@
       </button>
     {/if}
     <SchoolsToggle />
+    <MapStyleSwitch idPrefix={uid} />
   </div>
   {#if popover}<SchoolPopover members={popover.members} x={popover.x} y={popover.y} mapBottom={popover.bottom} onclose={closePopover} />{/if}
 </figure>

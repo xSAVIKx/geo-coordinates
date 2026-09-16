@@ -8,10 +8,12 @@
   import FlatMap from './FlatMap.svelte';
   import Globe from './Globe.svelte';
   import LabControls from './LabControls.svelte';
+  import { isTextureStyle } from './mapStyle';
   import { mapState } from './mapState.svelte';
   import MapStyleNote from './MapStyleNote.svelte';
   import PlaceList from './PlaceList.svelte';
   import SchoolList from './SchoolList.svelte';
+  import { renderHealth } from './texture/health.svelte';
 
   // `midContent`, when given, renders right after the map view(s) and before the coordinate
   // sliders / place list — used by Practice on narrow screens so the question stays visible
@@ -51,6 +53,7 @@
       </div>
     {/each}
   </div>
+  <p class="map-status" role="status">{renderHealth.loading && isTextureStyle(mapState.mapStyle) ? t('map.style.loading') : ''}</p>
   <MapStyleNote />
   {#if midContent}{@render midContent()}{/if}
   {#if mapState.point}<CoordinateControls />{/if}
@@ -65,4 +68,13 @@
   .views { display: grid; gap: var(--space-4) var(--space-5); grid-template-columns: minmax(0, 1fr); align-items: start; }
   .views.wide:has(.view-globe):has(.view-flat) { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
   .views.wide:has(.view-cross-section):not(:has(.view-flat)) { grid-template-columns: repeat(var(--count), minmax(0, 1fr)); }
+  .map-status { margin: 0; color: var(--text-muted); font-size: var(--step--1); }
+  /*
+   * The live region has to be in the accessibility tree before it has anything to say: `display: none` would take it
+   * out of the tree, and a live region that appears only once it is populated reads as a brand-new region, which most
+   * screen readers do not announce. So the empty note is taken out of the *flow* instead (the same treatment as
+   * .visually-hidden in src/styles/base.css) — it keeps its place in the tree, and an out-of-flow box is not a flex
+   * item, so it adds no gap to the stage either.
+   */
+  .map-status:empty { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 </style>

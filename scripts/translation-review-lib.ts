@@ -28,6 +28,7 @@ export interface InfoNote {
 //  - map.projection.equal-earth  "Equal Earth" is the projection's proper name;
 //                       PL/UK have no established exonym, so the controller
 //                       ruled it stays untranslated in all three languages
+//  - map.style.atlas   "Atlas" is the same word in Polish (the style's name)
 // (`unit.label.deg` and `q.further.option` were pruned: the former is already
 // "°" only, caught by onlySymbols(); the latter's UK/PL text never actually
 // matches English, so the entry never did anything.)
@@ -44,6 +45,7 @@ const SAME_OK = [
   /^classQuiz\.seconds$/,
   /^spoken\./,
   /^map\.projection\.equal-earth$/,
+  /^map\.style\.atlas$/,
 ];
 
 // Place-name keys are excluded from "info: foreign term" notes — a place name
