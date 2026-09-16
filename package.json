@@ -23,6 +23,7 @@
     "data:regional": "node --experimental-strip-types scripts/build-regional-data.ts",
     "data:borders": "node --experimental-strip-types scripts/build-world-borders.ts",
     "data:political": "node --experimental-strip-types scripts/build-political.ts",
+    "data:water": "node --experimental-strip-types scripts/build-physical-water.ts",
     "data:textures": "python3 scripts/build-textures.py"
   },
   "devDependencies": {
