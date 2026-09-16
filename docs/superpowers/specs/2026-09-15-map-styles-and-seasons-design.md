@@ -24,7 +24,7 @@ Four additions, all owner-approved:
 - A pupil can switch the map between Atlas, Physical, Satellite and Political on every map in the lesson, and the choice is remembered.
 - A teacher can choose a style for a class quiz run without changing their own saved choice.
 - Atlas stays pixel-identical to today; every existing test passes unchanged.
-- Dragging the satellite globe stays at 60 fps on a mid-range phone; picking a style draws within 100 ms after the one-time image decode.
+- Dragging the satellite globe stays at 60 fps on a mid-range phone; picking a style draws within 100 ms once its images are decoded (see §3 "Lazy decoding": only the style on screen stays decoded, so returning to a style decodes it again).
 - Any failure in the new drawing path leaves a working Atlas map.
 - The single file stays under 5 MB and makes no network requests.
 - WCAG 2.2 AA on every route in every style, light and dark; AAA contrast in presenter mode.
@@ -67,7 +67,7 @@ Total ≈ 3.5 MB (current file ≈ 0.97 MB).
   - Natural Earth `HYP_50M_SR_W`, rivers and lake centerlines, lakes, admin-0 POL (public domain);
   - NASA Earth Observatory Blue Marble (world.topo.bathy) and Black Marble 2016 (public domain, credit NASA Earth Observatory).
 - **Detail tile:** inside the Central Europe box (`REGION`, lon 8–32°E, lat 44–58°N), from zoom 4, a sharper tile is blended in (≈ 60 px per degree); outside it deep zoom shows the softer world texture.
-- **Lazy decoding:** images are embedded as data (base64 WebP) and decoded only when a style is first chosen.
+- **Lazy decoding:** images are embedded as data (base64 WebP) and decoded only when a style is chosen, and only the style on screen is kept decoded. Each decoded world image is 4096 × 2048 of RGBA (33.5 MB), so holding both texture styles cost 106.7 MB for the life of the page — on a 2 GB Chromebook the likeliest route to the `oom` rung of the fallback chain. The images a renderer no longer needs are closed as soon as the new style is on it, so the page holds one style's worth at most (Physical 34.8 MB, Satellite 68.6 MB, Atlas and Political none); going back to a style decodes it again.
 - **Physical names** (e.g. Tatry, Sudety, Karpaty/Carpathians, Alpy/Alps, Sahara, Himalaje/Himalayas, Andy/Andes, Morze Bałtyckie/Baltic Sea, Morze Śródziemne/Mediterranean Sea): new i18n keys in EN/PL/UK, listed on the translation review sheet.
 - **Credits:** footer, README and `LICENSE-CONTENT.md` gain Natural Earth relief and NASA Earth Observatory lines; the style hint names the source.
 
