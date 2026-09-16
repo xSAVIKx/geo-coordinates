@@ -9,6 +9,7 @@
   import Globe from './Globe.svelte';
   import LabControls from './LabControls.svelte';
   import { mapState } from './mapState.svelte';
+  import MapStyleNote from './MapStyleNote.svelte';
   import PlaceList from './PlaceList.svelte';
   import SchoolList from './SchoolList.svelte';
 
@@ -50,6 +51,7 @@
       </div>
     {/each}
   </div>
+  <MapStyleNote />
   {#if midContent}{@render midContent()}{/if}
   {#if mapState.point}<CoordinateControls />{/if}
   {#if showLab && mapState.labControls.length}<LabControls />{/if}

@@ -323,6 +323,7 @@
   "map.projection.equal-earth": "Equal Earth",
   "map.projection.mercator": "Mapa z aplikacji (Merkator)",
   "map.projection.hint": "Mapa z siatką: proste południki, łatwo odczytać współrzędne. Equal Earth: państwa mają prawdziwą wielkość, południki są wygięte. Mapa z aplikacji (Merkator): używa jej większość aplikacji z mapami; kształty na małych obszarach są prawidłowe, ale lądy blisko biegunów są o wiele za duże.",
+  "map.style.fallback": "To urządzenie nie może narysować tego stylu, więc pokazujemy Atlas.",
   "map.globe.label": "Globus, który możesz obracać",
   "map.globe.hint": "Przeciągnij, aby obrócić globus. Strzałki przesuwają punkt albo obracają globus, gdy punktu nie można przesuwać. Plus i minus przybliżają; Ctrl i przewijanie też przybliżają.",
   "map.turnGroup": "Obracanie i powiększenie",

@@ -317,6 +317,7 @@
   "map.projection.equal-earth": "Equal Earth",
   "map.projection.mercator": "Map app (Mercator)",
   "map.projection.hint": "Grid map: straight meridians, easy to read coordinates. Equal Earth: countries keep their true size, meridians are curved. Map app (Mercator): used by most map apps; shapes are right in small areas, but land near the poles looks far too big.",
+  "map.style.fallback": "This device can't draw this style; showing Atlas.",
   "map.globe.label": "Globe that you can turn",
   "map.globe.hint": "Drag to turn the globe. Arrow keys move the point, or turn the globe when the point cannot move. Plus and minus zoom; Ctrl and scroll also zoom.",
   "map.turnGroup": "Turn and zoom",
