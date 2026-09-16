@@ -5,6 +5,7 @@
   import { sunPoint } from '../../geo/sun';
   import { createLabelMemory, overlaps, placeLabelOptions, pointBox, selectStablePlacements, textBox, type LabelBox, type PlaceLabelOption } from '../labelLayout';
   import { useMapState } from '../mapStateContext';
+  import type { MapStyle } from '../mapStyle';
   import { bracketBoxes, CONTINENT_WIDTH, fitMapNames, markerLayout, noonLabel, NOON_LABEL, viewEdgeBoxes } from '../overlayLayout';
   import { bracketFmt, markerText, noonText, sceneLatEdgeBoxes, sceneLineLabels } from '../overlayText';
   import { MAP_LABELS, PLACES, tierVisible, tierZoom } from '../places';
@@ -16,7 +17,8 @@
   const mapState = useMapState();
   // `chosenBoxes`: the chosen school's name and square (drawn on top by Schools.svelte), kept clear by every name here.
   // `lineAvoid`: what the special-line names keep clear of beyond the overlays (Layers.svelte), so the names placed here agree with SpecialLines.svelte.
-  let { ctx, schoolClusters = [], chosenBoxes = [], lineAvoid = [] }: { ctx: ViewCtx; schoolClusters?: SchoolCluster[]; chosenBoxes?: LabelBox[]; lineAvoid?: LabelBox[] } = $props();
+  // `style`: what this map really draws, decided once in Layers.svelte (paper passes 'atlas'). See Graticule.svelte.
+  let { ctx, style, schoolClusters = [], chosenBoxes = [], lineAvoid = [] }: { ctx: ViewCtx; style: MapStyle; schoolClusters?: SchoolCluster[]; chosenBoxes?: LabelBox[]; lineAvoid?: LabelBox[] } = $props();
 
   // Which place labels were visible the *previous* time this ran, for the hysteresis bonus in
   // `visibleIds` — per scene: a new scene (MapState.sceneVersion) starts without any bonus. Plain,
@@ -34,8 +36,8 @@
   const worldPx = $derived((ctx.width / ctx.px) * ctx.zoom);
   const roomy = $derived(worldPx >= 560);
   // Political writes country names instead of continent names, Physical the names of mountains, deserts and seas (spec §4).
-  const political = $derived(mapState.drawnMapStyle === 'political');
-  const physical = $derived(mapState.drawnMapStyle === 'physical');
+  const political = $derived(style === 'political');
+  const physical = $derived(style === 'physical');
   const showContinents = $derived(roomy && !political && !physical && ctx.zoom <= (ctx.kind === 'flat' ? 4 : 8));
 
   // Everything the overlay layers write (marker symbols and labels, brackets, "Noon 12:00") and the

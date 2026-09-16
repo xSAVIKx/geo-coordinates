@@ -22,6 +22,12 @@
   // `offset` slides it to where the map is now; `edgeCtx` is the live view, for the edge numbers.
   // `style`: normally whatever this map's MapState draws; a view with no texture layer under it (StaticMap, on paper)
   // passes 'atlas' so it keeps drawing the sea, land and coasts itself.
+  //
+  // This is the *single* place the drawn style is decided for the whole layer stack: Land, Political,
+  // PhysicalWater, Graticule, Daylight and Places are all handed `style`, and none of them reads the shared
+  // MapState for itself. paperScene()'s `mapStyle: 'atlas'` is a second belt on the same braces -- it keeps a
+  // StaticMap's own MapState coherent -- but it is not what makes paper Atlas; this prop is
+  // (tests/unit/static-map-style.test.ts renders the two apart).
   let { ctx, idPrefix, edgeCtx, offset = null, style: styleProp }: { ctx: ViewCtx; idPrefix: string; edgeCtx?: ViewCtx; offset?: [number, number] | null; style?: MapStyle } = $props();
   const sphereD = $derived(ctx.kind === 'globe' ? (ctx.path(sphere) ?? '') : '');
   // Physical and Satellite draw the sphere themselves (the texture layer under this SVG): only the borders and the
@@ -66,9 +72,9 @@
   <path class="shade" d={sphereD} fill="url(#{idPrefix}-shade)" />
 {/if}
 <Hemispheres {ctx} {idPrefix} />
-<Graticule {ctx} />
+<Graticule {ctx} {style} />
 <!-- Night shading dims land and the grid but not the equator/meridian lines and their names, nor places and overlays. -->
-<Daylight {ctx} />
+<Daylight {ctx} {style} />
 <SpecialLines {ctx} part="lines" />
 <!-- A school's square goes under a city's dot and name; count badges and the chosen school go over them, so the digits stay readable. -->
 {#if mapState.layers.schools}<Schools {ctx} clusters={schoolClusters} part="squares" />{/if}
@@ -76,7 +82,7 @@
 <Overlays {ctx} part="lines" {lineAvoid} />
 <PointMarker {ctx} part="guides" skip={guideSkip} />
 <SpecialLines {ctx} part="labels" {lineAvoid} />
-<Places {ctx} {schoolClusters} {chosenBoxes} {lineAvoid} />
+<Places {ctx} {style} {schoolClusters} {chosenBoxes} {lineAvoid} />
 {#if schools}<Schools {ctx} clusters={schoolClusters} chosen={schools.chosen} label={schools.label} part="badges" />{/if}
 <Overlays {ctx} part="marks" {lineAvoid} />
 <PointMarker {ctx} part="handle" />
