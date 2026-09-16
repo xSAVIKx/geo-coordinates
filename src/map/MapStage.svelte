@@ -70,8 +70,21 @@
   .views { display: grid; gap: var(--space-4) var(--space-5); grid-template-columns: minmax(0, 1fr); align-items: start; }
   .views.wide:has(.view-globe):has(.view-flat) { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
   .views.wide:has(.view-cross-section):not(:has(.view-flat)) { grid-template-columns: repeat(var(--count), minmax(0, 1fr)); }
-  /* The orbit takes its own row above globe and map; with the globe alone they share a row. */
-  .views.wide:has(.view-orbit):has(.view-flat) .view-orbit { grid-column: 1 / -1; justify-self: center; width: min(100%, 44rem); }
+  /*
+   * Seasons mode (orbit + flat map, with or without the globe). The orbit used to take a full-width row of its own
+   * above the maps, and at 1920 × 1080 in presenter mode that pushed both maps to y = 961 — about 120 px of a
+   * ~700 px map left above the fold, on the delivery path the lesson actually uses. It now sits *beside* the flat
+   * map, which spans the whole height of the stage, so the flat map starts at the top of the stage at every width
+   * and the globe follows under the orbit. The 5/7 split leaves the orbit wide enough to read from the back of a
+   * classroom (roughly 40 % of the stage) while the flat map keeps the larger half it had before.
+   */
+  .views.wide:has(.view-orbit):has(.view-flat) { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+  .views.wide:has(.view-orbit):has(.view-flat) .view-orbit { grid-column: 1; grid-row: 1; justify-self: center; width: min(100%, 44rem); }
+  .views.wide:has(.view-orbit):has(.view-flat) .view-globe { grid-column: 1; grid-row: 2; }
+  .views.wide:has(.view-orbit):has(.view-flat) .view-flat { grid-column: 2; grid-row: 1; }
+  /* `span 2`, not `1 / -1`: the rows here are implicit, so `-1` is the first line of the explicit grid and the
+     flat map would take row 1 alone — which is what pushed the globe back down below the orbit's row. */
+  .views.wide:has(.view-orbit):has(.view-flat):has(.view-globe) .view-flat { grid-row: 1 / span 2; }
   .views.wide:has(.view-orbit):has(.view-globe):not(:has(.view-flat)) { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
   .map-status { margin: 0; color: var(--text-muted); font-size: var(--step--1); }
   .map-source { margin: 0; color: var(--text-muted); font-size: var(--step--1); }
