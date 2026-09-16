@@ -8,6 +8,7 @@ One self-contained file — works offline, on phones, tablets, laptops and big c
 ![Home screen](docs/screenshots/home.png)
 ![A lesson topic](docs/screenshots/lesson.png)
 ![Day and night lab](docs/screenshots/lab.png)
+![Satellite map style with city lights](docs/screenshots/satellite.png)
 
 ## Use it
 
@@ -20,10 +21,17 @@ Open `dist/geo-coordinates.html` in any modern browser (double-click works — n
 - **Test rehearsal**: 15 mixed questions with a review at the end.
 - **Class quiz**: big-screen questions; the same quiz code gives the same questions.
 - **Day and night lab**: day and night, the Sun's position and local solar time, set from the clock (or
-  moved by hand through the day and the year). A simplified mean-Sun model: the Sun stands over the meridian where
+  moved by hand through the day and the year), a Seasons mode (drag the Earth around its orbit; day length,
+  sunrise and sunset, where the Sun is overhead and where polar day begins) and an advanced real-Sun switch
+  (equation of time). A simplified mean-Sun model: the Sun stands over the meridian where
   local solar time is 12:00, so it can differ from the real Sun by up to about 4°.
 - **Maps**: Grid, Equal Earth and Mercator (map-app style) flat projections, plus a globe with
   zoom; a detailed map of Poland and its neighbours with deep zoom (down to minutes of latitude and longitude).
+- **Map styles**: Atlas (the lesson's own map), Physical (relief, sea depths, rivers and mountain names),
+  Satellite (NASA Blue Marble, with Black Marble city lights on the night side) and Political (countries in
+  colour with their names, in Poland's official border view). The style is remembered; a class quiz can use its
+  own style for one run; worksheets and the cheat sheet are always Atlas. Drawn with WebGL, with a canvas
+  fallback, and Atlas whenever a device cannot draw a style.
 - **Maple Bear schools layer**: an optional map layer showing Maple Bear school locations
   around the world, for a real-world "find the coordinates" exercise.
 - **Presenter mode**: press `P` (fullscreen, larger text, higher contrast); `L` toggles a
@@ -56,13 +64,18 @@ Requires Node 24 or newer.
     npm run build    # dist/geo-coordinates.html + dist/translation-review.html
     npm run e2e      # Playwright + axe accessibility tests against the built file
     npm run shot -- en/lab lab   # full-page screenshots of one route: shots/lab-375x667.png, shots/lab-1366x768.png
-    npm run shots:readme         # the README screenshots, docs/screenshots/{home,lesson,lab}.png (after a build)
+    npm run shots:readme         # the README screenshots, docs/screenshots/{home,lesson,lab,satellite}.png (after a build)
     npm run brand                # icons and the social card in site-static/, from site-static/icon.svg
     npm run data:borders -- --download   # rebuild src/map/data/world-borders-pol.json (raw download cached in .cache/)
+    npm run data:textures        # rebuild the map-style textures (needs Python 3 and Pillow with WebP; raw files cached in .cache/textures)
+    npm run data:political       # rebuild src/map/data/political-pol.json
+    npm run data:water           # rebuild src/map/data/physical-water.json
 
-`npm run shots:readme` captures the first 1366×768 screen of `en/`, `en/topic-6/explore/5` and `en/lab`, and
-reduces each PNG to 256 colours when `python3` with Pillow is installed (otherwise it keeps full-colour PNGs and
-says so).
+`npm run shots:readme` captures the first 1366×768 screen of `en/`, `en/topic-6/explore/5`, `en/lab` and
+`en/lab` again in the Satellite style at night, and reduces each PNG to 256 colours when `python3` with Pillow is
+installed (otherwise it keeps full-colour PNGs and says so).
+
+The built file must stay under 5 MiB; `npm run build` prints a per-asset breakdown.
 
 ## Author
 
@@ -90,6 +103,10 @@ Author details for the page footer live in `src/app/credits.ts`.
 - Map rendering libraries: [world-atlas](https://github.com/topojson/world-atlas),
   [d3-geo](https://github.com/d3/d3-geo) and [topojson-client](https://github.com/topojson/topojson-client) (all ISC licensed).
 - Interface framework: [Svelte](https://svelte.dev) (MIT licensed).
+- Relief: Natural Earth `HYP_50M_SR_W` (public domain). Satellite images: NASA Earth Observatory — Blue Marble
+  Next Generation (July 2004) and Black Marble 2016; NASA imagery is not subject to copyright in the United
+  States. Political country shapes and physical rivers and lakes: Natural Earth
+  (`ne_10m_admin_0_countries_pol`, `ne_50m_rivers_lake_centerlines`, `ne_50m_lakes`).
 - Maple Bear school locations: collected from publicly published Maple Bear school websites;
   see [`LICENSE-CONTENT.md`](LICENSE-CONTENT.md) for the trademark and affiliation note.
 - Author: Yurii Serhiichuk — [serhiichuk.dev](https://serhiichuk.dev) ·
@@ -101,7 +118,8 @@ The built page bundles Svelte and clsx (MIT), d3-geo, d3-array, topojson-client 
 data from Natural Earth (public domain). Their copyright and licence notices are written into
 `dist/geo-coordinates.html` itself, as a comment right after `<!doctype html>`, by the build
 (`scripts/licence-notices.ts`, which lists the packages whose code is actually in the bundle); `npm run build`
-fails if they are missing.
+fails if they are missing. The same comment carries the NASA Earth Observatory note for the Blue Marble and
+Black Marble satellite imagery.
 
 ## Publishing
 

@@ -1,7 +1,8 @@
-// The README screenshots: docs/screenshots/{home,lesson,lab}.png, each the first 1366×768 screen (the viewport, not the
-// whole page) of the built file in English, light theme. PNGs are then reduced to a 256-colour palette with Python and
-// Pillow when they are installed (about a third of the size, no visible change); without them the full-colour PNGs are
-// kept and a note says so.
+// The README screenshots: docs/screenshots/{home,lesson,lab,satellite}.png, each the first 1366×768 screen (the
+// viewport, not the whole page) of the built file in English, light theme; the satellite shot forces the
+// Satellite map style and a night-side Sun position. PNGs are then reduced to a 256-colour palette with Python
+// and Pillow when they are installed (about a third of the size, no visible change); without them the
+// full-colour PNGs are kept and a note says so.
 //
 //   npm run build && npm run shots:readme [-- --out <dir>]
 import { chromium } from '@playwright/test';
@@ -13,6 +14,7 @@ const SHOTS = [
   { name: 'home', hash: 'en/' },
   { name: 'lesson', hash: 'en/topic-6/explore/5' },
   { name: 'lab', hash: 'en/lab' },
+  { name: 'satellite', hash: 'en/lab', style: 'satellite', sun: { utcMinutes: 1020, dayOfYear: 266 } },
 ] as const;
 
 const outFlag = process.argv.indexOf('--out');
@@ -24,8 +26,18 @@ const browser = await chromium.launch();
 const paths: string[] = [];
 for (const shot of SHOTS) {
   const page = await browser.newPage({ viewport: { width: 1366, height: 768 }, colorScheme: 'light' });
-  await page.goto(`${file}#${shot.hash}`);
+  if ('style' in shot) await page.addInitScript((s) => localStorage.setItem('geo-coords:map-style', s), shot.style);
+  const suffix = 'style' in shot ? '?test' : '';
+  await page.goto(`${file}${suffix}#${shot.hash}`);
   await page.waitForSelector('#main');
+  if ('sun' in shot) {
+    // The style (set before goto) and the Sun (set here, before the layer's first paint) both land inside the
+    // texture layer's very first draw, so the WebGL tier never needs a second frame: wait for that one frame
+    // (>= 1, matching tests/e2e/helpers.ts's waitForTexture) rather than a redraw an already-correct picture
+    // never produces.
+    await page.evaluate((sun) => { (window as any).__mapState.sun = { ...sun, year: 2026 }; }, shot.sun);
+    await page.waitForFunction(() => (window as any).__mapTextures.drawCount('flat') >= 1, null, { timeout: 15_000 });
+  }
   await page.waitForTimeout(600);
   const path = join(outDir, `${shot.name}.png`);
   await page.screenshot({ path });
