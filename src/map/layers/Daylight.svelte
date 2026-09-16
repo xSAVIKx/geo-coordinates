@@ -10,6 +10,9 @@
   // Night is everything more than 90° from the point under the Sun, i.e. within 90° of the opposite point.
   // Twilight (Sun 0°–6° below the horizon) is the ring between 84° and 90° from that opposite point; an extra
   // ring at 87° softens the edge, and a faint warm wash marks the lit half (it matters most on the dark theme's dark land) so the terminator reads as dusk fading into night.
+  // Satellite draws its own day and night from the two NASA images (spec §4, ruling R13), so the SVG shading stays
+  // out of its way there; the Sun symbol is still this layer's, in every style.
+  const shading = $derived(mapState.drawnMapStyle !== 'satellite');
   const date = $derived(mapState.layers.daylight ? mapState.sunDate() : null);
   const shapes = $derived.by(() => {
     if (!date) return null;
@@ -23,10 +26,12 @@
 
 {#if shapes}
   <g class="daylight" aria-hidden="true">
-    <path d={shapes.day} class="day" />
-    <path d={shapes.twilight} class="twilight" />
-    <path d={shapes.dusk} class="twilight" />
-    <path d={shapes.night} class="night" />
+    {#if shading}
+      <path d={shapes.day} class="day" />
+      <path d={shapes.twilight} class="twilight" />
+      <path d={shapes.dusk} class="twilight" />
+      <path d={shapes.night} class="night" />
+    {/if}
     {#if shapes.sun}
       <g class="sun" transform="translate({shapes.sun[0]} {shapes.sun[1]})">
         <circle class="glow" r={22 * ctx.px} />

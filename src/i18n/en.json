@@ -283,6 +283,7 @@
   "lab.dawn": "dawn",
   "lab.dusk": "dusk",
   "lab.twilight": "dawn or dusk",
+  "lab.cityLights": "Night side: city lights",
   "lab.thePoint": "The point ({lon})",
   "lab.noon": "Noon",
   "lab.keyDates": "Special days of the year",

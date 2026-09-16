@@ -9,7 +9,7 @@
   import { createCanvasRenderer } from './canvas2d';
   import { markReady, renderHealth, reportHealth } from './health.svelte';
   import { regionMix } from './inverse';
-  import { RenderFailure, type DrawInputs, type TextureRenderer } from './renderer';
+  import { RenderFailure, sunVector, type DrawInputs, type TextureRenderer } from './renderer';
   import { registerTextureView } from './testHooks';
   import { textureView } from './viewParams';
   import { createWebGLRenderer } from './webgl';
@@ -23,6 +23,8 @@
   let cssHeight = $state(0);
   let renderer = $state.raw<TextureRenderer | null>(null);
   let loaded = $state<TextureStyle | null>(null);
+  /** Whether the textures the renderer holds include the night image (it is decoded only when a scene needs it). */
+  let loadedNight = $state(false);
   /** Bumped when a restored WebGL context needs a renderer built on it again. */
   let rebuild = $state(0);
   /** A PNG of the last frame, shown in place of the canvas while the page prints (spec §4 Print). */
@@ -36,6 +38,16 @@
   const style = $derived(mapState.mapStyle);
   const tier = $derived(renderHealth.state.tier);
   const active = $derived(isTextureStyle(style) && tier !== 'atlas');
+
+  // Spec §4: city lights on the night side wherever `daylight` is on. Satellite draws its own day and night from the
+  // two NASA images (Daylight.svelte leaves the SVG shading out in this style); every other style, and any scene
+  // without a Sun, keeps the day image everywhere.
+  const nightSun = $derived.by(() => {
+    if (style !== 'satellite' || !mapState.layers.daylight) return null;
+    const p = mapState.sunPoint();
+    return p ? sunVector(p) : null;
+  });
+  const withNight = $derived(nightSun !== null);
 
   // Nothing is drawing this style any more, so the SVG layers go back to Atlas (the owner's "any error falls back to
   // the existing rendering") until a tier has uploaded its own textures and marked the style ready again.
@@ -60,7 +72,7 @@
     let r: TextureRenderer;
     try { r = t === 'webgl' ? createWebGLRenderer(c, testFlag('gl')) : createCanvasRenderer(c, testFlag('canvas')); } catch (e) { fail(e); return; }
     renderer = r;
-    return () => { r.dispose(); renderer = null; loaded = null; };
+    return () => { r.dispose(); renderer = null; loaded = null; loadedNight = false; };
   });
 
   // 2. The style's images (decoded once per page, shared by both views), no larger than the device allows. The size
@@ -72,35 +84,57 @@
     if (r.tier === 'webgl' && r.maxTextureSize < max) { reportHealth({ type: 'fail', reason: 'texture-size' }); return; }
     let cancelled = false;
     renderHealth.loading = s;
-    loadStyleTextures(s, max, false).then(
-      (t) => { if (cancelled) return; try { r.setTextures(t); loaded = s; markReady(s); } catch (e) { fail(e); } },
+    // Re-runs when a scene first asks for the night side: the day images come back from the decode cache, the Black
+    // Marble is decoded once and added. The style stays `loaded` throughout, so the day picture never blinks.
+    loadStyleTextures(s, max, withNight).then(
+      (t) => { if (cancelled) return; try { r.setTextures(t); loaded = s; loadedNight = t.night !== null; markReady(s); } catch (e) { fail(e); } },
       (e) => { if (!cancelled) fail(e); },
     ).finally(() => { if (renderHealth.loading === s) renderHealth.loading = null; });
     return () => { cancelled = true; };
   });
 
-  // 3. Draw whenever the view, the style or the size changes, at most once a frame. The canvas tier shades every
-  // pixel on the CPU, so a change that follows hard on the last one draws at a quarter of the resolution and a
+  /**
+   * The newest frame waiting to be painted and the one animation-frame request that will paint it.
+   *
+   * A pending request is never cancelled and replaced, only re-aimed: a view that changes inside an animation frame
+   * of its own (the lab spinning the Earth moves the Sun, and the globe's rotation, every frame) would otherwise
+   * cancel its own request each time before the browser ever reached it, and the layer would never paint again while
+   * the animation ran — the city lights and the globe's image would stand still under a turning grid.
+   */
+  let queued: { input: DrawInputs; w: number; h: number; ctx: ViewCtx } | null = null;
+  let frame = 0;
+
+  function paintQueued(): void {
+    frame = 0;
+    const q = queued, r = renderer;
+    queued = null;
+    // Before the canvas has been laid out its size is 0: drawing then would leave a 1 x 1 buffer and count as a
+    // frame (tests wait for the count), so wait for the layout instead.
+    if (!q || !r || !q.w || !q.h) return;
+    try { r.resize(q.w, q.h, devicePixelRatio); r.draw(q.input); lastInput = q.input; lastCtx = q.ctx; draws++; } catch (e) { fail(e); }
+  }
+
+  function queue(input: DrawInputs, w: number, h: number, c: ViewCtx): void {
+    queued = { input, w, h, ctx: c };
+    if (!frame) frame = requestAnimationFrame(paintQueued);
+  }
+
+  // 3. Draw whenever the view, the style, the Sun or the size changes, at most once a frame. The canvas tier shades
+  // every pixel on the CPU, so a change that follows hard on the last one draws at a quarter of the resolution and a
   // full-resolution frame follows once the view has settled (spec §4 "reduced resolution while dragging or zooming").
   $effect(() => {
     const r = renderer;
-    if (!r || loaded !== style || !isTextureStyle(style)) return;
+    if (!r || loaded !== style || !isTextureStyle(style)) { queued = null; return; }
     const v = textureView(ctx);
-    const base: DrawInputs = { view: v, regionMix: regionMix(v, REGION, REGION_MIN_ZOOM), night: null, limb: v.projection === 3, glow: style === 'satellite' && v.projection === 3, quality: 'full', debug: 0 };
+    const base: DrawInputs = { view: v, regionMix: regionMix(v, REGION, REGION_MIN_ZOOM), night: nightSun && loadedNight ? nightSun : null, limb: v.projection === 3, glow: style === 'satellite' && v.projection === 3, quality: 'full', debug: 0 };
     const w = cssWidth, h = cssHeight;
     const c = ctx;
     const now = performance.now();
     const moving = r.tier === 'canvas' && now - lastChange < 200;
     lastChange = now;
-    const paint = (input: DrawInputs) => {
-      // Before the canvas has been laid out its size is 0: drawing then would leave a 1 x 1 buffer and count as a
-      // frame (tests wait for the count), so wait for the layout instead.
-      if (!w || !h) return;
-      try { r.resize(w, h, devicePixelRatio); r.draw(input); lastInput = input; lastCtx = c; draws++; } catch (e) { fail(e); }
-    };
-    const frame = requestAnimationFrame(() => paint(moving ? { ...base, quality: 'fast' } : base));
-    const settle = moving ? setTimeout(() => paint(base), 220) : undefined;
-    return () => { cancelAnimationFrame(frame); clearTimeout(settle); };
+    queue(moving ? { ...base, quality: 'fast' } : base, w, h, c);
+    const settle = moving ? setTimeout(() => queue(base, w, h, c), 220) : undefined;
+    return () => clearTimeout(settle);
   });
 
   // 4. A lost WebGL context: Atlas while the browser tries to give the context back, and the next tier down if it

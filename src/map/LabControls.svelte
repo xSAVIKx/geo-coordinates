@@ -130,9 +130,14 @@
     <div class="controls">
       {#if mapState.layers.daylight}
       <div class="legend" role="group" aria-label={t('map.daylight.label')}>
-        <span class="swatch day"><i aria-hidden="true"></i>{t('lab.day')}</span>
-        <span class="swatch twilight"><i aria-hidden="true"></i>{t('lab.twilight')}</span>
-        <span class="swatch night"><i aria-hidden="true"></i>{t('lab.night')}</span>
+        {#if mapState.drawnMapStyle === 'satellite'}
+          <!-- Satellite shows the night side as NASA's city lights instead of the three shades of the SVG wash. -->
+          <span class="swatch lights"><i aria-hidden="true"></i>{t('lab.cityLights')}</span>
+        {:else}
+          <span class="swatch day"><i aria-hidden="true"></i>{t('lab.day')}</span>
+          <span class="swatch twilight"><i aria-hidden="true"></i>{t('lab.twilight')}</span>
+          <span class="swatch night"><i aria-hidden="true"></i>{t('lab.night')}</span>
+        {/if}
       </div>
       {/if}
       {#if has('sun-time')}
@@ -226,6 +231,7 @@
   .swatch.day i { background: linear-gradient(var(--daylit), var(--daylit)), var(--land); }
   .swatch.twilight i { background: linear-gradient(var(--twilight), var(--twilight)), var(--land); }
   .swatch.night i { background: linear-gradient(var(--night), var(--night)), linear-gradient(var(--twilight), var(--twilight)), var(--land); }
+  .swatch.lights i { background: radial-gradient(circle at 30% 60%, #ffd98a 0 2px, transparent 3px), radial-gradient(circle at 70% 40%, #ffe7b0 0 1.5px, transparent 2.5px), #0b1020; }
 
   .key-dates { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-1); }
   .key-dates .btn { flex-direction: column; gap: 0; padding: var(--space-1) var(--space-2); line-height: 1.15; min-width: 0; }

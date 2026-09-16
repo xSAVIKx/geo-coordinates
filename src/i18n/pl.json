@@ -289,6 +289,7 @@
   "lab.dawn": "świt",
   "lab.dusk": "zmierzch",
   "lab.twilight": "świt lub zmierzch",
+  "lab.cityLights": "Strona nocna: światła miast",
   "lab.thePoint": "Punkt ({lon})",
   "lab.noon": "Południe",
   "lab.keyDates": "Ważne dni w roku",
