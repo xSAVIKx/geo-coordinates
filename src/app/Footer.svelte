@@ -1,6 +1,6 @@
 <script lang="ts">
   import { i18n, t } from '../i18n/i18n.svelte';
-  import { AUTHOR, MAP_DATA, SCHOOL_DATA } from './credits';
+  import { AUTHOR, IMAGERY, MAP_DATA, SCHOOL_DATA } from './credits';
   const year = new Date().getFullYear();
   const retrieved = $derived(new Intl.DateTimeFormat(i18n.lang, { dateStyle: 'long', timeZone: 'UTC' }).format(new Date(`${SCHOOL_DATA.retrieved}T00:00:00Z`)));
 </script>
@@ -10,6 +10,8 @@
     © {year} {t('footer.madeBy', { name: AUTHOR.name })}
     <span class="sep" aria-hidden="true"> · </span>
     {t('footer.mapData', { source: '' })}<a href={MAP_DATA.url} rel="noopener">{MAP_DATA.name}</a>
+    <span class="sep" aria-hidden="true"> · </span>
+    {t('footer.imagery', { source: '' })}<a href={IMAGERY.url} rel="noopener">{IMAGERY.name}</a>
   </p>
   <p class="links">
     <a href={AUTHOR.url} rel="author">{t('footer.website', { name: AUTHOR.name })}</a>

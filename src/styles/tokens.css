@@ -207,6 +207,20 @@
   --marker-a: #a8c8ff; --marker-b: #fdba74; --marker-c: #ddd6fe; --marker-d: #99f6e4; --marker-answer: #8ff0a8; --marker-wrong: #ffaba3;
   --river: #7dbbef; --river-label: #d6ecfb; --school: #f9a8d4; --school-text: #fddcef;
 }
+/* Map styles (spec §3 "Readability rules"). Satellite photos are dark in every theme, so map inks take light values and
+ * halos go dark; a lighter grid. Presenter mode raises them to AAA (7:1 against the halo). */
+.frame[data-map-style="satellite"] {
+  --halo: #0b1622; --text: #f3f6f9; --map-label: #e6edf3; --ocean-label: #bfdcf2; --grid: #dbe7f2; --land-stroke: #e8e2c8;
+  --equator: #fb923c; --prime: #c4b5fd; --antimeridian: #5eead4; --tropics: #facc15;
+  --equator-text: #fdba74; --prime-text: #ddd6fe; --antimeridian-text: #99f6e4; --tropics-text: #fde047;
+  --river: #7dbbef; --river-label: #d6ecfb; --school-text: #f9a8d4;
+  --marker-a: #82b1ff; --marker-b: #fb923c; --marker-c: #c4b5fd; --marker-d: #5eead4; --marker-answer: #6fdd8b; --marker-wrong: #ff8a80;
+  --accent: #9cc2ff;
+}
+:root[data-presenter="true"] .frame[data-map-style="satellite"] {
+  --text: #ffffff; --map-label: #ffffff; --ocean-label: #e1f0fb; --grid: #eef4fa;
+  --equator-text: #ffe3c2; --prime-text: #ede9fe; --antimeridian-text: #ccfbf1; --tropics-text: #fef08a; --river-label: #e6f3fc;
+}
 :root[data-large-text="true"] { --fs-scale: 1.25; }
 /* Big screens at 100% scaling: the whole interface steps up, so type, spacing and 44px targets keep their
  * proportions instead of shrinking to a strip in the middle. A quarter from 2560px (a 27" QHD monitor gets only a

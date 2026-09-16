@@ -88,10 +88,11 @@ const onlySymbols = (s: string) => s.replace(/\{\w+\}/g, '').replace(/[\s\d°′
 // standalone Latin token, and Ukrainian coordinate text must never use Latin
 // compass letters (it uses «пн. ш.» / «пд. ш.» / «сх. д.» / «зх. д.»). "km" is
 // deliberately NOT here either: Ukrainian uses "км", not the Latin spelling.
-const LATIN_OK = new Set(['A', 'B', 'P', 'L', 'UTC', 'Esc', 'Shift', 'Ctrl', 'Google', 'GPS', 'WGS', 'Maple', 'Bear', 'Mercator', 'Equal', 'Earth', 'GitHub', 'PDF']);
+const LATIN_OK = new Set(['A', 'B', 'P', 'L', 'UTC', 'Esc', 'Shift', 'Ctrl', 'Google', 'GPS', 'WGS', 'Maple', 'Bear', 'Mercator', 'Equal', 'Earth', 'GitHub', 'PDF', 'NASA', 'Observatory', 'Blue', 'Black', 'Marble', 'Natural']);
 
 // Latin words allowed only in the keys that need them (not anywhere in Ukrainian text):
 //  - CC, BY in cheat.foot  the licence name "CC BY 4.0" on the printed cheat sheet and worksheet
+//  - NASA, Observatory, Blue, Black, Marble, Natural  names of the image and data sources (NASA Earth Observatory, Blue Marble, Black Marble, Natural Earth), kept as published
 const KEY_LATIN_OK: readonly (readonly [RegExp, ReadonlySet<string>])[] = [
   [/^cheat\.foot$/, new Set(['CC', 'BY'])],
 ];

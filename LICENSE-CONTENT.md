@@ -33,6 +33,14 @@ MIT), and it does not cover the third-party data described below.
   (`ne_10m_admin_0_countries_pol`, version 5.1.1), which shows Ukraine's
   internationally recognised borders, including Crimea.
 
+- **Relief and satellite images** — the Physical map style uses Natural Earth's
+  "Cross Blended Hypso with Shaded Relief and Water" (`HYP_50M_SR_W`, public
+  domain). The Satellite map style uses NASA Earth Observatory's Blue Marble
+  Next Generation (July 2004) and Black Marble 2016 images, which are not
+  subject to copyright in the United States; credit: NASA Earth Observatory.
+  The Political map style's country shapes are Natural Earth's Poland
+  point-of-view admin-0 countries (`ne_10m_admin_0_countries_pol`, public domain).
+
 - **Maple Bear school locations** — the coordinates and names shown on the
   optional Maple Bear schools layer are factual data (approximate school
   locations) collected from publicly published Maple Bear school websites.

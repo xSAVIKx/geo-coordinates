@@ -54,6 +54,7 @@
     {/each}
   </div>
   <p class="map-status" role="status">{renderHealth.loading && isTextureStyle(mapState.mapStyle) ? t('map.style.loading') : ''}</p>
+  <p class="map-source">{mapState.drawnMapStyle !== 'atlas' ? t(`map.style.source.${mapState.drawnMapStyle}`) : ''}</p>
   <MapStyleNote />
   {#if midContent}{@render midContent()}{/if}
   {#if mapState.point}<CoordinateControls />{/if}
@@ -69,6 +70,8 @@
   .views.wide:has(.view-globe):has(.view-flat) { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
   .views.wide:has(.view-cross-section):not(:has(.view-flat)) { grid-template-columns: repeat(var(--count), minmax(0, 1fr)); }
   .map-status { margin: 0; color: var(--text-muted); font-size: var(--step--1); }
+  .map-source { margin: 0; color: var(--text-muted); font-size: var(--step--1); }
+  .map-source:empty { display: none; }
   /*
    * The live region has to be in the accessibility tree before it has anything to say: `display: none` would take it
    * out of the tree, and a live region that appears only once it is populated reads as a brand-new region, which most

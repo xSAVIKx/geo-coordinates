@@ -90,6 +90,15 @@ h1[tabindex='-1']:focus-visible, h2[tabindex='-1']:focus-visible { outline: none
 /* ---------- Map text ---------- */
 svg text.halo { paint-order: stroke; stroke: var(--halo); stroke-width: 3px; stroke-linejoin: round; stroke-opacity: 0.92; font-weight: 600; font-family: var(--font); }
 
+/* Over relief, photos and country colours every map text keeps a full, slightly wider halo (spec §3); presenter wider still. */
+.frame[data-map-style]:not([data-map-style="atlas"]) svg text.halo { stroke-opacity: 1; stroke-width: 4px; }
+:root[data-presenter="true"] .frame[data-map-style]:not([data-map-style="atlas"]) svg text.halo { stroke-width: 5.5px; }
+.frame[data-map-style]:not([data-map-style="atlas"]) .guide-casing,
+.frame[data-map-style]:not([data-map-style="atlas"]) .casing,
+.frame[data-map-style]:not([data-map-style="atlas"]) .hl-casing,
+.frame[data-map-style]:not([data-map-style="atlas"]) .noon-casing,
+.frame[data-map-style]:not([data-map-style="atlas"]) .bracket-casing { stroke-opacity: 0.9; }
+
 /* ---------- Print ----------
  * The cheat sheet and the worksheet are made for A4 paper. Whatever the screen shows (dark theme,
  * presenter mode, large text, a big-screen step-up), paper gets black on white at the normal size,

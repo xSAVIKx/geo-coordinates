@@ -60,7 +60,7 @@
 
 {#snippet choices()}
   {#each MAP_STYLES as s (s)}
-    <button type="button" class="btn" aria-pressed={mapState.chosenMapStyle === s} onclick={() => pick(s)}>{t(`map.style.${s}`)}</button>
+    <button type="button" class="btn" aria-pressed={mapState.chosenMapStyle === s} title={s === 'atlas' ? undefined : t(`map.style.source.${s}`)} onclick={() => pick(s)}>{t(`map.style.${s}`)}</button>
   {/each}
 {/snippet}
 
@@ -80,7 +80,7 @@
     </div>
   {/if}
 {/if}
-<p id="{idPrefix}-style-hint" class="visually-hidden">{t('map.style.hint')}</p>
+<p id="{idPrefix}-style-hint" class="visually-hidden">{t('map.style.hint')} {mapState.drawnMapStyle !== 'atlas' ? t(`map.style.source.${mapState.drawnMapStyle}`) : ''}</p>
 
 <style>
   /*
