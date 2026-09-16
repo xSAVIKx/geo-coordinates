@@ -6,6 +6,9 @@ import { dateFromDayAndMinutes, dayOfYear, daysInYear } from '../geo/sun';
 import type { LatLon, Precision } from '../geo/types';
 import { clampFlatCenter, flatMinZoom, panFlatCenter } from './geometry';
 import { isolatingFlatZoom, isolatingGlobeZoom, schoolById, type School } from './schools';
+import { DEFAULT_MAP_STYLE, type MapStyle } from './mapStyle';
+import { drawnStyle, effectiveStyle } from './texture/fallback';
+import { renderHealth } from './texture/health.svelte';
 import type { FlatPreset, FlatProjection, LabControl, LayerFlags, Overlay, Readout, SceneSpec, ViewId } from './types';
 
 const PROJECTION_KEY = 'geo-coords:projection';
@@ -66,6 +69,14 @@ export class MapState {
   projectionSwitch = $state(false);
   /** Whether the scene offers the Maple Bear schools switch (`SceneSpec.schoolsToggle`). */
   schoolsToggle = $state(false);
+  /** The remembered map style (Task 9 reads and writes it in storage). */
+  stylePreference = $state<MapStyle>(DEFAULT_MAP_STYLE);
+  /** The style the scene sets (`SceneSpec.mapStyle`), if any. */
+  styleOverride = $state<MapStyle | null>(null);
+  /** A style picked with the switch while the scene sets its own: lasts until the next `applyScene`. */
+  styleChoice = $state<MapStyle | null>(null);
+  /** A class quiz run's style (ClassQuiz sets it on Start, clears it on End): never saved. */
+  runStyle = $state<MapStyle | null>(null);
   /** The school chosen from the Schools list (or a badge's list): drawn on its own, named, until the next scene. */
   chosenSchool = $state<string | null>(null);
   /**
@@ -92,6 +103,32 @@ export class MapState {
 
   get flatProjection(): FlatProjection {
     return this.projectionChoice ?? this.projectionOverride ?? this.projectionPreference;
+  }
+
+  /** The style the pupil or teacher chose for this map, before any fallback. */
+  get chosenMapStyle(): MapStyle {
+    return this.styleChoice ?? this.styleOverride ?? this.runStyle ?? this.stylePreference;
+  }
+
+  /** The chosen style, or Atlas when this device cannot draw it (src/map/texture/fallback.ts). */
+  get mapStyle(): MapStyle {
+    return effectiveStyle(this.chosenMapStyle, renderHealth.state);
+  }
+
+  /** What the layers draw now: a texture style shows Atlas until its images are decoded. */
+  get drawnMapStyle(): MapStyle {
+    return drawnStyle(this.mapStyle, renderHealth.ready);
+  }
+
+  /** The style switch: a scene with its own style → this scene; a class quiz run → this run; otherwise the preference. */
+  chooseMapStyle(s: MapStyle): void {
+    if (this.styleOverride !== null) this.styleChoice = s;
+    else if (this.runStyle !== null) this.runStyle = s;
+    else this.setStylePreference(s);
+  }
+
+  setStylePreference(s: MapStyle): void {
+    this.stylePreference = s;
   }
 
   setProjectionPreference(p: SavedProjection): void {
@@ -150,6 +187,8 @@ export class MapState {
     this.projectionOverride = scene.flatProjection ?? null;
     this.projectionChoice = null;
     this.projectionSwitch = scene.projectionSwitch ?? false;
+    this.styleOverride = scene.mapStyle ?? null;
+    this.styleChoice = null;
     this.precision = scene.precision ?? 'degree';
     this.pointEditable = scene.pointEditable ?? false;
     this.showReadout = scene.showReadout ?? true;

@@ -1,4 +1,5 @@
 import type { Axis, LatLon, Precision } from '../geo/types';
+import type { MapStyle } from './mapStyle';
 
 export type ViewId = 'globe' | 'flat' | 'cross-section';
 export type FlatPreset = 'world' | 'europe' | 'poland';
@@ -47,6 +48,7 @@ export interface SceneSpec {
   flatView?: { center: LatLon; zoom: number }; // overrides flatPreset
   flatProjection?: FlatProjection;       // forces this projection for the scene; absent = viewer preference applies
   projectionSwitch?: boolean;            // with flatProjection: keep the projection switch; a choice then applies to this scene only
+  mapStyle?: MapStyle;                   // forces this map style for the scene (worksheets: 'atlas'); a pick with the switch then lasts for the scene only
   overlays?: Overlay[];
   sun?: { utcMinutes: number; dayOfYear: number } | null;
   labControls?: LabControl[];
