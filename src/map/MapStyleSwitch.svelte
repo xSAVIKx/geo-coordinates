@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import { t } from '../i18n/i18n.svelte';
   import { mapState } from './mapState.svelte';
   import { MAP_STYLES, type MapStyle } from './mapStyle';
@@ -40,7 +41,13 @@
       place = { top: r.bottom + 4, left: Math.max(8, Math.min(r.left, innerWidth - 8 - 232)) };
     }
     open = !open;
-    if (open) queueMicrotask(() => panel?.querySelector<HTMLButtonElement>('[aria-pressed="true"]')?.focus());
+    // `tick()` (not a raw microtask) waits for Svelte to actually mount the portalled panel into
+    // <body> before focus() is attempted — under load a plain queueMicrotask can run first, while
+    // `panel` is still unset, silently dropping the focus move (see SchoolPopover.svelte for the
+    // same pattern). `preventScroll` avoids the browser scrolling anything to reveal the newly
+    // focused button — the panel already places itself in view, and an incidental scroll here
+    // would (before the fix below) have closed the very panel that just opened.
+    if (open) void tick().then(() => panel?.querySelector<HTMLButtonElement>('[aria-pressed="true"]')?.focus({ preventScroll: true }));
   }
   function close(refocus: boolean) { open = false; if (refocus) button?.focus(); }
   function pick(s: MapStyle) {
@@ -51,10 +58,17 @@
     if (!open) return;
     const outside = (e: PointerEvent) => { if (!panel?.contains(e.target as Node) && !button?.contains(e.target as Node)) close(false); };
     const away = () => close(false);
+    // Only a real page scroll (target is the document) closes the panel: the panel is `position:
+    // fixed` precisely so the phone's sideways-scrolling tool row can scroll under it without
+    // affecting it (see `portal` above), but a capture-phase 'scroll' listener on window also
+    // sees that row's own internal scroll — including the one the browser performs to bring an
+    // off-screen toggle button into view before the very click that opens this panel. Reacting to
+    // that closed the panel it had just opened.
+    const scrolled = (e: Event) => { if (e.target === document) away(); };
     addEventListener('pointerdown', outside, true);
     addEventListener('resize', away);
-    addEventListener('scroll', away, true);
-    return () => { removeEventListener('pointerdown', outside, true); removeEventListener('resize', away); removeEventListener('scroll', away, true); };
+    addEventListener('scroll', scrolled, true);
+    return () => { removeEventListener('pointerdown', outside, true); removeEventListener('resize', away); removeEventListener('scroll', scrolled, true); };
   });
 </script>
 
