@@ -59,6 +59,8 @@ export class MapState {
   sun = $state<{ utcMinutes: number; dayOfYear: number; year: number } | null>(null);
   /** The lab's "Advanced: real Sun" switch (spec §6.3): off by default, not saved, off again with every scene. */
   realSun = $state(false);
+  /** Whether LabControls offers "Seasons mode": the scene lists the 'seasons' control but not the orbit view (the lab). */
+  orbitToggle = $state(false);
   labControls = $state<LabControl[]>([]);
   phoneView = $state<ViewId>('flat');
   lastChange = $state<ChangeSource>('program');
@@ -212,6 +214,7 @@ export class MapState {
     this.sun = scene.sun ? { ...scene.sun, year: new Date().getUTCFullYear() } : null;
     this.realSun = false;
     this.labControls = [...(scene.labControls ?? [])];
+    this.orbitToggle = (scene.labControls ?? []).includes('seasons') && !scene.views.includes('orbit');
     this.schoolsToggle = scene.schoolsToggle ?? false;
     this.chosenSchool = null;
     this.phoneView = scene.phoneView && scene.views.includes(scene.phoneView) ? scene.phoneView : scene.views.includes('flat') ? 'flat' : (scene.views[0] ?? 'flat');
@@ -231,6 +234,12 @@ export class MapState {
   sunPoint(): LatLon | null {
     const d = this.sunDate();
     return d ? sunPoint(d, this.realSun) : null;
+  }
+
+  /** The lab's "Seasons mode": puts the orbit view in front of the other views, or takes it away again. */
+  toggleOrbit(): void {
+    this.views = this.views.includes('orbit') ? this.views.filter((v) => v !== 'orbit') : ['orbit', ...this.views];
+    if (!this.views.includes(this.phoneView)) this.phoneView = this.views.includes('flat') ? 'flat' : this.views[0]!;
   }
 
   /** Rounds to the scene's precision — or, when the readout shows decimals, to 4 decimals like a map app. */

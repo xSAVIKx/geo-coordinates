@@ -11,6 +11,7 @@
   import { isTextureStyle } from './mapStyle';
   import { mapState } from './mapState.svelte';
   import MapStyleNote from './MapStyleNote.svelte';
+  import OrbitView from './OrbitView.svelte';
   import PlaceList from './PlaceList.svelte';
   import SchoolList from './SchoolList.svelte';
   import { renderHealth } from './texture/health.svelte';
@@ -49,7 +50,7 @@
   <div class="views" class:wide style:--count={shown.length}>
     {#each shown as v (v)}
       <div class="view view-{v}">
-        {#if v === 'globe'}<Globe />{:else if v === 'flat'}<FlatMap />{:else}<CrossSection />{/if}
+        {#if v === 'globe'}<Globe />{:else if v === 'flat'}<FlatMap />{:else if v === 'orbit'}<OrbitView />{:else}<CrossSection />{/if}
       </div>
     {/each}
   </div>
@@ -69,6 +70,9 @@
   .views { display: grid; gap: var(--space-4) var(--space-5); grid-template-columns: minmax(0, 1fr); align-items: start; }
   .views.wide:has(.view-globe):has(.view-flat) { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
   .views.wide:has(.view-cross-section):not(:has(.view-flat)) { grid-template-columns: repeat(var(--count), minmax(0, 1fr)); }
+  /* The orbit takes its own row above globe and map; with the globe alone they share a row. */
+  .views.wide:has(.view-orbit):has(.view-flat) .view-orbit { grid-column: 1 / -1; justify-self: center; width: min(100%, 44rem); }
+  .views.wide:has(.view-orbit):has(.view-globe):not(:has(.view-flat)) { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
   .map-status { margin: 0; color: var(--text-muted); font-size: var(--step--1); }
   .map-source { margin: 0; color: var(--text-muted); font-size: var(--step--1); }
   .map-source:empty { display: none; }

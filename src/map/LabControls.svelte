@@ -13,6 +13,7 @@
   import { i18n, t } from '../i18n/i18n.svelte';
   import { mapState } from './mapState.svelte';
   import { placeById } from './places';
+  import SeasonsReadout from './SeasonsReadout.svelte';
   import Slider from './Slider.svelte';
   import { SPIN_SPEEDS, minutesPerMs, speedFactor } from './spinSpeeds';
 
@@ -126,7 +127,7 @@
 
 {#if mapState.sun}
   <div class="lab-box"><div class="lab" class:has-clocks={has('clocks')}>
-    {#if mapState.layers.daylight || has('sun-time') || has('sun-date') || has('now') || has('real-sun')}
+    {#if mapState.layers.daylight || has('sun-time') || has('sun-date') || has('now') || has('real-sun') || has('seasons')}
     <div class="controls">
       {#if mapState.layers.daylight}
       <div class="legend" role="group" aria-label={t('map.daylight.label')}>
@@ -157,6 +158,12 @@
             </button>
           {/each}
         </div>
+      {/if}
+      {#if has('seasons') && mapState.orbitToggle}
+        <button type="button" class="btn seasons-toggle" aria-pressed={mapState.views.includes('orbit')} onclick={() => mapState.toggleOrbit()}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="12" rx="9.5" ry="4.5" /><circle cx="12" cy="12" r="2.6" /><circle cx="4.2" cy="13.6" r="1.6" /></svg>
+          {t('lab.seasons')}
+        </button>
       {/if}
       {#if has('now') || (has('sun-time') && !motionReduced())}
         <div class="buttons">
@@ -221,6 +228,7 @@
         </table>
       </div>
     {/if}
+    {#if has('seasons') && mapState.views.includes('orbit') && mapState.point}<SeasonsReadout />{/if}
   </div></div>
 {/if}
 
@@ -256,6 +264,8 @@
   .speed-hint { margin: 0; font-size: var(--step--1); color: var(--text-muted); }
   .buttons svg { width: 1.25rem; height: 1.25rem; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 
+  .seasons-toggle { justify-self: start; }
+  .seasons-toggle svg { width: 1.25rem; height: 1.25rem; fill: none; stroke: currentColor; stroke-width: 1.8; }
   .real-sun { display: grid; gap: var(--space-1); padding-top: var(--space-2); border-top: 1px dashed var(--border); }
   .real-sun .btn { justify-self: start; }
   .real-sun svg { width: 1.25rem; height: 1.25rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }

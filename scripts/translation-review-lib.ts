@@ -30,6 +30,7 @@ export interface InfoNote {
 //                       ruled it stays untranslated in all three languages
 //  - map.style.atlas   "Atlas" is the same word in Polish (the style's name)
 //  - physical.sahara, physical.kalahari  proper names spelt the same in Polish
+//  - seasons.dateEvent  "{date}, {event}" is parameters only
 // (`unit.label.deg` and `q.further.option` were pruned: the former is already
 // "°" only, caught by onlySymbols(); the latter's UK/PL text never actually
 // matches English, so the entry never did anything.)
@@ -48,6 +49,7 @@ const SAME_OK = [
   /^map\.projection\.equal-earth$/,
   /^map\.style\.atlas$/,
   /^physical\.(sahara|kalahari)$/,
+  /^seasons\.dateEvent$/,
 ];
 
 // Place-name keys are excluded from "info: foreign term" notes — a place name
@@ -86,11 +88,12 @@ const onlySymbols = (s: string) => s.replace(/\{\w+\}/g, '').replace(/[\s\d°′
 //                       are printed in Latin on Ukrainian keyboards too (the
 //                       shortcut also answers to those keys on a Cyrillic
 //                       layout, see src/app/presenterKeys.ts).
+//  - Page, Up, Down  the Page Up / Page Down key names in seasons.orbit.hint (printed in Latin on keyboards)
 // "N", "S", "E", "W" were pruned: no real message contains them as a
 // standalone Latin token, and Ukrainian coordinate text must never use Latin
 // compass letters (it uses «пн. ш.» / «пд. ш.» / «сх. д.» / «зх. д.»). "km" is
 // deliberately NOT here either: Ukrainian uses "км", not the Latin spelling.
-const LATIN_OK = new Set(['A', 'B', 'P', 'L', 'UTC', 'Esc', 'Shift', 'Ctrl', 'Google', 'GPS', 'WGS', 'Maple', 'Bear', 'Mercator', 'Equal', 'Earth', 'GitHub', 'PDF', 'NASA', 'Observatory', 'Blue', 'Black', 'Marble', 'Natural']);
+const LATIN_OK = new Set(['A', 'B', 'P', 'L', 'UTC', 'Esc', 'Shift', 'Ctrl', 'Google', 'GPS', 'WGS', 'Maple', 'Bear', 'Mercator', 'Equal', 'Earth', 'GitHub', 'PDF', 'NASA', 'Observatory', 'Blue', 'Black', 'Marble', 'Natural', 'Page', 'Up', 'Down']);
 
 // Latin words allowed only in the keys that need them (not anywhere in Ukrainian text):
 //  - CC, BY in cheat.foot  the licence name "CC BY 4.0" on the printed cheat sheet and worksheet

@@ -1,7 +1,7 @@
 import type { Axis, LatLon, Precision } from '../geo/types';
 import type { MapStyle } from './mapStyle';
 
-export type ViewId = 'globe' | 'flat' | 'cross-section';
+export type ViewId = 'globe' | 'flat' | 'cross-section' | 'orbit';
 export type FlatPreset = 'world' | 'europe' | 'poland';
 export type FlatProjection = 'grid' | 'equal-earth' | 'mercator';
 export interface LayerFlags {
@@ -32,7 +32,7 @@ export type Overlay = OverlayKind & { animate?: boolean };
  * with the letters below; `both` the decimal pair with degrees, minutes and seconds below.
  */
 export type Readout = 'letters' | 'decimal' | 'both';
-export type LabControl = 'sun-time' | 'sun-date' | 'clocks' | 'now' | 'real-sun';
+export type LabControl = 'sun-time' | 'sun-date' | 'clocks' | 'now' | 'real-sun' | 'seasons';
 export interface SceneSpec {
   views: ViewId[];                       // views shown, in order
   phoneView?: ViewId;                    // the view a phone opens with (must be in `views`); default: flat if shown, else the first
