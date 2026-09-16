@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { expectNoAxeViolations, openPage, pageErrors, setMapStyle, waitForTexture } from './helpers';
+import { expectNoAxeViolations, openPage, pageErrors, probe, setMapStyle, waitForTexture } from './helpers';
 
 type S = { setFlatPreset(p: string): void; setFlatView(c: object, z: number): void };
 const view = (page: import('@playwright/test').Page, fn: string) => page.evaluate((f) => new Function('s', f)((window as unknown as { __mapState: S }).__mapState), fn);
@@ -82,6 +82,47 @@ for (const scheme of ['light', 'dark'] as const) {
     expect(pageErrors(page)).toEqual([]);
   });
 }
+
+/**
+ * WCAG 1.4.11 (non-text contrast, 3:1) for the water itself, measured against *real* sampled relief pixels the way
+ * map-style-readability.spec.ts measures the grid — not against a token, which cannot know how dark the terrain
+ * under it is. `probe()` reads the decoded texture, so `bg` is the actual rainforest/lowland green; the stroke is
+ * then composited over it with the element's own computed stroke-opacity, so a future opacity change is exercised
+ * rather than assumed. The basins picked are the darkest greens the relief has where big rivers run, which is
+ * where a water colour chosen over pale terrain goes invisible.
+ */
+const rgbOf = (css: string): [number, number, number] => {
+  const t = css.trim();
+  if (t.startsWith('#')) return [1, 3, 5].map((i) => parseInt(t.slice(i, i + 2), 16)) as [number, number, number];
+  const [r, g, b] = t.match(/\d+(?:\.\d+)?/g)!.map(Number);
+  return [r!, g!, b!];
+};
+const luminance = ([r, g, b]: [number, number, number]) => {
+  const f = (x: number) => { const s = x / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; };
+  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+};
+const contrastOf = (a: [number, number, number], b: [number, number, number]) => {
+  const [x, y] = [luminance(a), luminance(b)].sort((p, q) => q - p);
+  return (x! + 0.05) / (y! + 0.05);
+};
+const alpha = (fg: [number, number, number], a: number, bg: [number, number, number]): [number, number, number] =>
+  fg.map((c, i) => a * c + (1 - a) * bg[i]!) as [number, number, number];
+
+test('Physical: rivers and lake edges stay visible over the dark green of the great river basins', async ({ page }) => {
+  await openPage(page, 'en/lab', '?test');
+  await setMapStyle(page, 'physical');
+  await waitForTexture(page, 'flat');
+  const edge = rgbOf(await page.locator('.view-flat .frame').evaluate((f) => getComputedStyle(f).getPropertyValue('--physical-water-edge')));
+  for (const [name, lat, lon] of [['Amazon basin', -3.3, -60], ['West Siberia', 60, 72], ['Polish lowland', 52.2, 19.5]] as const) {
+    await page.evaluate(([la, lo]) => (window as unknown as { __mapState: S }).__mapState.setFlatView({ lat: la as number, lon: lo as number }, 6), [lat, lon] as const);
+    await page.waitForTimeout(200);
+    const bg = (await probe(page, 'flat', lat, lon, 3))!.avg;
+    const opacity = await page.locator('.view-flat g.physical-water path.river').first().evaluate((el) => Number(getComputedStyle(el).strokeOpacity));
+    expect(bg[1], `${name} should be a real mid-tone terrain pixel, not sea or ice`).toBeLessThan(215);
+    expect(contrastOf(alpha(edge, opacity, bg), bg), `${name}: river over terrain`).toBeGreaterThanOrEqual(3);
+  }
+  expect(pageErrors(page)).toEqual([]);
+});
 
 test('an exception in the Physical water layer shows Atlas with the note', async ({ page }) => {
   await openPage(page, 'en/lab', '?test&vector=fail');
