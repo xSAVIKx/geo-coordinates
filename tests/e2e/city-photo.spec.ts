@@ -15,6 +15,8 @@ const katowice = boxOf('katowice');
 const fitZoom = fit(katowice);
 
 const cityBytes = (page: Page) => page.evaluate(() => (window as unknown as { __mapTextures: { cityBytes(): number } }).__mapTextures.cityBytes());
+/** Replaces the mounted views, the way every scene change does (`replaceScene` sets `mapState.views`). */
+const setViews = (page: Page, views: string[]) => page.evaluate((v) => { (window as unknown as { __mapState: { views: string[] } }).__mapState.views = v; }, views);
 
 /**
  * Waits for the photo of `box` to be decoded and for the frame that follows it to be painted. The draw count
@@ -109,6 +111,40 @@ test('choosing Atlas gives the close-up back', async ({ page }) => {
   await expect.poll(() => cityBytes(page), { timeout: 20_000 }).toBe(0);
   // And coming back to a texture style over the same box decodes it again.
   await setMapStyle(page, 'satellite');
+  await waitForPhoto(page, katowice);
+  expect(pageErrors(page)).toEqual([]);
+});
+
+/*
+ * The other way the layer can go away: not a style change but an unmount. `MapStage` mounts a view only while
+ * `mapState.views` names it, and every scene change replaces that array — so moving from a close-ups scene to,
+ * say, an orbit-only seasons scene destroys the flat map's texture layer outright. On teardown only cleanups
+ * run, so the release cannot live in the effect body; without a cleanup of its own the last close-up stays
+ * decoded for the rest of the page session.
+ */
+test('unmounting the view that holds a close-up gives it back — and unmounting the other view does not', async ({ page }) => {
+  test.setTimeout(90_000);
+  await openPage(page, 'en/lab', '?test');
+  await setMapStyle(page, 'physical');
+  await waitForTexture(page, 'flat');
+  await setFlatView(page, katowice.lat, katowice.lon, fitZoom);
+  await waitForPhoto(page, katowice);
+
+  // The lab mounts both views. Dropping the globe must not touch a photo the flat map is still drawing.
+  await setViews(page, ['flat']);
+  await page.waitForTimeout(400);
+  expect(await cityBytes(page), 'the globe going away must not close the flat map\'s photo').toBe(rgba(katowice));
+  const still = await probe(page, 'flat', katowice.lat, katowice.lon, 4);
+  expect(still, 'and the flat map is still drawing').not.toBeNull();
+
+  // Now the view that holds it goes: a scene whose views exclude the flat map (orbit only, as topic 10 has).
+  await setViews(page, ['orbit']);
+  await expect.poll(() => cityBytes(page), { timeout: 20_000 }).toBe(0);
+
+  // Coming back mounts a fresh layer, which decodes and uploads again.
+  await setViews(page, ['globe', 'flat']);
+  await waitForTexture(page, 'flat');
+  await setFlatView(page, katowice.lat, katowice.lon, fitZoom);
   await waitForPhoto(page, katowice);
   expect(pageErrors(page)).toEqual([]);
 });

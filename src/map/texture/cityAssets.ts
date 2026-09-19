@@ -52,17 +52,41 @@ export function cachedCityPhotoBytes(): number {
   return total;
 }
 
-/** Closes every decoded photo but `keep` and forgets them. Returns the bytes of RGBA given back. */
-export function releaseCityPhotosExcept(keep: CityBoxId | null): number {
+/**
+ * Which close-up each live view still wants. Whether a photo may be given back is not one view's decision to
+ * make: the flat map and the globe each mount their own texture layer over the same cache, so a view with no
+ * box in sight used to be able to close a bitmap the *other* view had a decode in flight for — which then
+ * uploads a closed bitmap, throws, and costs the page a render tier. A view claims before it decodes and gives
+ * its claim up when it unmounts, and a photo is freed exactly when nobody is claiming it.
+ */
+const holders = new Map<object, CityBoxId>();
+
+/** Closes every decoded photo no holder wants any more, and forgets them. Returns the bytes of RGBA given back. */
+function sweep(): number {
+  const wanted = new Set(holders.values());
   let freed = 0;
   for (const [id, p] of [...cache]) {
-    if (id === keep) continue;
+    if (wanted.has(id)) continue;
     freed += decodedBytes(id);
     // Detached from the cache first, so nothing can hand out a closed bitmap; a load that failed has nothing to close.
     cache.delete(id);
     void p.then((b) => b.close(), () => {});
   }
   return freed;
+}
+
+/**
+ * Says which close-up `holder` — one view's texture layer, identified only by object identity — still needs, and
+ * gives back every decoded photo no holder needs any more. `null` drops the holder's claim altogether, which is
+ * what a view does when it leaves every box, when it has no renderer to draw one with, and when it unmounts:
+ * a scene whose `views` exclude this one tears the whole layer down, and without that last call the close-up it
+ * was holding (5.27 MiB for the school box) would stay decoded for the rest of the page session (ruling R13).
+ * Returns the bytes of RGBA given back.
+ */
+export function holdCityPhoto(holder: object, id: CityBoxId | null): number {
+  if (id) holders.set(holder, id);
+  else holders.delete(holder);
+  return sweep();
 }
 
 export function loadCityPhoto(id: CityBoxId): Promise<ImageBitmap> {

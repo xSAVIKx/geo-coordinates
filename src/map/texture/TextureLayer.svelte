@@ -8,7 +8,7 @@
   import { REGION, REGION_MIN_ZOOM } from '../world';
   import { loadStyleTextures, releaseTexturesExcept } from './assets';
   import { createCanvasRenderer } from './canvas2d';
-  import { loadCityPhoto, releaseCityPhotosExcept } from './cityAssets';
+  import { holdCityPhoto, loadCityPhoto } from './cityAssets';
   import { markReady, renderHealth, reportHealth } from './health.svelte';
   import { boxMix, regionMix } from './inverse';
   import { RenderFailure, sunVector, type DrawInputs, type TextureRenderer } from './renderer';
@@ -56,6 +56,8 @@
   const cityBox = $derived(mapState.closeUps && isTextureStyle(style) ? visibleCityBox(ctx.bounds, ctx.zoom) : null);
   /** The box whose photo the renderer is holding: the draw only names a box once its own photo is uploaded. */
   let cityLoaded = $state<CityBoxId | null>(null);
+  /** This view's claim on a decoded close-up (cityAssets.ts). Only its identity matters. */
+  const cityHolder = {};
 
   // Nothing is drawing this style any more, so the SVG layers go back to Atlas (the owner's "any error falls back to
   // the existing rendering") until a tier has uploaded its own textures and marked the style ready again.
@@ -114,22 +116,30 @@
   // The box's photo, decoded on first entry and given back when the view leaves every box (ruling R13).
   $effect(() => {
     const r = renderer, box = cityBox;
-    // No box in view, *or* no renderer to draw one with — Atlas, Political, or the fallback chain having given
-    // up on this device — and the decoded photo is dead weight either way. Releasing only on the first of those
-    // left the school box's 5.27 MiB of RGBA held for the rest of the page session the moment the pupil chose
-    // Atlas, which is exactly what ruling R13's accounting exists to prevent. A renderer that comes back
-    // decodes and uploads again; `cityLoaded` is nulled here and by the renderer's own teardown.
-    if (!r || !box) { r?.setCityTexture(null); cityLoaded = null; releaseCityPhotosExcept(null); return; }
+    // The claim is made before the decode starts, never when it lands: the other view runs the same sweep, and
+    // a photo claimed only on arrival could be closed in between and then uploaded closed, which throws and
+    // costs the page a render tier. It is dropped when there is no box in view *or* no renderer to draw one
+    // with — Atlas, Political, or the fallback chain having given up on this device — because the decoded
+    // photo is dead weight in every one of those cases. A renderer that comes back decodes and uploads again;
+    // `cityLoaded` is nulled here and by the renderer's own teardown.
+    holdCityPhoto(cityHolder, r && box ? box.id : null);
+    if (!r || !box) { r?.setCityTexture(null); cityLoaded = null; return; }
     let cancelled = false;
     loadCityPhoto(box.id).then(
       (bmp) => {
         if (cancelled) return;
-        try { r.setCityTexture(bmp); cityLoaded = box.id; releaseCityPhotosExcept(box.id); } catch (e) { fail(e); }
+        try { r.setCityTexture(bmp); cityLoaded = box.id; } catch (e) { fail(e); }
       },
       (e) => { if (!cancelled) fail(e); },
     );
     return () => { cancelled = true; };
   });
+
+  // Unmount. A scene whose `views` exclude this one takes the whole layer with it (MapStage mounts the views
+  // from `mapState.views`, which every scene change replaces), and on teardown only cleanups run — the effect
+  // above never re-evaluates, so its body cannot be where this happens. Dependency-free on purpose, so this
+  // runs once and its cleanup runs only when the component is destroyed.
+  $effect(() => () => { holdCityPhoto(cityHolder, null); });
 
   // Atlas and Political draw no texture at all: whatever was decoded for a texture style is pure overhead from
   // here on, so it goes back too. (Both views run this; the second call finds nothing left to free.)
