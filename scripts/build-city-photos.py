@@ -9,8 +9,10 @@ Every photo comes out equirectangular in the box's own lon/lat frame, north up, 
             Credit: "Ortofotomapa: Glowny Urzad Geodezji i Kartografii, geoportal.gov.pl"
   ign       IGN BD ORTHO, France, via data.geopf.fr. WMTS, LAYER=ORTHOIMAGERY.ORTHOPHOTOS, TILEMATRIXSET=PM.
             Credit: "Orthophotos: (c) IGN / Geoplateforme (data.geopf.fr), Licence Ouverte Etalab 2.0"
-  gsi       GSI seamlessphoto, Japan. XYZ tiles. Processed tiles must say so.
-            Credit: "Aerial photo: Geospatial Information Authority of Japan, seamlessphoto tiles (processed)"
+  gsi       GSI seamlessphoto, Japan. XYZ tiles. Processed tiles must say so. Ruling R20 keeps the formula in
+            the language the service publishes it in, so the credit carries the Japanese half first.
+            Credit: "<kuchu shashin>: <Kokudo Chiriin seamless kuchu shashin (kako)> / Aerial photo: Geospatial
+            Information Authority of Japan, seamlessphoto tiles (processed)" (the real line is in SOURCES below)
   naip      USGS / USDA NAIP, United States. ArcGIS ImageServer exportImage, already in EPSG:4326. Public domain.
             Credit: "Aerial photo: USDA-FSA National Agriculture Imagery Program (NAIP), via USGS (public domain)"
   sentinel  Copernicus Sentinel-2 L2A via the Earth Search STAC API on AWS; the "visual" (TCI) COG at 10 m.
@@ -59,6 +61,12 @@ SCENE_OVERRIDES = {
     # across Darling Harbour and the Quay. This one is 0.001 percentage points cloudier and the sun is 46° up,
     # so the bridge, the Opera House point and the Botanic Garden all read. 15 September 2025.
     'sydney': 'S2B_56HLH_20250915_0_L2A',
+    # The box exists for the pyramids, and under a September sun 61 degrees up they were not in it: limestone and
+    # desert sand are the same brightness from above, the box read 204/255 mean with its 99th percentile at 254,
+    # and the two large pyramids were barely separable from the plateau they stand on. This scene is January,
+    # with the sun 33.8 degrees up, so each pyramid lays a shadow the length of itself across the sand and the
+    # shape a pupil came to see is the thing that reads. 0.18 % granule cloud, 2 January 2025.
+    'giza': 'S2A_36RUU_20250102_0_L2A',
 }
 # A tile mosaic is fetched at about twice the output resolution (tiles.zoom_for) and resampled onto the box's
 # lon/lat grid at twice the output size, then reduced with Lanczos: a box filter over the extra detail instead of
@@ -84,7 +92,7 @@ SOURCES = {
     },
     'gsi': {
         'name': 'GSI seamlessphoto (cyberjapandata.gsi.go.jp)',
-        'licence': 'Aerial photo: Geospatial Information Authority of Japan, seamlessphoto tiles (processed)',
+        'licence': '空中写真: 国土地理院シームレス空中写真（加工）/ Aerial photo: Geospatial Information Authority of Japan, seamlessphoto tiles (processed)',
         'template': 'https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg',
         'max_zoom': 18,
     },

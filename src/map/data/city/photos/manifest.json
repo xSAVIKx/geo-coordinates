@@ -213,7 +213,7 @@
    ],
    "source": "gsi",
    "sourceName": "GSI seamlessphoto (cyberjapandata.gsi.go.jp)",
-   "licence": "Aerial photo: Geospatial Information Authority of Japan, seamlessphoto tiles (processed)",
+   "licence": "空中写真: 国土地理院シームレス空中写真（加工）/ Aerial photo: Geospatial Information Authority of Japan, seamlessphoto tiles (processed)",
    "scene": "zoom 16",
    "captured": "",
    "cloud": null,
@@ -234,11 +234,11 @@
    "source": "sentinel",
    "sourceName": "Copernicus Sentinel-2 L2A (Earth Search on AWS)",
    "licence": "Contains modified Copernicus Sentinel data 2024-2026",
-   "scene": "S2C_36RUU_20260904_0_L2A",
-   "captured": "2026-09-04",
-   "cloud": 0.0007,
+   "scene": "S2A_36RUU_20250102_0_L2A",
+   "captured": "2025-01-02",
+   "cloud": 0.0018,
    "groundM": 10.0,
-   "bytes": 60846,
+   "bytes": 72580,
    "mime": "image/webp"
   }
  }
