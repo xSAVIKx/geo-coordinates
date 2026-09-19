@@ -40,6 +40,12 @@ const cache = new Map<CityBoxId, Promise<ImageBitmap>>();
 /** The RGBA a decoded photo holds — 4 bytes a pixel. */
 const decodedBytes = (id: CityBoxId) => CITY_PHOTOS[id].width * CITY_PHOTOS[id].height * 4;
 
+/**
+ * The decoded RGBA the cache is holding, in bytes. A decode that is still in flight counts as its full size:
+ * the cache holds promises, not bitmaps, and the point of this number is the memory the page has committed
+ * itself to, not the memory it has finished allocating. Anything waiting on it (`tests/e2e/city-photo.spec.ts`)
+ * is therefore waiting for a decode to *start*, not to finish.
+ */
 export function cachedCityPhotoBytes(): number {
   let total = 0;
   for (const id of cache.keys()) total += decodedBytes(id);

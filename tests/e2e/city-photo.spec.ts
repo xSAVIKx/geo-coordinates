@@ -21,6 +21,10 @@ const cityBytes = (page: Page) => page.evaluate(() => (window as unknown as { __
  * cannot be waited on here: the effect run that sets `cityLoaded` and the one the view change made are coalesced
  * into a single animation frame, so the count may or may not advance by one. `probe` redraws the *last* input, so
  * what matters is that the input carrying the photo has been queued and painted.
+ *
+ * `cityBytes()` counts a decode that is still in flight at its full size (see `cachedCityPhotoBytes`), so the poll
+ * below returns when the decode *starts*; the wait after it is what covers the decode itself and the frame. A
+ * 1440 x 960 WebP decodes in a few tens of milliseconds on this hardware, well inside it.
  */
 async function waitForPhoto(page: Page, box: { photoWidth: number; photoHeight: number }): Promise<void> {
   await expect.poll(() => cityBytes(page), { timeout: 20_000 }).toBe(rgba(box));
@@ -86,6 +90,26 @@ test('only one photo is ever decoded at a time (planning ruling R13)', async ({ 
   // Leaving every box gives the last one back too.
   await setFlatView(page, 12.5, 40.5, 4000);
   await expect.poll(() => cityBytes(page), { timeout: 20_000 }).toBe(0);
+  expect(pageErrors(page)).toEqual([]);
+});
+
+/*
+ * Leaving the texture styles has to give the photo back. Atlas disposes the renderer first, so the effect that
+ * owns the photo re-runs with no renderer at all; releasing only when a *box* goes out of view left the school
+ * box's 5.27 MiB of RGBA held for the rest of the page session (ruling R13).
+ */
+test('choosing Atlas gives the close-up back', async ({ page }) => {
+  test.setTimeout(90_000);
+  await openPage(page, 'en/lab', '?test');
+  await setMapStyle(page, 'physical');
+  await waitForTexture(page, 'flat');
+  await setFlatView(page, katowice.lat, katowice.lon, fitZoom);
+  await waitForPhoto(page, katowice);
+  await setMapStyle(page, 'atlas');
+  await expect.poll(() => cityBytes(page), { timeout: 20_000 }).toBe(0);
+  // And coming back to a texture style over the same box decodes it again.
+  await setMapStyle(page, 'satellite');
+  await waitForPhoto(page, katowice);
   expect(pageErrors(page)).toEqual([]);
 });
 

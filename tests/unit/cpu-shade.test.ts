@@ -154,6 +154,32 @@ describe('the canvas path shades pixels like the shader', () => {
     expect(px(cityInput(0), cityTex, 480, 240).slice(0, 3)).toEqual([10, 20, 30]);
   });
 
+  /*
+   * Where the photo lands, not just how much of it. A uniform texture cannot tell a correct mapping from a
+   * transposed, flipped or half-texel-shifted one, and the e2e probes average about 20 x 20 photo pixels, so a
+   * drift of a pixel or two moves them by ~3/255 and slips through. Four different texels and four quarter
+   * points of the box pin `(lambda - W) / (E - W)` and `(N - phi) / (N - S)` — and so the shader's `cuv`,
+   * which is the same two expressions — against every one of those regressions.
+   *
+   * The sample points are a fifth of the way in from each side, which is 2.4 feathers, so `cityW` is exactly 1
+   * and each lands squarely inside one texel of the 2 x 2 photo: no bilinear mixing, exact colours.
+   */
+  test('the photo is mapped over the box the right way round: north-up, west-left', () => {
+    const NW: [number, number, number] = [200, 10, 10], NE: [number, number, number] = [10, 200, 10];
+    const SW: [number, number, number] = [10, 10, 200], SE: [number, number, number] = [200, 200, 10];
+    const corners = solid(2, 2, (x, y) => (y === 0 ? (x === 0 ? NW : NE) : (x === 0 ? SW : SE)));
+    const t = { ...cityTex, city: corners };
+    const b = box.bounds;
+    const at = (fx: number, fy: number) => {
+      const p = cityCtx.project({ lat: b.north - (b.north - b.south) * fy, lon: b.west + (b.east - b.west) * fx })!;
+      return px(cityInput(1), t, p[0], p[1]).slice(0, 3);
+    };
+    expect(at(0.2, 0.2), 'north-west quarter').toEqual(NW);
+    expect(at(0.8, 0.2), 'north-east quarter').toEqual(NE);
+    expect(at(0.2, 0.8), 'south-west quarter').toEqual(SW);
+    expect(at(0.8, 0.8), 'south-east quarter').toEqual(SE);
+  });
+
   test('the photo fades in between the two zooms rather than popping', () => {
     const at = (zoom: number) => {
       const ctx = makeFlatCtx(960, 480, { lat: box.lat, lon: box.lon }, zoom, 1, 'grid');

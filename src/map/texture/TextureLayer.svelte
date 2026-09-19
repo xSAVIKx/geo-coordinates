@@ -114,8 +114,12 @@
   // The box's photo, decoded on first entry and given back when the view leaves every box (ruling R13).
   $effect(() => {
     const r = renderer, box = cityBox;
-    if (!r) return;
-    if (!box) { r.setCityTexture(null); cityLoaded = null; releaseCityPhotosExcept(null); return; }
+    // No box in view, *or* no renderer to draw one with — Atlas, Political, or the fallback chain having given
+    // up on this device — and the decoded photo is dead weight either way. Releasing only on the first of those
+    // left the school box's 5.27 MiB of RGBA held for the rest of the page session the moment the pupil chose
+    // Atlas, which is exactly what ruling R13's accounting exists to prevent. A renderer that comes back
+    // decodes and uploads again; `cityLoaded` is nulled here and by the renderer's own teardown.
+    if (!r || !box) { r?.setCityTexture(null); cityLoaded = null; releaseCityPhotosExcept(null); return; }
     let cancelled = false;
     loadCityPhoto(box.id).then(
       (bmp) => {
