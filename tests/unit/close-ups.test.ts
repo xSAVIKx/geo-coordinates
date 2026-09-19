@@ -148,6 +148,9 @@ describe('the close-up texts', () => {
     const find = topic9.steps.find((s) => s.id === 'find')!;
     expect(find.scene.closeUps).toBe(true);
     expect(find.closeUpNote).toBe(true);
+    // The step's own sentence invites the pupil to pick a place and read its coordinates off the readout, and
+    // showCityBox moves the point only where the point may move — so this step's point has to be editable.
+    expect(find.scene.pointEditable).toBe(true);
     for (const [lang, f] of Object.entries(files)) {
       expect(f, `${lang}:topic.9.step.find.closeUp`).toHaveProperty('topic.9.step.find.closeUp');
       expect(f['topic.9.step.find.closeUp']!.length, lang).toBeGreaterThan(60);

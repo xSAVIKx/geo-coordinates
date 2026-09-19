@@ -1,6 +1,5 @@
 <script lang="ts">
   import { i18n, t } from '../i18n/i18n.svelte';
-  import { closeUpSetting } from '../map/closeUps.svelte';
   import MapStage from '../map/MapStage.svelte';
   import { mapState } from '../map/mapState.svelte';
   import type { TopicDef } from '../topics/types';
@@ -52,7 +51,7 @@
     <p class="progress eyebrow">{t('explore.progress', { n: index + 1, total })}</p>
     <h2 id="step-title" tabindex="-1" bind:this={heading}>{t(`topic.${topic.id}.step.${current.id}.title`)}</h2>
     {#key index}<p class="body">{t(`topic.${topic.id}.step.${current.id}.body`)}</p>{/key}
-    {#if current.closeUpNote && closeUpSetting.on}<p class="body extra">{t(`topic.${topic.id}.step.${current.id}.closeUp`)}</p>{/if}
+    {#if current.closeUpNote && mapState.closeUps}<p class="body extra">{t(`topic.${topic.id}.step.${current.id}.closeUp`)}</p>{/if}
     {#if current.illustration === 'map-pin'}
       <!-- Decorative (the step text says it all): a generic map pin with a decimal coordinate pair under it — no app's look. -->
       <svg class="illustration" viewBox="0 0 240 132" aria-hidden="true">

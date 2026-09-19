@@ -21,7 +21,9 @@
 </script>
 
 <details class="close-ups">
-  <summary>{t('closeup.title')} <span class="total">{CITY_BOXES.length}</span></summary>
+  <!-- The count is decoration: a bare "12" after the title reads as "Places up close 12" out loud, and the note
+       inside the disclosure already says "Twelve places …" in words. -->
+  <summary>{t('closeup.title')} <span class="total" aria-hidden="true">{CITY_BOXES.length}</span></summary>
   <div class="body">
     <p class="note">{t('closeup.hint')}</p>
     <ul>

@@ -95,6 +95,21 @@ test('standing in a box, the map tells a screen reader what the box shows', asyn
   await expect(desc).toHaveText(/Inside this box the map shows an aerial photo with the streets drawn over it\./);
 });
 
+test("topic 9's find step: picking a place moves the readout there, not just the map", async ({ page }) => {
+  // The step's sentence promises "the readout still gives the coordinates to the minute" for the place you pick.
+  await openPage(page, 'en/topic-9/explore/5', '?test');
+  await list(page).locator('> summary').click();
+  const card = list(page).getByRole('button', { name: 'Show Giza — the pyramids up close' });
+  const pair = (await card.locator('.coords').textContent())!;
+  expect(pair).toBe('29°59′N, 31°08′E');
+  // The letters readout — this step shows decimals first and the letters beside them.
+  const letters = page.locator('.readout.second output');
+  await expect(letters).toHaveText('50°16′N, 19°01′E');
+  await card.click();
+  await expect(letters).toHaveText(pair);
+  await expect(page.locator('.readout.decimal output')).toHaveText('29.9792, 31.1342');
+});
+
 test("topic 9's find step says so, and the list is there", async ({ page }) => {
   await openPage(page, 'en/topic-9/explore/5');
   await expect(page.getByText(/open .Places up close. under the map/)).toBeVisible();
@@ -128,6 +143,6 @@ for (const lang of ['pl', 'uk'] as const) {
       .toHaveText(lang === 'pl' ? 'Pokazuję z bliska: Warszawa' : 'Показую зблизька: Варшава', { timeout: 3000 });
     await openPage(page, `${lang}/topic-9/explore/5`);
     await expect(list(page).locator('> summary')).toContainText(title);
-    await expect(page.getByText(lang === 'pl' ? /odczyt nadal poda współrzędne/ : /показник і далі даватиме координати/)).toBeVisible();
+    await expect(page.getByText(lang === 'pl' ? /odczyt nadal poda współrzędne/ : /координати точки й далі показуватимуться/)).toBeVisible();
   });
 }

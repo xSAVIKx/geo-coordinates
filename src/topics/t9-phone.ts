@@ -26,7 +26,10 @@ export const topic9: TopicDef = {
       },
     },
     { id: 'dms', scene: { views: ['flat'], ...MAP_APP, flatView: { center: KATOWICE, zoom: 40 }, point: KATOWICE, pointEditable: true, precision: 'minute', readout: 'both', layers: { graticuleStep: 'auto', specialLines: true } } },
-    { id: 'find', illustration: 'map-pin', closeUpNote: true, scene: { views: ['flat'], ...MAP_APP, flatView: { center: KATOWICE, zoom: 12 }, point: KATOWICE, precision: 'minute', readout: 'decimal', layers: { graticuleStep: 'auto' }, closeUps: true } },
+    // `pointEditable`: this step's text invites the pupil to pick a place from "Places up close" and read its
+    // coordinates off the readout, so the point has to be allowed to move there (MapState.showCityBox only moves
+    // a point that can move). Without it the map flew to Giza while the readout still read Katowice's numbers.
+    { id: 'find', illustration: 'map-pin', closeUpNote: true, scene: { views: ['flat'], ...MAP_APP, flatView: { center: KATOWICE, zoom: 12 }, point: KATOWICE, pointEditable: true, precision: 'minute', readout: 'decimal', layers: { graticuleStep: 'auto' }, closeUps: true } },
     // Zoom 0.84 centred at 53°N fits all of Greenland (to 83.6°N) and Africa's southern tip (34.8°S), with a little room at both edges.
     {
       id: 'mercator',
