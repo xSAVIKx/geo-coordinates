@@ -45,7 +45,8 @@ test('flat map zoom stops at 6000 and the globe at 60', async ({ page }) => {
   await openPage(page, 'en/lab', '?test');
   const flat = page.getByRole('group', { name: 'World map with parallels and meridians' });
   await flat.focus();
-  // Each press multiplies the zoom by 1.5; 1.5^22 is about 5 300 000, well past the ceiling.
+  // Each press multiplies the zoom by 1.5, and 22 is the exact minimum that arrives: 1.5^21 = 4 987.9 is short of
+  // the ceiling and 1.5^22 = 7 481.8 is past it. There is no margin here — raising FLAT_MAX_ZOOM means raising this.
   for (let i = 0; i < 22; i++) await page.keyboard.press('+');
   const globe = page.getByRole('group', { name: 'Globe that you can turn' });
   await globe.focus();
@@ -61,6 +62,54 @@ test('flat map zoom stops at 6000 and the globe at 60', async ({ page }) => {
   const hb = (await flat.locator('[data-point-handle]').boundingBox())!;
   expect(Math.abs(hb.x + hb.width / 2 - (box.x + box.width * 0.7))).toBeLessThan(3);
   expect(Math.abs(hb.y + hb.height / 2 - (box.y + box.height * 0.3))).toBeLessThan(3);
+});
+
+/**
+ * The fence for this feature's whole reason to exist. Nothing else catches a call site that forgets to ask for
+ * `parallelStep`: the unit tests only measure `geometry.ts`, and the seven Atlas baselines top out at zoom 12,
+ * where the step is still exactly 1. This drives the real renderer at a city zoom and measures the drawn SVG.
+ */
+test('at a city zoom every drawn parallel lands on the parallel, not bowed off it', async ({ page }) => {
+  await openPage(page, 'en/lab', '?test');
+  const map = page.locator('.view-flat svg[role="group"]');
+  // Seated on the Arctic Circle inside the Rovaniemi box, at the zoom that box fills the view. The point is put
+  // on the line itself, so the point handle's own y *is* the parallel's true y — no arithmetic in the test.
+  await page.evaluate(() => {
+    const s = (window as unknown as { __mapState: { precision: string; flat: unknown; point: unknown } }).__mapState;
+    s.precision = 'minute';
+    s.flat = { center: { lat: 66.56, lon: 25.8475 }, zoom: 2659 };
+    s.point = { lat: 66.56, lon: 25.8475 };
+  });
+  const handle = map.locator('[data-point-handle]');
+  await expect(handle).toHaveAttribute('transform', /translate/);
+  const trueY = Number(/translate\([-\d.]+[ ,]([-\d.]+)\)/.exec((await handle.getAttribute('transform'))!)![1]);
+
+  const ys = (d: string) => [...d.matchAll(/(-?\d+\.?\d*),(-?\d+\.?\d*)/g)].map((m) => Number(m[2]));
+  const drawn = async (sel: string) => (await map.locator(sel).evaluateAll((els) => els.map((e) => e.getAttribute('d') ?? ''))).filter((d) => d.length > 0);
+
+  // 1. SpecialLines.svelte: the Arctic Circle, the line this box is *about*. (`.polar` is the Arctic and the
+  //    Antarctic circles; only the Arctic one is anywhere near this view, so only it has a path.)
+  const polar = await drawn('path.line.polar');
+  expect(polar.length, 'the Arctic Circle is drawn in this view').toBe(1);
+  for (const y of ys(polar[0]!)) expect(Math.abs(y - trueY), `special line y ${y} vs ${trueY}`).toBeLessThan(0.25);
+
+  // 2. PointMarker.svelte: the point's own dashed latitude guide, along the same parallel.
+  const guides = await drawn('path.guide');
+  const flat = guides.map(ys).filter((v) => Math.max(...v) - Math.min(...v) < 1);   // the horizontal one of the two
+  expect(flat.length, "the point's latitude guide is drawn").toBe(1);
+  for (const y of flat[0]!) expect(Math.abs(y - trueY), `point guide y ${y} vs ${trueY}`).toBeLessThan(0.25);
+
+  // 3. Overlays.svelte: a highlight-line on the same parallel. It suppresses the point's own guide (they would
+  //    wash each other out), so it goes in its own pass.
+  await page.evaluate(() => {
+    const s = (window as unknown as { __mapState: { overlays: unknown } }).__mapState;
+    s.overlays = [{ kind: 'highlight-line', axis: 'lat', value: 66.56 }];
+  });
+  await expect(map.locator('path.hl-line')).toHaveCount(1);
+  const hl = await drawn('path.hl-line');
+  for (const y of ys(hl[0]!)) expect(Math.abs(y - trueY), `highlight-line y ${y} vs ${trueY}`).toBeLessThan(0.25);
+
+  expect(pageErrors(page)).toEqual([]);
 });
 
 test('lab: zoomed in to 20 the point snaps to minutes, zoomed out to degrees again', async ({ page }) => {

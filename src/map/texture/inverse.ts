@@ -87,6 +87,9 @@ export function inverseProject(v: TextureView, x: number, y: number): Inverse | 
  */
 export function boxMix(v: TextureView, box: GeoBounds, fadeFrom: number, fullAt: number): number {
   if (!boundsIntersect(v.bounds, box)) return 0;
+  // A zero-width fade (fadeFrom === fullAt) is a hard switch at that zoom, not a division by zero: without this
+  // the ratio is 0/0 = NaN exactly at the switching zoom, and a NaN mix silently blanks the tile it multiplies.
+  if (fullAt <= fadeFrom) return v.zoom >= fullAt ? 1 : 0;
   return Math.max(0, Math.min(1, (v.zoom - fadeFrom) / (fullAt - fadeFrom)));
 }
 

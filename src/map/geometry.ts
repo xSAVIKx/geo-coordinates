@@ -47,6 +47,11 @@ export const POLAR = 66.56;
 export function parallelLine(lat: number, step = 1): GeoJSON.LineString {
   const coordinates: [number, number][] = [];
   for (let lon = -180; lon <= 180; lon += step) coordinates.push([lon, lat]);
+  // The loop stops at the last vertex at or below 180, which a step that does not divide 360 never reaches: at
+  // `parallelStep(6000)` it stops at 179.92°, and a view panned to the date line would show no line at all.
+  // `meridianLine` closes its end the same way. With a step of 1 or 0.5 the last vertex is already 180, so this
+  // adds nothing and every map drawn before this feature is unchanged.
+  if (coordinates[coordinates.length - 1]![0] < 180) coordinates.push([180, lat]);
   return { type: 'LineString', coordinates };
 }
 

@@ -27,6 +27,16 @@ describe('boxMix', () => {
     expect(mix(4270)).toBe(1);
   });
 
+  test('a zero-width fade is a hard switch, not a division by zero', () => {
+    // Task 5's callers choose their own fade window; one that starts and ends at the same zoom must switch at it
+    // rather than return NaN, which would silently blank the tile it multiplies.
+    const at = (zoom: number) => boxMix(view(katowice.lat, katowice.lon, zoom), katowice.bounds, 40, 40);
+    expect(at(39.9)).toBe(0);
+    expect(at(40)).toBe(1);
+    expect(at(40.1)).toBe(1);
+    for (const z of [12, 24, 40, 80, 4270]) expect(Number.isNaN(at(z)), `zoom ${z}`).toBe(false);
+  });
+
   test('a view nowhere near the box never mixes it in, however deep it is', () => {
     expect(boxMix(view(0, 0, 4000), katowice.bounds, CITY_PHOTO_ZOOM, CITY_PHOTO_FULL_ZOOM)).toBe(0);
     expect(boxMix(view(52.2297, 21.0122, 4000), katowice.bounds, CITY_PHOTO_ZOOM, CITY_PHOTO_FULL_ZOOM)).toBe(0);

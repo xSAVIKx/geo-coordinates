@@ -88,4 +88,21 @@ describe('parallelStep', () => {
     expect(parallelLine(0, 0.5).coordinates.length).toBe(721);
     expect(parallelLine(12, 1).coordinates[0]).toEqual([-180, 12]);
   });
+
+  test('a parallel always reaches the antimeridian, whatever the step', () => {
+    // The loop stops at the last vertex at or below 180, and a step that does not divide 360 never lands on it:
+    // at zoom 6000 it would stop 0.08° short, which is 1 277 view units — a view panned to the date line would
+    // show no line at all. Every step, tidy or not, has to close on [180, lat].
+    for (const zoom of [80, 100, 120, 800, 2659, 4270, 6000]) {
+      const c = parallelLine(37.5, parallelStep(zoom)).coordinates;
+      expect(c[c.length - 1], `zoom ${zoom}`).toEqual([180, 37.5]);
+      expect(c[0], `zoom ${zoom}`).toEqual([-180, 37.5]);
+    }
+    // ... and the tidy steps are untouched: no duplicate vertex is appended, so the counts above still hold.
+    for (const step of [1, 0.5, 2, 0.25]) {
+      const c = parallelLine(-12, step).coordinates;
+      expect(c[c.length - 1], `step ${step}`).toEqual([180, -12]);
+      expect(c[c.length - 2]![0], `step ${step}`).toBe(180 - step);
+    }
+  });
 });
