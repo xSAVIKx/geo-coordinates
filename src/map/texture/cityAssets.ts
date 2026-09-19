@@ -2,6 +2,7 @@ import manifest from '../data/city/photos/manifest.json';
 import type { GeoBounds } from '../geometry';
 import type { CityBoxId } from '../cityBoxes';
 import { decodeBase64 } from './assets';
+import { testFlag } from '../../app/testMode';
 import { RenderFailure } from './renderer';
 import { countTextureDecode } from './testHooks';
 
@@ -93,6 +94,11 @@ export function loadCityPhoto(id: CityBoxId): Promise<ImageBitmap> {
   let p = cache.get(id);
   if (!p) {
     p = (async () => {
+      // The one way a test can make a close-up fail without breaking anything else. The real way is
+      // `createImageBitmap` running out of memory on a 2 GB Chromebook, which is not something a test can ask
+      // for; what matters is what the page does next, and TextureLayer's answer is "give this box back and keep
+      // the style" (tests/e2e/city-photo.spec.ts).
+      if (testFlag('cityPhoto') === 'fail') throw new RenderFailure('decode', `city photo ${id}: decoding switched off for a test`);
       const block = document.getElementById(`geo-photo-${id}`);
       if (!block?.textContent) throw new RenderFailure('decode', `city photo ${id} is missing from the page`);
       try {

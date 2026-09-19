@@ -58,9 +58,11 @@ MIT), and it does not cover the third-party data described below.
     Credit: "Orthophotos © IGN / Géoplateforme (data.geopf.fr), Licence
     Ouverte / Open Licence Etalab 2.0."
     <https://data.geopf.fr/>
-  - **GSI seamlessphoto** (Tokyo) — GSI tile terms of use. Credit:
-    "Geospatial Information Authority of Japan, seamlessphoto tiles
-    (processed: cropped and resampled)."
+  - **GSI seamlessphoto** (Tokyo) — GSI tile terms of use. Credit, in the
+    language the service prescribes it in and then in English:
+    "空中写真: 国土地理院シームレス空中写真（加工）/ Aerial photo: Geospatial
+    Information Authority of Japan, seamlessphoto tiles (processed:
+    cropped and resampled)."
     <https://maps.gsi.go.jp/development/ichiran.html>
   - **USDA-FSA NAIP** (Manhattan) — public domain. Credit: "USDA-FSA
     National Agriculture Imagery Program (NAIP), via USGS." US federal

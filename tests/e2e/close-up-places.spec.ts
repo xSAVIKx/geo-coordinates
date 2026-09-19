@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import boxesJson from '../../src/map/data/city/boxes.json' with { type: 'json' };
-import { expectNoAxeViolations, openPage, pageErrors } from './helpers';
+import { expectNoAxeViolations, openPage, pageErrors, setMapStyle, waitForTexture } from './helpers';
 
 const fit = (b: { west: number; east: number; south: number; north: number }) =>
   Math.min(360 / (b.east - b.west), 180 / (b.north - b.south));
@@ -73,17 +73,42 @@ test('the three teaching places show their note, and the others do not', async (
   await openPage(page, 'en/lab', '?test');
   const note = page.locator('.close-up-note');
   await go(page, 'greenwich');
-  await expect(note).toHaveText(/prime meridian is painted/);
+  await expect(note).toHaveText(/prime meridian, 0°, runs north to south/);
   await go(page, 'mitaddelmundo');
   await expect(note).toHaveText(/equator, 0° latitude/);
   await go(page, 'rovaniemi');
   await expect(note).toHaveText(/Arctic Circle, 66°34′N/);
   await go(page, 'katowice');
   await expect(note).toHaveCount(0);
-  // The credit follows the box's own source.
-  await expect(page.locator('.close-up-credit')).toHaveText(/Ortofotomapa.*OpenStreetMap/);
-  await go(page, 'giza');
-  await expect(page.locator('.close-up-credit')).toHaveText(/Copernicus Sentinel.*OpenStreetMap/);
+});
+
+/*
+ * A photo credit belongs on the page only where the photo is on it.
+ *
+ * The credit used to be derived from the box alone, so Atlas — the default style, and what a pupil sees on a
+ * fresh page — credited Copernicus for imagery it never drew, and GUGiK at Katowice, and NAIP at Manhattan.
+ * That is a false attribution rather than a generous one. The OpenStreetMap half is always due: the street
+ * layer draws in all four styles (planning ruling R14).
+ */
+test('the photo half of the credit appears only in the styles that draw a photo', async ({ page }) => {
+  test.setTimeout(120_000);
+  await openPage(page, 'en/lab', '?test');
+  const credit = page.locator('.close-up-credit');
+  for (const [id, photoSource] of [['katowice', /Ortofotomapa/], ['giza', /Copernicus Sentinel/], ['manhattan', /NAIP/]] as const) {
+    await go(page, id);
+    for (const style of ['atlas', 'political'] as const) {
+      await setMapStyle(page, style);
+      await expect(credit, `${id} in ${style}`).toHaveText(/OpenStreetMap/);
+      await expect(credit, `${id} in ${style} credits no photo`).not.toHaveText(photoSource);
+    }
+    for (const style of ['physical', 'satellite'] as const) {
+      await setMapStyle(page, style);
+      await waitForTexture(page, 'flat');
+      await expect(credit, `${id} in ${style}`).toHaveText(photoSource);
+      await expect(credit, `${id} in ${style}`).toHaveText(/OpenStreetMap/);
+    }
+    await setMapStyle(page, 'atlas');
+  }
 });
 
 test('standing in a box, the map tells a screen reader what the box shows', async ({ page }) => {

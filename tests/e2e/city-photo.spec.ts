@@ -247,24 +247,68 @@ test('at night a city box shows a dimmed close-up, not a smear', async ({ page }
 });
 
 /*
+ * A close-up that cannot be decoded costs the close-up, and nothing else.
+ *
+ * The owner's standing rule is that any failure in the texture path falls back to Atlas, and this used to be read
+ * as covering the city photo too: one of twelve pictures failing took Physical AND Satellite down to Atlas for
+ * the whole page session, with the note "This device can't draw this style; showing Atlas." That is the wrong
+ * size of answer. The device draws the style perfectly well — it has the world imagery on screen — and what it
+ * could not do was decode one 300 KB picture, most plausibly `createImageBitmap` under memory pressure on the
+ * 2 GB Chromebooks this lesson runs on. Losing the world imagery for a whole lesson because one box failed is the
+ * same disproportion Task 6 rejected for the street layer one level down.
+ *
+ * So the box goes back to the world texture underneath it and the style stands. Two ways in are checked: the
+ * photo's data block gone from the page, and a decode that throws (`?test&cityPhoto=fail`, the nearest a test
+ * can get to the real cause).
+ */
+for (const how of ['block removed', 'decode throws'] as const) {
+  test(`a close-up that cannot be decoded (${how}) keeps the style and the world imagery`, async ({ page }) => {
+    test.setTimeout(90_000);
+    await openPage(page, 'en/lab', how === 'decode throws' ? '?test&cityPhoto=fail' : '?test');
+    await setMapStyle(page, 'physical');
+    await waitForTexture(page, 'flat');
+    if (how === 'block removed') await page.evaluate(() => document.getElementById('geo-photo-katowice')?.remove());
+    const drewBefore = await page.evaluate(() => (window as unknown as { __mapTextures: { drawCount(v: string): number } }).__mapTextures.drawCount('flat'));
+    await setFlatView(page, katowice.lat, katowice.lon, fitZoom);
+
+    // The street layer over the box still draws, which is also how we know the view really is inside the box.
+    await expect(page.locator('.view-flat g.streets[data-city-box="katowice"]')).toHaveCount(1);
+    // The world texture goes on being drawn, at the tier and in the style the pupil chose.
+    await expect.poll(() => page.evaluate(() => (window as unknown as { __mapTextures: { drawCount(v: string): number } }).__mapTextures.drawCount('flat')),
+      { timeout: 15_000 }).toBeGreaterThan(drewBefore);
+    expect(await textureHooks(page).tier(), 'the render tier is untouched').toBe('webgl');
+    await expect(page.locator('.view-flat .frame')).toHaveAttribute('data-map-style', 'physical');
+    await expect(page.locator('.view-flat canvas.texture')).toHaveCount(1);
+    await expect(page.getByRole('status').filter({ hasText: "This device can't draw this style" })).toHaveCount(0);
+    expect(await cityBytes(page), 'a photo that failed is not left in the cache').toBe(0);
+
+    // Satellite, the other texture style, is unharmed as well — it was the second casualty of the old answer.
+    await setMapStyle(page, 'satellite');
+    await expect(page.locator('.view-flat .frame')).toHaveAttribute('data-map-style', 'satellite');
+    expect(await textureHooks(page).tier()).toBe('webgl');
+  });
+}
+
+/*
+ * The old shape of the rule still holds for the *world* images: those really are the style, and losing one means
+ * the style cannot be drawn. Nothing about it is remembered past the page session.
+ */
+/*
  * The owner's standing rule, and the global constraint for this feature: any failure in the texture path falls back
  * to Atlas, and nothing about it is remembered past the page session. A close-up is part of that path, so a photo
  * that cannot be decoded has to behave like any other texture failure. The block is removed from the page at
  * runtime, which is exactly what `loadCityPhoto` treats as a missing photo.
  */
-test('a close-up that cannot be decoded falls back to Atlas, and a reload forgets it', async ({ page }) => {
+test('a world image that cannot be decoded falls back to Atlas, and a reload forgets it', async ({ page }) => {
   test.setTimeout(90_000);
-  await openPage(page, 'en/lab', '?test');
+  await openPage(page, 'en/lab', '?test&gl=decode-fail');
   await setMapStyle(page, 'physical');
-  await waitForTexture(page, 'flat');
-  await page.evaluate(() => document.getElementById('geo-photo-katowice')?.remove());
-  await setFlatView(page, katowice.lat, katowice.lon, fitZoom);
   await expect.poll(() => textureHooks(page).tier(), { timeout: 20_000 }).toBe('atlas');
   await expect(page.getByRole('status').filter({ hasText: "This device can't draw this style; showing Atlas." })).toBeVisible();
-  expect(await cityBytes(page), 'a photo that failed is not left in the cache').toBe(0);
 
-  // Nothing is persisted: the next page session draws the close-up again. (A different query string, so the
-  // browser really reloads the document instead of treating the same URL as a same-page navigation.)
+  // Nothing is persisted: the next page session draws everything again, close-up included. (A different query
+  // string, so the browser really reloads the document instead of treating the same URL as a same-page
+  // navigation.)
   await openPage(page, 'en/lab', '?test&again=1');
   await setMapStyle(page, 'physical');
   await waitForTexture(page, 'flat');

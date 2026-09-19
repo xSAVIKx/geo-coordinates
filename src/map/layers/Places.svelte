@@ -268,7 +268,8 @@
   // Street and district names inside a city close-up box (spec §5), last of everything, with every other label
   // on the map as an obstacle: the lesson's own names always win (planning ruling R19). Only where the scene
   // offers close-ups, and only from the zoom at which a district name is worth writing.
-  const cityBox = $derived(mapState.closeUps ? visibleCityBox(ctx.bounds, ctx.zoom) : null);
+  // Flat map only, for the reason cityBoxes.ts gives: the globe's zoom is on another scale entirely.
+  const cityBox = $derived(mapState.closeUps && ctx.kind === 'flat' ? visibleCityBox(ctx.bounds, ctx.zoom) : null);
   // The box's data arrives from a stream (streets.ts), so this counter re-runs the placement when it does.
   let streetsUnpacked = $state(0);
   $effect(() => onStreetsLoaded(() => streetsUnpacked++));

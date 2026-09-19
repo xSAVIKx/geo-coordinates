@@ -59,6 +59,30 @@ describe('city boxes', () => {
     expect(visibleCityBox({ west: 20, south: 50, east: 21, north: 51 }, 4000)).toBeNull();
   });
 
+  /*
+   * At the zoom the streets first appear, the view is 15° across and three Polish boxes can be inside it at
+   * once. `visibleCityBox` used to answer with the first of them in the table, so panning towards Kraków lit up
+   * Warsaw's streets up to zoom 42 and Katowice's up to zoom 428 — over Kraków's rooftops, with Kraków's own
+   * box right there. The comment above it claimed at most one box could ever match, which is only true deep in.
+   */
+  test('the box nearest the middle of the view wins, not the first one in the table', () => {
+    const kra = box('krakow'), kat = box('katowice'), war = box('warsaw');
+    // A view centred on Kraków wide enough to hold Katowice and Warsaw too.
+    const over = (b: typeof kra, halfLon: number, halfLat: number) => ({
+      west: b.lon - halfLon, east: b.lon + halfLon, south: b.lat - halfLat, north: b.lat + halfLat,
+    });
+    for (const zoom of [CITY_STREET_ZOOM, 42, 100, 428, 1000]) {
+      const view = over(kra, 180 / zoom, 90 / zoom);
+      expect(visibleCityBox(view, zoom), `Kraków at zoom ${zoom}`).toBe(kra);
+      expect(visibleCityBox(over(kat, 180 / zoom, 90 / zoom), zoom), `Katowice at zoom ${zoom}`).toBe(kat);
+      expect(visibleCityBox(over(war, 180 / zoom, 90 / zoom), zoom), `Warsaw at zoom ${zoom}`).toBe(war);
+    }
+    // Every box, at the widest view that still draws streets: the box under the middle is the one drawn.
+    for (const b of CITY_BOXES) {
+      expect(visibleCityBox(over(b, 180 / CITY_STREET_ZOOM, 90 / CITY_STREET_ZOOM), CITY_STREET_ZOOM), b.id).toBe(b);
+    }
+  });
+
   test('no two boxes overlap, so at most one is ever in view', () => {
     for (let i = 0; i < CITY_BOXES.length; i++) {
       for (let j = i + 1; j < CITY_BOXES.length; j++) {

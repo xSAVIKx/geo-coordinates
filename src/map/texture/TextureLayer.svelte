@@ -51,9 +51,13 @@
   });
   const withNight = $derived(nightSun !== null);
 
-  // The city close-up box this view is in (spec §5). Only where the scene offers close-ups (planning ruling R10)
-  // and only in the two texture styles — Atlas and Political get the street layer with no photo (ruling R14).
-  const cityBox = $derived(mapState.closeUps && isTextureStyle(style) ? visibleCityBox(ctx.bounds, ctx.zoom) : null);
+  // The city close-up box this view is in (spec §5). Only where the scene offers close-ups (planning ruling R10),
+  // only in the two texture styles — Atlas and Political get the street layer with no photo (ruling R14) — and
+  // only on the flat map. The globe's zoom runs 1-60 on its own scale and CITY_PHOTO_ZOOM is 40 on the flat map's
+  // 1-6000 one, so without the `kind` test the globe at its ceiling decoded a 5.5 MB photo and blended it over a
+  // ten-pixel patch: ruling R1 is "a pupil who stays on the globe never sees a close-up", and R13's one-photo-at-
+  // a-time premise assumes only one view ever wants one.
+  const cityBox = $derived(mapState.closeUps && ctx.kind === 'flat' && isTextureStyle(style) ? visibleCityBox(ctx.bounds, ctx.zoom) : null);
   /** The box whose photo the renderer is holding: the draw only names a box once its own photo is uploaded. */
   let cityLoaded = $state<CityBoxId | null>(null);
   /** This view's claim on a decoded close-up (cityAssets.ts). Only its identity matters. */
@@ -125,12 +129,27 @@
     holdCityPhoto(cityHolder, r && box ? box.id : null);
     if (!r || !box) { r?.setCityTexture(null); cityLoaded = null; return; }
     let cancelled = false;
+    // A close-up that cannot be decoded or uploaded costs the close-up, and nothing else.
+    //
+    // It used to go through `fail`, which is the world-texture fallback chain: one of twelve photos failing —
+    // `createImageBitmap` under memory pressure on a 2 GB Chromebook is the likely way — took Physical and
+    // Satellite down to Atlas for the whole page session, with the note "this device can't draw this style".
+    // The device draws the style perfectly well; it could not decode one 300 KB picture. So the box goes back to
+    // the world texture underneath it (`setCityTexture(null)`, `cityLoaded` left null, which is also what stops
+    // the draw naming a box), the chosen style stands, and the street layer over it is untouched. This is the
+    // disproportion Task 6 already rejected for the street layer, one layer down.
+    const cityFailed = (e: unknown) => {
+      if (cancelled) return;
+      console.warn(`map texture (${view}): the close-up photo for ${box.id} could not be drawn; the world texture stands:`, e);
+      cityLoaded = null;
+      try { r.setCityTexture(null); } catch (drop) { fail(drop); }
+    };
     loadCityPhoto(box.id).then(
       (bmp) => {
         if (cancelled) return;
-        try { r.setCityTexture(bmp); cityLoaded = box.id; } catch (e) { fail(e); }
+        try { r.setCityTexture(bmp); cityLoaded = box.id; } catch (e) { cityFailed(e); }
       },
-      (e) => { if (!cancelled) fail(e); },
+      cityFailed,
     );
     return () => { cancelled = true; };
   });

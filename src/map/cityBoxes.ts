@@ -21,6 +21,15 @@ export interface CityBox {
   note: boolean;
 }
 
+/*
+ * Every zoom in this file is a **flat-map** zoom, on the flat map's own 1-6000 scale. The globe runs 1-60 and
+ * stops there (planning ruling R1: "A pupil who stays on the globe never sees a close-up"), so a globe zoom
+ * compared against these numbers passes the two lower ones for the wrong reason — the globe at its own ceiling
+ * of 60 clears both CITY_STREET_ZOOM and CITY_PHOTO_ZOOM while a box is still about ten pixels across. The three
+ * derivations that ask `visibleCityBox` therefore gate on `ctx.kind === 'flat'` first, and tests/e2e/
+ * globe-zoom.spec.ts holds the globe at 60 over Katowice to prove it. Nothing in here can tell the two scales
+ * apart on its own, which is why the gate lives at the call sites rather than behind another argument.
+ */
 /** Streets fade in from here (spec §5); below it a box is not "in view" at all, which is what keeps the Atlas baselines still (planning ruling R3). */
 export const CITY_STREET_ZOOM = 24;
 /** The photo starts to fade in here and is fully mixed at CITY_PHOTO_FULL_ZOOM (spec §5). */
@@ -59,10 +68,23 @@ export function cityBoxAt(p: LatLon, zoom: number): CityBox | null {
 }
 
 /**
- * The box to draw for a view covering `view`, or null. Boxes are 250 km apart at the closest (Warsaw and Kraków),
- * and a view deep enough to reach CITY_STREET_ZOOM spans at most 15°, so at most one box can ever match.
+ * The box to draw for a view covering `view`, or null. Call it only for a flat view (see the note at the top of
+ * this file).
+ *
+ * The box **nearest the middle of the view**, not the first one in the table that happens to overlap. At zoom 24
+ * the view is 15° across and several boxes can be in it at once: taking the first put Warsaw over Kraków up to
+ * zoom 42 and Katowice over Kraków up to zoom 428, so a pupil panning towards Kraków lit up Katowice's streets
+ * over Kraków's rooftops. The centres are 250 km apart at the closest, so by the time either box is more than a
+ * smudge the nearest one is unambiguous, and the answer only ever changes while both are far too small to read.
  */
 export function visibleCityBox(view: GeoBounds, zoom: number): CityBox | null {
   if (zoom < CITY_STREET_ZOOM) return null;
-  return CITY_BOXES.find((b) => boundsIntersect(view, b.bounds)) ?? null;
+  const lon = (view.west + view.east) / 2, lat = (view.south + view.north) / 2;
+  let best: CityBox | null = null, bestD = Infinity;
+  for (const b of CITY_BOXES) {
+    if (!boundsIntersect(view, b.bounds)) continue;
+    const d = (b.lon - lon) ** 2 + (b.lat - lat) ** 2;
+    if (d < bestD) { best = b; bestD = d; }
+  }
+  return best;
 }

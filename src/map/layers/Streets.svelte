@@ -11,7 +11,9 @@
   // appears without a photo, which suits those styles (Places up close spec §5, planning ruling R14). `style`
   // comes from Layers.svelte, the one place that decides what this map draws.
   let { ctx, style }: { ctx: ViewCtx; style: MapStyle } = $props();
-  const box = $derived(mapState.closeUps ? visibleCityBox(ctx.bounds, ctx.zoom) : null);
+  // Flat map only: the globe's 1-60 zoom is not the flat map's 1-6000 one, and comparing it against
+  // CITY_STREET_ZOOM drew a box's whole street map over a ten-pixel patch of globe (cityBoxes.ts, ruling R1).
+  const box = $derived(mapState.closeUps && ctx.kind === 'flat' ? visibleCityBox(ctx.bounds, ctx.zoom) : null);
   // The box's data block is inflated off the main thread (streets.ts), so the first view of a box draws nothing;
   // this counter re-runs the layer when the streets arrive.
   let unpacked = $state(0);

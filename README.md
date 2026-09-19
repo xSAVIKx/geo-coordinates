@@ -121,8 +121,8 @@ Author details for the page footer live in `src/app/credits.ts`.
 - Maple Bear school locations: collected from publicly published Maple Bear school websites;
   see [`LICENSE-CONTENT.md`](LICENSE-CONTENT.md) for the trademark and affiliation note.
 - Close-up photos: Ortofotomapa — Główny Urząd Geodezji i Kartografii, geoportal.gov.pl (Katowice, Warsaw,
-  Kraków); Orthophotos © IGN / Géoplateforme, Licence Ouverte Etalab 2.0 (Paris); Geospatial Information
-  Authority of Japan, seamlessphoto tiles, processed (Tokyo); USDA-FSA National Agriculture Imagery Program
+  Kraków); Orthophotos © IGN / Géoplateforme, Licence Ouverte Etalab 2.0 (Paris); 空中写真: 国土地理院シームレス空中写真（加工）
+  / Geospatial Information Authority of Japan, seamlessphoto tiles, processed (Tokyo); USDA-FSA National Agriculture Imagery Program
   (NAIP) via USGS, public domain (Manhattan); Contains modified Copernicus Sentinel data 2024-2026 (Greenwich,
   Mitad del Mundo, Rovaniemi, Delhi, Sydney, Giza). Close-up streets, railways, water and parks: ©
   OpenStreetMap contributors, ODbL.

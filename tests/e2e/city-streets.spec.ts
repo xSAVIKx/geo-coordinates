@@ -25,12 +25,14 @@ for (const style of STYLES) {
     const streets = page.locator('.view-flat g.streets[data-city-box="katowice"]');
     await expect(streets).toHaveCount(1);
     await expect(streets.locator('path.road.c0')).toHaveCount(1);
-    // The main network at the fit zoom; the ordinary streets (class 4) are held back past it by the Task 8
-    // ruling, so that the photograph shows through the view a pupil arrives at, and they come on zooming in.
+    // The fit zoom is the view the close-up list lands on, so it shows the network AND the ordinary street grid
+    // — the school's own street among them. Only the alleys (class 5) are held back, to 1.15 x the box's own fit
+    // zoom, so the photograph still shows through the view a pupil arrives at.
     await expect(streets.locator('path.road.c3')).toHaveCount(1);
-    await expect(streets.locator('path.road.c4')).toHaveCount(0);
-    await setFlatView(page, b.lat, b.lon, 5300);
     await expect(streets.locator('path.road.c4')).toHaveCount(1);
+    await expect(streets.locator('path.road.c5')).toHaveCount(0);
+    await setFlatView(page, b.lat, b.lon, fit(b) * 1.2);
+    await expect(streets.locator('path.road.c5')).toHaveCount(1);
     await setFlatView(page, b.lat, b.lon, fit(b));
     // Every road has a casing under it, so a junction reads as roads crossing rather than a pile of strokes.
     await expect(streets.locator('path.road-casing')).toHaveCount(await streets.locator('path.road').count());
@@ -155,11 +157,20 @@ for (const scene of CROWDED) {
   });
 }
 
-test('the globe draws the street layer too, where it can reach it', async ({ page }) => {
-  // The globe's ceiling is zoom 60, which `ViewCtx` reports as a flat-map 120: past CITY_STREET_ZOOM, so the box's
-  // main roads are drawn, and short of PLACE_NAME_ZOOM, so no names — a smudge of motorways on the ball, which is
-  // all that fits there. Every other assertion in this file queries the flat map; this one walks the globe's own
-  // projection path through the same layer.
+/*
+ * The globe draws no street layer, at any zoom. This test used to assert the opposite, and it was wrong.
+ *
+ * The globe's ceiling is zoom 60, which `ViewCtx` reports as a flat-map equivalent of 120 — past
+ * CITY_STREET_ZOOM (24), so the box's main roads were drawn on the ball, over a patch about ten pixels across.
+ * That reads "a smudge of motorways" only if you already know it is there; what it actually contradicts is
+ * planning ruling R1, "a pupil who stays on the globe never sees a close-up", which is why the globe's ceiling
+ * was left at 60 in the first place. The thresholds in cityBoxes.ts are on the flat map's 1-6000 scale and the
+ * globe's zoom is not on it, so the comparison was never meaningful; it merely happened to pass.
+ *
+ * The photo half of the same mistake is the expensive one and is covered in tests/e2e/globe-zoom.spec.ts, which
+ * also checks the flat map beside it still does everything the globe refuses to.
+ */
+test('the globe draws no street layer, however deep it is zoomed', async ({ page }) => {
   const b = boxesJson.boxes.find((x) => x.id === 'katowice')!;
   await openPage(page, 'en/lab', '?test');
   await page.evaluate(([lat, lon]) => {
@@ -167,8 +178,10 @@ test('the globe draws the street layer too, where it can reach it', async ({ pag
     s.rotate = [-lon, -lat];
     s.globeZoom = 60;
   }, [b.lat, b.lon] as const);
-  await expect(page.locator(`.view-globe g.streets[data-city-box="${b.id}"]`)).toHaveCount(1);
-  await expect(page.locator('.view-globe g.streets path.road.c0')).toHaveCount(1);
+  // The flat map is put inside the box, so the box's data really is loaded and really is being drawn somewhere.
+  await setFlatView(page, b.lat, b.lon, fit(b));
+  await expect(page.locator(`.view-flat g.streets[data-city-box="${b.id}"]`)).toHaveCount(1);
+  await expect(page.locator('.view-globe g.streets')).toHaveCount(0);
   await expect(page.locator('.view-globe text.street-name')).toHaveCount(0);
   expect(pageErrors(page)).toEqual([]);
 });
