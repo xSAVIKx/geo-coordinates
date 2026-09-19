@@ -23,7 +23,7 @@ export function withMinutes(deg: number, minutes: number): number {
 // edge-label rows above and below; beside the points the bracket with its numbers ('side'), or above them its two rows ('top').
 // 'markers': room for the marker labels and the edge-number rows (latitudes on the left, longitudes at the bottom) round a group of markers.
 const ROOM = { side: { lat: 70, lon: 230 }, top: { lat: 130, lon: 80 }, markers: { lat: 70, lon: 100 } } as const;
-/** The closest a fitted question view zooms: whole-degree grid lines stay readable. (The map itself zooms to FLAT_MAX_ZOOM, 80.) */
+/** The closest a fitted question view zooms: whole-degree grid lines stay readable. (The map itself zooms to FLAT_MAX_ZOOM, 6000, for the city close-ups.) */
 export const MAX_FIT_ZOOM = 12;
 
 /**

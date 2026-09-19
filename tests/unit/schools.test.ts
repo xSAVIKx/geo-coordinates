@@ -7,7 +7,7 @@ import { makeFlatCtx, makeGlobeCtx } from '../../src/map/geometry';
 import { gridCluster } from '../../src/map/gridCluster';
 import { badgeBox, chosenTextWidth, guidesUnderLabel, layoutChosenLabel, layoutSchools, wrapName } from '../../src/map/chosenLabel';
 import { overlaps } from '../../src/map/labelLayout';
-import { FLAT_MAX_ZOOM, GLOBE_MAX_ZOOM, MapState } from '../../src/map/mapState.svelte';
+import { GLOBE_MAX_ZOOM, MapState, SCHOOL_MAX_ZOOM } from '../../src/map/mapState.svelte';
 import { HOME } from '../../src/map/places';
 import { CHOSEN_CLEARANCE, clearOfChosen, clusterClick, clusterSchools, clusterZoomTarget, isolatingFlatZoom, isolatingGlobeZoom, SCHOOL_CELL, SCHOOL_CELL_DEEP, SCHOOL_DEEP_ZOOM, schoolCell, SCHOOLS, type SchoolCluster } from '../../src/map/schools';
 
@@ -101,26 +101,26 @@ describe('school clusters', () => {
   test('a click on a badge zooms in on its group, or lists it when zooming cannot pull it apart', () => {
     const ctx = makeFlatCtx(960, 480, { lat: 0, lon: 0 }, 1, 1.2, 'grid');
     const biggest = [...clusterSchools(ctx)].sort((a, b) => b.members.length - a.members.length)[0]!;
-    const target = clusterClick(ctx, biggest.key, FLAT_MAX_ZOOM)!;
+    const target = clusterClick(ctx, biggest.key, SCHOOL_MAX_ZOOM)!;
     expect(target.kind).toBe('zoom');
     if (target.kind !== 'zoom') return;
     expect(target.zoom).toBeGreaterThanOrEqual(2);
     expect(target.zoom).toBeLessThanOrEqual(8);
     expect(target.center.lat).toBeLessThan(0); // Brazil
-    expect(clusterClick(ctx, 'no-such-school', FLAT_MAX_ZOOM)).toBeNull();
+    expect(clusterClick(ctx, 'no-such-school', SCHOOL_MAX_ZOOM)).toBeNull();
     // Schools at one spot (Bengaluru's city-level entries) are listed at once, sorted by name.
     const same = SCHOOLS.filter((s) => s.lat === SCHOOLS.find((x) => x.id === 'in-jakkur-bengaluru')!.lat && s.lon === SCHOOLS.find((x) => x.id === 'in-jakkur-bengaluru')!.lon);
     expect(same.length).toBeGreaterThan(10);
     const at20 = makeFlatCtx(960, 480, same[0]!, 20, 1.2, 'grid');
     const group = clusterSchools(at20).find((c) => c.members.some((m) => m.id === 'in-jakkur-bengaluru'))!;
-    const listed = clusterClick(at20, group.key, FLAT_MAX_ZOOM)!;
+    const listed = clusterClick(at20, group.key, SCHOOL_MAX_ZOOM)!;
     expect(listed.kind).toBe(group.members.every((m) => same.includes(m)) ? 'list' : 'zoom');
-    const atMax = makeFlatCtx(960, 480, same[0]!, FLAT_MAX_ZOOM, 1.2, 'grid');
+    const atMax = makeFlatCtx(960, 480, same[0]!, SCHOOL_MAX_ZOOM, 1.2, 'grid');
     const g80 = clusterSchools(atMax).find((c) => c.members.some((m) => m.id === 'in-jakkur-bengaluru'))!;
-    const l80 = clusterClick(atMax, g80.key, FLAT_MAX_ZOOM)!;
+    const l80 = clusterClick(atMax, g80.key, SCHOOL_MAX_ZOOM)!;
     expect(l80.kind).toBe('list');
     if (l80.kind === 'list') expect(l80.members.map((m) => m.id).sort()).toEqual(g80.members.map((m) => m.id).sort());
-    expect(clusterZoomTarget(same, atMax, FLAT_MAX_ZOOM).zoom).toBe(FLAT_MAX_ZOOM);
+    expect(clusterZoomTarget(same, atMax, SCHOOL_MAX_ZOOM).zoom).toBe(SCHOOL_MAX_ZOOM);
     const globe = makeGlobeCtx(500, [50, 15], 1, 1);
     const gBiggest = [...clusterSchools(globe)].sort((a, b) => b.members.length - a.members.length)[0]!;
     expect(clusterClick(globe, gBiggest.key, GLOBE_MAX_ZOOM)!.kind).toBe('zoom');
@@ -245,9 +245,9 @@ describe('school clusters', () => {
 
   test('choosing a school zooms far enough for it to stand alone', () => {
     for (const px of [1, 2.8]) {
-      const zoom = isolatingFlatZoom(katowice(), 'grid', px, FLAT_MAX_ZOOM);
+      const zoom = isolatingFlatZoom(katowice(), 'grid', px, SCHOOL_MAX_ZOOM);
       expect(zoom).toBeGreaterThanOrEqual(6);
-      expect(zoom).toBeLessThanOrEqual(FLAT_MAX_ZOOM);
+      expect(zoom).toBeLessThanOrEqual(SCHOOL_MAX_ZOOM);
       const clusters = clusterSchools(makeFlatCtx(960, 480, katowice(), zoom, px, 'grid'));
       expect(clusters.find((c) => c.members.some((s) => s.id === 'pl-katowice'))!.members).toHaveLength(1);
     }

@@ -81,8 +81,16 @@ export function inverseProject(v: TextureView, x: number, y: number): Inverse | 
   return { lambda, phi, rho: 0 };
 }
 
+/**
+ * How much of a detail tile to blend in for this view: 0 below `fadeFrom` or away from the box, rising linearly to
+ * 1 at `fullAt`. The Central Europe tile and a city box are the same mechanism at two scales (spec §5).
+ */
+export function boxMix(v: TextureView, box: GeoBounds, fadeFrom: number, fullAt: number): number {
+  if (!boundsIntersect(v.bounds, box)) return 0;
+  return Math.max(0, Math.min(1, (v.zoom - fadeFrom) / (fullAt - fadeFrom)));
+}
+
 /** How much of the Central Europe detail tile to blend in: 0 below `minZoom` or away from the region, 1 from one zoom level above. */
 export function regionMix(v: TextureView, region: GeoBounds, minZoom: number): number {
-  if (!boundsIntersect(v.bounds, region)) return 0;
-  return Math.max(0, Math.min(1, v.zoom - minZoom));
+  return boxMix(v, region, minZoom, minZoom + 1);
 }

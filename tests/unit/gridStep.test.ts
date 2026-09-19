@@ -44,6 +44,15 @@ describe('chooseGridStep', () => {
     expect(chooseGridStep(0.0085 * 319, 319)).toBe(30);
     expect(chooseGridStep(0.0085 * 287, 287)).toBe(30);
   });
+  test('at a city close-up zoom the adaptive grid is one minute, on desktop and on a phone', () => {
+    // 960 CSS px showing 360/4270 degrees: 11 387 px per degree, so a minute is 189 px — the top of the band.
+    expect(chooseGridStep((960 * 4270) / 360, 960)).toBeCloseTo(1 / 60, 10);
+    // A 351 px phone at the same zoom: 4 163 px per degree, a minute is 69 px, inside the band.
+    expect(chooseGridStep((351 * 4270) / 360, 351)).toBeCloseTo(1 / 60, 10);
+    // Even at the new ceiling there is no finer rung: minutes are as fine as the lesson goes.
+    expect(chooseGridStep((960 * 6000) / 360, 960)).toBeCloseTo(1 / 60, 10);
+    expect(Math.min(...AUTO_GRID_STEPS)).toBeCloseTo(1 / 60, 10);
+  });
   test('the bridging 2° rung only appears where no ordinary step fits at all', () => {
     // A phone globe zoomed onto Poland: ~35 px per degree, where 1° is ten lines and 5° is two.
     expect(chooseGridStep(35, 351)).toBe(2);

@@ -41,25 +41,26 @@ for (const lang of ['en', 'uk'] as const) {
   });
 }
 
-test('flat map zoom stops at 80 and the globe at 60', async ({ page }) => {
+test('flat map zoom stops at 6000 and the globe at 60', async ({ page }) => {
   await openPage(page, 'en/lab', '?test');
   const flat = page.getByRole('group', { name: 'World map with parallels and meridians' });
   await flat.focus();
-  for (let i = 0; i < 14; i++) await page.keyboard.press('+');
+  // Each press multiplies the zoom by 1.5; 1.5^22 is about 5 300 000, well past the ceiling.
+  for (let i = 0; i < 22; i++) await page.keyboard.press('+');
   const globe = page.getByRole('group', { name: 'Globe that you can turn' });
   await globe.focus();
   for (let i = 0; i < 14; i++) await page.keyboard.press('+');
   const z = await page.evaluate(() => { const s = (window as unknown as { __mapState: { flat: { zoom: number }; globeZoom: number } }).__mapState; return [s.flat.zoom, s.globeZoom]; });
-  expect(z).toEqual([80, 60]);
-  // Clicking still places the point exactly where clicked at the deepest zoom.
-  await page.evaluate(() => { const s = (window as unknown as { __mapState: { precision: string } }).__mapState; s.precision = 'minute'; });
+  expect(z).toEqual([6000, 60]);
+
+  // Clicking still places the point exactly where clicked. At zoom 80 a minute is about 2 CSS px, which is what
+  // this check was written for; the deeper zooms are covered by tests/e2e/city-streets.spec.ts.
+  await page.evaluate(() => { const s = (window as unknown as { __mapState: { precision: string; flat: unknown } }).__mapState; s.precision = 'minute'; s.flat = { center: { lat: 50.26, lon: 19.02 }, zoom: 80 }; });
   const box = (await flat.boundingBox())!;
   await flat.click({ position: { x: box.width * 0.7, y: box.height * 0.3 } });
   const hb = (await flat.locator('[data-point-handle]').boundingBox())!;
-  const onePx = 1;
-  // A minute is ~2 CSS px at this width, so the snapped point is within a couple of px of the click.
-  expect(Math.abs(hb.x + hb.width / 2 - (box.x + box.width * 0.7))).toBeLessThan(2 + onePx);
-  expect(Math.abs(hb.y + hb.height / 2 - (box.y + box.height * 0.3))).toBeLessThan(2 + onePx);
+  expect(Math.abs(hb.x + hb.width / 2 - (box.x + box.width * 0.7))).toBeLessThan(3);
+  expect(Math.abs(hb.y + hb.height / 2 - (box.y + box.height * 0.3))).toBeLessThan(3);
 });
 
 test('lab: zoomed in to 20 the point snaps to minutes, zoomed out to degrees again', async ({ page }) => {

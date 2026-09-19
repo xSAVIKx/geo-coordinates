@@ -42,11 +42,29 @@ export const TROPIC = 23.44;
 export const POLAR = 66.56;
 
 // d3 draws every segment as a great-circle arc; a parallel is not one, so long segments bow towards
-// the pole. 1° keeps that bow under a quarter of a map unit even at zoom 80.
+// the pole. 1° keeps that bow under a quarter of a map unit even at zoom 80; past that zoom the step
+// has to shrink — ask `parallelStep` for it.
 export function parallelLine(lat: number, step = 1): GeoJSON.LineString {
   const coordinates: [number, number][] = [];
   for (let lon = -180; lon <= 180; lon += step) coordinates.push([lon, lat]);
   return { type: 'LineString', coordinates };
+}
+
+/**
+ * The vertex step (degrees of longitude) a `parallelLine` needs at flat zoom `zoom`.
+ *
+ * d3 draws every segment as a great-circle arc, and a parallel is not one, so the drawn line bows towards the
+ * pole between two vertices. The bow grows with the square of the step and linearly with the zoom: at 50°N a 1°
+ * step is 0.229 view units at zoom 80 — the value the lesson was tuned to — and would be 17.2 units at zoom 6000,
+ * which would put the equator beside the monument at Mitad del Mundo, the Arctic Circle beside its marker at
+ * Rovaniemi and the point's own latitude guide visibly off the point. Shrinking the step as 1/sqrt(zoom) holds
+ * the bow at 0.229 units at every zoom, and the `min(1, …)` makes it *exactly* 1 at or below zoom 80, so every
+ * map the lesson drew before this feature is byte-identical (planning rulings R11, R3).
+ *
+ * Meridians are great circles, so `meridianLine` needs nothing of the kind.
+ */
+export function parallelStep(zoom: number): number {
+  return Math.min(1, Math.sqrt(80 / Math.max(1e-6, zoom)));
 }
 
 export function meridianLine(lon: number, step = 2, fromLat = -90, toLat = 90): GeoJSON.LineString {

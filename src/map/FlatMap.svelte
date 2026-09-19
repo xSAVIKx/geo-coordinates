@@ -8,7 +8,7 @@
   import MapStyleSwitch from './MapStyleSwitch.svelte';
   import { styleFade } from './styleFade';
   import TextureLayer from './texture/TextureLayer.svelte';
-  import { FLAT_MAX_ZOOM, mapState } from './mapState.svelte';
+  import { mapState, SCHOOL_MAX_ZOOM } from './mapState.svelte';
   import { clusterClick, type School } from './schools';
   import SchoolPopover from './SchoolPopover.svelte';
   import SchoolsToggle from './SchoolsToggle.svelte';
@@ -134,7 +134,7 @@
       if (drag.mode === 'pan') startPanBase();
       return;
     }
-    const hit = drag?.mode === 'maybe-click' && drag.cluster ? clusterClick(ctx, drag.cluster, FLAT_MAX_ZOOM, mapState.chosenSchool, i18n.lang) : null;
+    const hit = drag?.mode === 'maybe-click' && drag.cluster ? clusterClick(ctx, drag.cluster, SCHOOL_MAX_ZOOM, mapState.chosenSchool, i18n.lang) : null;
     if (hit?.kind === 'list') {
       openPopover(e.clientX, e.clientY, hit.members);
     } else if (hit) {

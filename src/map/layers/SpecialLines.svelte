@@ -1,6 +1,6 @@
 <script lang="ts">
   import { i18n, t } from '../../i18n/i18n.svelte';
-  import { POLAR, TROPIC, meridianLine, parallelLine, type ViewCtx } from '../geometry';
+  import { POLAR, TROPIC, meridianLine, parallelLine, parallelStep, type ViewCtx } from '../geometry';
   import { lineLabelSpecs, type LineLabelSpec } from '../lineLabels';
   import { useMapState } from '../mapStateContext';
   import type { LabelBox } from '../labelLayout';
@@ -11,13 +11,16 @@
   let { ctx, part = 'all', lineAvoid = [] }: { ctx: ViewCtx; part?: 'all' | 'lines' | 'labels'; lineAvoid?: LabelBox[] } = $props();
 
   interface Line extends LineLabelSpec { geo: GeoJSON.LineString }
-  const GEO: Record<string, () => GeoJSON.LineString> = {
-    eq: () => parallelLine(0), pm: () => meridianLine(0), am: () => meridianLine(180),
-    tc: () => parallelLine(TROPIC), tk: () => parallelLine(-TROPIC), ac: () => parallelLine(POLAR), aa: () => parallelLine(-POLAR),
+  // The parallels' vertex step depends on the view (see `parallelStep`), so it is derived, not baked into GEO.
+  const step = $derived(parallelStep(ctx.zoom));
+  const GEO: Record<string, (s: number) => GeoJSON.LineString> = {
+    eq: (s) => parallelLine(0, s), pm: () => meridianLine(0), am: () => meridianLine(180),
+    tc: (s) => parallelLine(TROPIC, s), tk: (s) => parallelLine(-TROPIC, s),
+    ac: (s) => parallelLine(POLAR, s), aa: (s) => parallelLine(-POLAR, s),
   };
   const lines = $derived.by<Line[]>(() => {
     void i18n.lang;
-    return lineLabelSpecs(mapState.layers).map((spec) => ({ ...spec, geo: GEO[spec.id]!() }));
+    return lineLabelSpecs(mapState.layers).map((spec) => ({ ...spec, geo: GEO[spec.id]!(step) }));
   });
   // Labels share their placement with Places.svelte and Overlays.svelte (see `sceneLineLabels`).
   const labels = $derived.by(() => { void i18n.lang; return part === 'lines' ? [] : sceneLineLabels(ctx, mapState.layers, mapState.overlays, lineAvoid); });

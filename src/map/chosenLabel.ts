@@ -1,7 +1,7 @@
 // Where the name of the school chosen from a list goes (Task 23b): always fully inside the view and
 // never under a count badge. Pure geometry, shared by the map (layers/Layers.svelte) and the tests.
 import type { LatLon } from '../geo/types';
-import { meridianLine, parallelLine, type ViewCtx } from './geometry';
+import { meridianLine, parallelLine, parallelStep, type ViewCtx } from './geometry';
 import { overlaps, pointBox, type LabelBox } from './labelLayout';
 import { chosenSchoolMark, clearOfChosen, clusterSchools, SCHOOL_BADGE_H, schoolBadgeWidth, type School, type SchoolCluster } from './schools';
 
@@ -199,7 +199,7 @@ function segmentTouchesBox(a: [number, number], b: [number, number], box: LabelB
  * Layers.svelte leaves those guides out while the name is shown, so the name is never struck through; the
  * other guide stays, and so does the readout.
  */
-export function guidesUnderLabel(ctx: Pick<ViewCtx, 'project'>, box: LabelBox, point: LatLon, px: number): { lat: boolean; lon: boolean } {
+export function guidesUnderLabel(ctx: Pick<ViewCtx, 'project' | 'zoom'>, box: LabelBox, point: LatLon, px: number): { lat: boolean; lon: boolean } {
   const pad = 2 * px;
   const grown = { left: box.left - pad, right: box.right + pad, top: box.top - pad, bottom: box.bottom + pad };
   const crosses = (line: GeoJSON.LineString) => {
@@ -211,5 +211,6 @@ export function guidesUnderLabel(ctx: Pick<ViewCtx, 'project'>, box: LabelBox, p
     }
     return false;
   };
-  return { lat: crosses(parallelLine(point.lat, 0.5)), lon: crosses(meridianLine(point.lon, 0.5)) };
+  // 0.5° is fine enough for every zoom the schools reach; a city zoom asks `parallelStep` for finer still.
+  return { lat: crosses(parallelLine(point.lat, Math.min(0.5, parallelStep(ctx.zoom)))), lon: crosses(meridianLine(point.lon, 0.5)) };
 }

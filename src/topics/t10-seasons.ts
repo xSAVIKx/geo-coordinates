@@ -30,7 +30,7 @@ export const topic10: TopicDef = {
     },
     {
       id: 'play', showPlaces: true,
-      scene: { views: ['orbit', 'globe', 'flat'], phoneView: 'orbit', point: HOME, pointEditable: true, precision: 'auto', sun: SEPTEMBER, layers: { graticuleStep: 'auto', specialLines: true, tropics: true, daylight: true }, labControls: ['seasons', 'sun-time'] },
+      scene: { views: ['orbit', 'globe', 'flat'], phoneView: 'orbit', point: HOME, pointEditable: true, precision: 'auto', sun: SEPTEMBER, layers: { graticuleStep: 'auto', specialLines: true, tropics: true, daylight: true }, labControls: ['seasons', 'sun-time'], closeUps: true },
     },
   ],
 };

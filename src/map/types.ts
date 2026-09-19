@@ -50,6 +50,7 @@ export interface SceneSpec {
   flatProjection?: FlatProjection;       // forces this projection for the scene; absent = viewer preference applies
   projectionSwitch?: boolean;            // with flatProjection: keep the projection switch; a choice then applies to this scene only
   mapStyle?: MapStyle;                   // forces this map style for the scene (worksheets: 'atlas'); a pick with the switch then lasts for the scene only
+  closeUps?: boolean;                    // offers the twelve city close-ups in this scene (spec §2 "Where it appears")
   overlays?: Overlay[];
   /*
    * The scene's date and time. `dayOfYear` is a fixed day number; `event` instead names an equinox or a solstice

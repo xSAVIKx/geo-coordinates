@@ -36,10 +36,22 @@ export const FLAT_PRESETS: Record<FlatPreset, { center: LatLon; zoom: number }> 
   poland: { center: { lat: 52, lon: 19 }, zoom: 9 },
 };
 
-/** Deep enough to see a town's streets-scale grid of minutes (the view spans 4.5° × 2.25°). */
-export const FLAT_MAX_ZOOM = 80;
+/**
+ * Deep enough for a 6 x 4 km city close-up box to fill the view (Places up close spec §3). The twelve boxes fill
+ * a 960 x 480 view between zoom 2 659 (Rovaniemi) and 5 009 (the boxes their 4 km height binds), so 6000 leaves
+ * about 20 % of room past the deepest of them. Before the close-ups this was 80, where a box was 18 of 960 view
+ * units across (planning ruling R1).
+ */
+export const FLAT_MAX_ZOOM = 6000;
 const MAX_ZOOM = FLAT_MAX_ZOOM;
+/**
+ * How close the Maple Bear school list, a school badge and the school clustering go — unchanged at 80, the old
+ * ceiling. Those views are about telling two schools apart, not about reading a street, and letting them reach
+ * 6000 would fling the map to a blur on one click (planning ruling R2).
+ */
+export const SCHOOL_MAX_ZOOM = 80;
 export const GLOBE_MIN_ZOOM = 1;
+/** The globe keeps its old ceiling: city close-ups are a flat-map feature (planning ruling R1). */
 export const GLOBE_MAX_ZOOM = 60;
 /** With `precision: 'auto'`, the point snaps to minutes from this flat or globe zoom on, to degrees below. */
 export const MINUTE_ZOOM = 12;
@@ -74,6 +86,12 @@ export class MapState {
   projectionSwitch = $state(false);
   /** Whether the scene offers the Maple Bear schools switch (`SceneSpec.schoolsToggle`). */
   schoolsToggle = $state(false);
+  /**
+   * Whether this scene offers the city close-ups at all (spec §2: free play, the lab, topic 9's find step — never
+   * questions, rehearsal or worksheets). The photo, the street layer and the "Places up close" list all check it,
+   * so a close-up can never appear where the lesson does not want one (planning ruling R10).
+   */
+  closeUps = $state(false);
   /** The remembered map style, read from storage; `setStylePreference` writes it back. */
   stylePreference = $state<MapStyle>(readMapStyle());
   /** The style the scene sets (`SceneSpec.mapStyle`), if any. */
@@ -223,6 +241,7 @@ export class MapState {
     this.labControls = [...(scene.labControls ?? [])];
     this.orbitToggle = (scene.labControls ?? []).includes('seasons') && !scene.views.includes('orbit');
     this.schoolsToggle = scene.schoolsToggle ?? false;
+    this.closeUps = scene.closeUps ?? false;
     this.chosenSchool = null;
     this.phoneView = scene.phoneView && scene.views.includes(scene.phoneView) ? scene.phoneView : scene.views.includes('flat') ? 'flat' : (scene.views[0] ?? 'flat');
     this.lastChange = 'program';
@@ -304,7 +323,7 @@ export class MapState {
     // Same CSS width: the flat map is 960 units wide, the globe 500.
     const flatPx = this.viewPx.flat ?? (this.viewPx.globe !== null ? (this.viewPx.globe * 960) / 500 : 2);
     const globePx = this.viewPx.globe ?? (flatPx * 500) / 960;
-    this.setFlatView(school, isolatingFlatZoom(school, this.flatProjection, flatPx, FLAT_MAX_ZOOM));
+    this.setFlatView(school, isolatingFlatZoom(school, this.flatProjection, flatPx, SCHOOL_MAX_ZOOM));
     this.setGlobeZoom(isolatingGlobeZoom(school, globePx, GLOBE_MAX_ZOOM));
     this.centerGlobeOn(school);
     this.chosenSchool = school.id;

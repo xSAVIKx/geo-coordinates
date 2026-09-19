@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { meridianLine, parallelLine, type ViewCtx } from '../geometry';
+  import { meridianLine, parallelLine, parallelStep, type ViewCtx } from '../geometry';
   import { useMapState } from '../mapStateContext';
   const mapState = useMapState();
   // `part`: 'guides' draws the dashed parallel and meridian (under place names, so they never strike
@@ -16,7 +16,7 @@
 
 {#if p}
   {#if part !== 'handle' && mapState.layers.pointGuides}
-    {@const lat = skip.lat || highlighted('lat', p.lat) ? '' : (ctx.path(parallelLine(p.lat)) ?? '')}
+    {@const lat = skip.lat || highlighted('lat', p.lat) ? '' : (ctx.path(parallelLine(p.lat, parallelStep(ctx.zoom))) ?? '')}
     {@const lon = skip.lon || highlighted('lon', p.lon) ? '' : (ctx.path(meridianLine(p.lon)) ?? '')}
     {#if lat}<path class="guide-casing" d={lat} />{/if}
     {#if lon}<path class="guide-casing" d={lon} />{/if}
