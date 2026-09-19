@@ -14,6 +14,19 @@ const rgba = (b: { photoWidth: number; photoHeight: number }) => b.photoWidth * 
 const katowice = boxOf('katowice');
 const fitZoom = fit(katowice);
 
+/*
+ * Puts the Sun over Katowice: 11:00 UTC on 21 June, which is about local noon at 19 degrees east.
+ *
+ * The lab opens at the *real* current time, so whether the box is daylit depends on when the suite is run. Two
+ * tests in this file read the photo's own brightness and structure and assume daylight without ever saying so;
+ * they pass in the afternoon and fail in the evening. Measured at 17:24 UTC on 19 September — 18:40 local, after
+ * sunset — the "day" probe came back at sum 153.7 against the night probe's 148.4, a ratio of 0.97 where the test
+ * asks for under 0.6, and the photo's `maxSum` fell below the magnified world image's for the same reason. The
+ * night half of that comparison has always pinned its own moment; this is the other half.
+ */
+const sunOverKatowice = (page: Page) =>
+  page.evaluate(() => { (window as unknown as { __mapState: { sun: unknown } }).__mapState.sun = { utcMinutes: 660, dayOfYear: 172, year: 2026 }; });
+
 const cityBytes = (page: Page) => page.evaluate(() => (window as unknown as { __mapTextures: { cityBytes(): number } }).__mapTextures.cityBytes());
 /** Replaces the mounted views, the way every scene change does (`replaceScene` sets `mapState.views`). */
 const setViews = (page: Page, views: string[]) => page.evaluate((v) => { (window as unknown as { __mapState: { views: string[] } }).__mapState.views = v; }, views);
@@ -30,7 +43,27 @@ const setViews = (page: Page, views: string[]) => page.evaluate((v) => { (window
  */
 async function waitForPhoto(page: Page, box: { photoWidth: number; photoHeight: number }): Promise<void> {
   await expect.poll(() => cityBytes(page), { timeout: 20_000 }).toBe(rgba(box));
-  await page.waitForTimeout(300);
+  await textureSettled(page, 'flat');
+}
+
+/*
+ * Waits until the texture layer has stopped redrawing.
+ *
+ * `waitForPhoto` used to end in a flat 300 ms sleep, which is a guess about how long a decode and the frame after
+ * it take, and on a loaded machine it is the wrong guess: the probes below then read a frame in which the photo is
+ * only partly mixed. Two of this file's assertions turned into coin flips on it — `after.maxSum` against
+ * `before.maxSum` came out 205, 219 and 243 on three runs of the same build, and the night/day ratio failed at a
+ * fixed 148.37 while passing in other runs. Neither has anything to do with what they are testing. The same trap,
+ * and the same fix, as `textureSettled` in map-style-readability.spec.ts.
+ */
+async function textureSettled(page: Page, view: 'flat' | 'globe'): Promise<void> {
+  let last = -1;
+  for (let i = 0; i < 40; i++) {
+    const n = await page.evaluate((v) => (window as unknown as { __mapTextures: { drawCount(v: string): number } }).__mapTextures.drawCount(v), view);
+    if (n === last) return;
+    last = n;
+    await page.waitForTimeout(150);
+  }
 }
 
 test('the close-up photo really sharpens inside the box and leaves everything outside it alone', async ({ page }) => {
@@ -38,6 +71,7 @@ test('the close-up photo really sharpens inside the box and leaves everything ou
   await openPage(page, 'en/lab', '?test');
   await setMapStyle(page, 'satellite');
   await waitForTexture(page, 'flat');
+  await sunOverKatowice(page);
 
   // Well outside every box, at a zoom where the world image is all there is.
   await setFlatView(page, 50.26, 10, 60);
@@ -194,13 +228,14 @@ test('at night a city box shows a dimmed close-up, not a smear', async ({ page }
   await openPage(page, 'en/lab', '?test');
   await setMapStyle(page, 'satellite');
   await waitForTexture(page, 'flat');
+  await sunOverKatowice(page);
   await setFlatView(page, katowice.lat, katowice.lon, fitZoom);
   await waitForPhoto(page, katowice);
   const day = (await probe(page, 'flat', katowice.lat, katowice.lon, 6))!;
 
   // 00:00 UTC on 23 September: the Sun is over the Pacific and Katowice (19°E, 50°N) is deep in the night side.
   await page.evaluate(() => { (window as unknown as { __mapState: { sun: unknown } }).__mapState.sun = { utcMinutes: 0, dayOfYear: 266, year: 2026 }; });
-  await page.waitForTimeout(400);
+  await textureSettled(page, 'flat');
   const night = (await probe(page, 'flat', katowice.lat, katowice.lon, 6))!;
 
   const sum = (p: { avg: [number, number, number] }) => p.avg[0] + p.avg[1] + p.avg[2];

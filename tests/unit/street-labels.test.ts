@@ -43,12 +43,13 @@ describe('street labels', () => {
     for (const text of ['Хрещатик', 'Sokolska', 'شارع الهرم']) {
       expect(streetLabelWidth(text, 10, 1) / text.length, text).toBeLessThan(9);
     }
-    // The two buckets, pinned: tests/e2e/city-a11y.spec.ts measures the real ink of a dozen scripts in the
-    // browser against these same two numbers, and restates them because it cannot import this module. A change
-    // here without a change there would leave that measurement checking the wrong bucket.
+    // The whole model, pinned: tests/e2e/city-a11y.spec.ts measures the real ink of a dozen scripts in the
+    // browser against these same four numbers, and restates them because it cannot import this module. A change
+    // here without a change there would leave that measurement checking the wrong reservation.
     const em = (text: string) => streetLabelWidth(text, 10, 1) / 10 / 1.05;   // SAFETY divided back out
     expect((em('aaaaaaaaaa') - 0.3) / 10).toBeCloseTo(0.74, 10);              // the generic bucket
     expect((em('渋渋渋渋渋渋渋渋渋渋') - 0.3) / 10).toBeCloseTo(1.05, 10);      // the square-body bucket
+    expect(streetLabelWidth('', 10, 1)).toBeCloseTo(0.3 * 1.05 * 10, 10);     // the 0.3 em lead, and SAFETY
     // Longer text is wider text, and the size and px factors scale it.
     expect(streetLabelWidth('abcdef', 10, 1)).toBeGreaterThan(streetLabelWidth('abcde', 10, 1));
     expect(streetLabelWidth('Sokolska', 10, 2)).toBeCloseTo(streetLabelWidth('Sokolska', 10, 1) * 2, 10);

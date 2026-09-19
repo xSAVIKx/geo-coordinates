@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { beforeAll, describe, expect, test } from 'vitest';
-import { cityBoxById, CITY_STREET_ZOOM } from '../../src/map/cityBoxes';
+import { CITY_BOXES, cityBoxById, CITY_STREET_ZOOM } from '../../src/map/cityBoxes';
+import { FLAT_MAX_ZOOM } from '../../src/map/mapState.svelte';
 import { disableStreets, loadStreets, readableHere, readableName, resetStreets, streetFade, streetsDisabled, streetsFor, streetsLoaded, STREET_CLASS_MIN_ZOOM } from '../../src/map/streets';
 import type { GeoBounds } from '../../src/map/geometry';
 
@@ -36,7 +37,7 @@ describe('city streets', () => {
     expect(streetsLoaded('warsaw')).toBe(false);
   });
 
-  test('at the fit zoom every road class is drawn, with the classes in order', () => {
+  test('at the fit zoom the main network is drawn, with the classes in order', () => {
     const s = streetsFor(box, box.fitZoom, all, 'en');
     expect(s.roads.map((r) => r.cls)).toEqual([0, 1, 2, 3, 4, 5].filter((c) => s.roads.some((r) => r.cls === c)));
     expect(s.roads.length).toBeGreaterThan(3);
@@ -53,6 +54,46 @@ describe('city streets', () => {
     expect(STREET_CLASS_MIN_ZOOM).toHaveLength(6);
     expect(STREET_CLASS_MIN_ZOOM[0]).toBe(CITY_STREET_ZOOM);
     for (let i = 1; i < 6; i++) expect(STREET_CLASS_MIN_ZOOM[i]!).toBeGreaterThan(STREET_CLASS_MIN_ZOOM[i - 1]!);
+  });
+
+  /*
+   * The Task 8 ruling: the two finest classes arrive *above* every box's fit zoom, so the view a pupil lands on
+   * from the close-up list shows the photograph with the main network over it, and the ordinary streets come on
+   * zooming in. Class 4 (`residential`, `unclassified`, `living_street`) is the dense one — 2 540 drawn subpaths
+   * at Giza against class 5's nine — so it is the one that has to be held back for the photo to show at all.
+   * Both thresholds have to stay under the flat map's own ceiling, or they would never be reachable.
+   */
+  test('the two finest road classes arrive above every fit zoom, and below the map\'s ceiling', async () => {
+    const unreadable: string[] = [];
+    for (const b of CITY_BOXES) {
+      for (const cls of [4, 5]) {
+        expect(STREET_CLASS_MIN_ZOOM[cls]!, `${b.id} class ${cls}`).toBeGreaterThan(b.fitZoom);
+        expect(STREET_CLASS_MIN_ZOOM[cls]!, `class ${cls} has to be reachable`).toBeLessThan(FLAT_MAX_ZOOM);
+      }
+      putBlock(b.id);
+      // `loadStreets` remembers a box it could not read, and the first test in this file deliberately asks for
+      // one while its block is missing, so that id stays unreadable for the rest of the run. Every other box
+      // loads, and the count below makes sure that is the only one that does not.
+      if (!(await loadStreets(b.id))) { unreadable.push(b.id); continue; }
+      const fit = streetsFor(b, b.fitZoom, b.bounds, 'en');
+      expect(fit.roads.length, `${b.id} draws its main network at the fit zoom`).toBeGreaterThan(2);
+      expect(fit.roads.map((r) => r.cls), `${b.id} at its fit zoom`).not.toContain(4);
+      expect(fit.roads.map((r) => r.cls), `${b.id} at its fit zoom`).not.toContain(5);
+      // …and they really do arrive: the same box one step deeper draws class 4.
+      expect(streetsFor(b, STREET_CLASS_MIN_ZOOM[4]! + 1, b.bounds, 'en').roads.map((r) => r.cls), b.id).toContain(4);
+    }
+    expect(unreadable, 'only the box this file deliberately broke may be unreadable').toEqual(['warsaw']);
+  });
+
+  test('a class is only named where it is drawn, so no name stands over a street that is not there', () => {
+    // At the fit zoom class 4 is not drawn, so no class-4 name may be offered either.
+    const fit = streetsFor(box, box.fitZoom, all, 'en');
+    expect(fit.names.length).toBeGreaterThan(5);
+    expect(fit.names.filter((n) => n.cls === 4)).toEqual([]);
+    // Past the gate both the streets and their names are there.
+    const deep = streetsFor(box, STREET_CLASS_MIN_ZOOM[4]! + 1, all, 'en');
+    expect(deep.names.filter((n) => n.cls === 4).length).toBeGreaterThan(0);
+    expect(deep.names.length).toBeGreaterThan(fit.names.length);
   });
 
   test('only the part of the box the view can see is built', () => {

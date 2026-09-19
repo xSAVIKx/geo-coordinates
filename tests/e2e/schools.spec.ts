@@ -140,7 +140,9 @@ for (const [lang, n] of [['pl', { toggle: 'Szkoły Maple Bear', country: 'Polska
     // under the sticky header, which axe's target-size rule reports as obscured. That is geometry — a 44 px
     // target under a 44 px header widget is reported for a 48 px window of scroll positions whatever the header
     // does (the arithmetic and the sweep are in the Task 8 report) — so the answer is a defined scroll position
-    // that is also a real one, not a pin back to zero.
+    // that is also a real one, not a pin back to zero. It is not extra coverage: at the bottom the toolbars are
+    // above the viewport and axe returns what it returns at scroll 0. The keyboard-focus case that the criterion
+    // is really about is measured in tests/e2e/city-a11y.spec.ts.
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
     expect(await page.evaluate(() => window.scrollY), 'the page really is scrolled').toBeGreaterThan(0);
     await expectNoAxeViolations(page, `schools list ${lang}`);

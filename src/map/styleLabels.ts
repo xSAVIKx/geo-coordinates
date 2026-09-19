@@ -257,8 +257,21 @@ export function placeStreetLabels(ctx: ViewCtx, box: CityBox, lang: LangCode, ob
     // make two of them swap.
     const distance = Math.hypot(xy[0] - ctx.width / 2, xy[1] - ctx.height / 2) / ctx.px;
     const readable = readableHere(n.text, lang);
-    // A district whose name cannot be read here goes behind the ones that can, but still ahead of every street.
-    const rank = isDistrict(n.id) ? (readable ? 0 : 500_000) : 1_000_000 + n.cls * 100_000;
+    /*
+     * A district whose name cannot be read here goes behind the ones that can, but still ahead of every street.
+     * A *street* whose name cannot be read here goes behind the readable streets of its own class, and ahead of
+     * the class below — the same idea one level down, and the other half of what ruling R24 is for.
+     *
+     * R24 writes `name:en` wherever the data has one, but at Tokyo 181 of the 377 named roads have no English
+     * name at all, so the fallback is the local name and the map used to choose between them by distance to the
+     * middle of the view alone. A pupil in Katowice reading 恵比寿橋 gets nothing from it; the readable name a
+     * hundred pixels further out is worth more. This does not drop the unreadable ones — they are the only name
+     * those streets have, and the map still writes them where there is room.
+     *
+     * 50 000 is half a class band (100 000) and the distance term reaches about 100, so the order is: class, then
+     * readable before unreadable, then nearest the middle.
+     */
+    const rank = isDistrict(n.id) ? (readable ? 0 : 500_000) : 1_000_000 + n.cls * 100_000 + (readable ? 0 : 50_000);
     return [{ id: n.id, text: n.text, readable, options, rank: rank + Math.floor(distance / 8) }];
   });
   const byRank = (a: { rank: number }, b: { rank: number }) => a.rank - b.rank;

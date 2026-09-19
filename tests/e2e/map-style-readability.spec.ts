@@ -394,65 +394,141 @@ test('the source of each style is named under the map; the footer credits NASA E
  *
  * Both halves of the twelve are sampled, because they are not the same picture: Katowice is a 4.17 m/px
  * orthophoto, where a road is a road-shaped thing in the image and the ink lies along it, and Greenwich is a 10 m
- * Sentinel-2 scene, which is far noisier under the same ink. Both themes too, because base.css deliberately pins
- * one pair of street inks over a photo — a photograph has no theme — so the dark-theme rows are the test of that
- * decision rather than a repetition of the light ones, and they come out identical, which is the point.
+ * Sentinel-2 scene, which is far noisier under the same ink. Only the light theme is measured here, and the test
+ * below this one is why: over a photo `base.css` pins one pair of street inks for both themes — a photograph has
+ * no theme — and the pinning is asserted directly rather than by running every measurement twice for figures that
+ * came out identical to two decimal places.
  *
  * The night shading is turned off first, as the Political block does: the lab starts at the real Sun, and the
- * terminator moving between the two screenshots put a whole extra texture redraw into one early sample (144 055
- * "painted" pixels where the other runs had 44 000).
+ * terminator moving between the two screenshots put a whole extra texture redraw into one early sample.
  *
  * A road is a dark core inside a light casing, so both halves of its cross-section are painted pixels and the
  * ninetieth percentile is where the mark itself is, exactly as the Political comment above works out for the
- * graticule. Measured with `--street-weight: 0.9` and `--street-casing` at 0.68 alpha:
+ * graticule. Measured with `--street-weight: 0.9`, `--street-casing` at 0.68 alpha and class 4 held back past the
+ * fit zoom:
  *
- *   box        style       scheme   road p50  road p90   name p50  name p90
- *   katowice   physical    light      2.22      4.57       2.84      8.71
- *   katowice   physical    dark       2.22      4.57       2.84      8.71
- *   katowice   satellite   light      2.24      4.26       2.95      7.67
- *   katowice   satellite   dark       2.24      4.26       2.95      7.67
- *   greenwich  physical    light      2.05      3.89       3.00     10.61
- *   greenwich  physical    dark       2.05      3.89       3.00     10.61
- *   greenwich  satellite   light      2.05      3.62       3.00      8.66
- *   greenwich  satellite   dark       2.05      3.62       3.00      8.66
+ *   box        style       road p50  road p75  road p90   name p90
+ *   katowice   physical      2.16      3.31      4.72       7.07
+ *   katowice   satellite     2.17      3.24      4.57       6.42
+ *   greenwich  physical      1.90      2.62      3.79       9.18
+ *   greenwich  satellite     1.93      2.64      3.70       7.58
  *
- * The worst square on the board is Greenwich in Satellite at 3.62, a fifth clear of the 3:1 floor. At the casing
- * alphas this task tried on the way there the same square measured 3.02 (0.55) and 3.24 (0.60) — see base.css
- * for why 0.68 was kept. The p50 floor is the same guard the graticule has: a mark whose median painted pixel is
- * fringe is not a line, whatever its strongest pixel says.
+ * The floors are a fifth to a half clear. The *ceiling* needs a word, because the regression it is aimed at — a
+ * return to the heavy near-opaque casing this task replaced, which the owner has complained about before — is not
+ * one a contrast percentile can catch. The same eight squares with `--street-casing` back at 0.85 alpha and
+ * `--street-weight` back at 1 measure road p90 4.84-4.97 and p75 3.03-3.64: p90 overlaps the present figures to
+ * within 2.5% and p75 overlaps them outright (Katowice now reads 3.31, Greenwich then read 3.03). Contrast is
+ * simply the wrong instrument for "too much ink" — heaviness is how *many* pixels the mark paints, not how
+ * strongly each one reads. So the ceiling here is the coarse one, in the shape the Satellite night-side test uses
+ * ("not a white cage"), and the sharp guard against that specific revert is the token test below, which pins both
+ * values exactly.
  *
- * The street name is *not* held to 4.5 here, and the reason matters. A map label's background is its halo, not
- * the picture: base.css gives every non-Atlas style a full-strength 4 px halo behind map text precisely so the
- * photograph is never what the letters are read against, and the ink-against-halo ratio — the one WCAG 1.4.3 is
- * about — is measured by `inks()` at the top of this file, at 4.5 normally and 7 in presenter mode, with
- * `--street-name-ink` on its list. What is held here is the weaker second claim: that even ignoring its halo the
- * name is a mark on the picture at 3:1. The measured 7.67 is the margin on that.
+ * The street name is not held to 4.5 against the photograph, and the reason matters. A map label's background is
+ * its halo, not the picture: base.css gives every non-Atlas style a full-strength 4 px halo behind map text
+ * precisely so the photograph is never what the letters are read against, and the ink-against-halo ratio — the one
+ * WCAG 1.4.3 is about — is measured by `inks()` at the top of this file, at 4.5 normally and 7 in presenter mode,
+ * with `--street-name-ink` on its list, and for Atlas by the test after next. What is held here is the weaker
+ * second claim: that even ignoring its halo the name is a mark on the picture at 3:1.
  */
-const CLOSE_UP = { roadCore: 3, roadBody: 1.9, nameOverPhoto: 3 } as const;
-for (const scheme of ['light', 'dark'] as const) {
-  for (const style of ['physical', 'satellite'] as const) {
-    for (const [box, kind] of [['katowice', '4.17 m orthophoto'], ['greenwich', '10 m Sentinel-2']] as const) {
-      test(`close-up marks over the real photo: ${box} (${kind}), ${style}, ${scheme}`, async ({ page }) => {
-        test.setTimeout(90_000);
-        await page.emulateMedia({ colorScheme: scheme });
-        await openPage(page, 'en/lab', '?test');
-        await setMapStyle(page, style);
-        await waitForTexture(page, 'flat');
-        await page.evaluate(() => { (window as unknown as { __mapState: { layers: { daylight: boolean } } }).__mapState.layers.daylight = false; });
-        await page.evaluate((id) => (window as unknown as { __mapState: { showCityBox(id: string): unknown } }).__mapState.showCityBox(id), box);
-        await expect(page.locator(`.view-flat g.streets[data-city-box="${box}"]`)).toHaveCount(1);
-        await expect(page.locator('.view-flat text.street-name').first()).toBeVisible();
-        await textureSettled(page, 'flat');
-        const all = () => true;
-        const roads = await paintedRatios(page, 'flat', '.view-flat .road, .view-flat .road-casing', all);
-        const names = await paintedRatios(page, 'flat', '.view-flat text.street-name', all);
-        expect(roads.length, 'the roads have to be on screen to be measured').toBeGreaterThan(5000);
-        expect(names.length, 'the names have to be on screen to be measured').toBeGreaterThan(1000);
-        expect(percentile(roads, 0.9), 'road mark over the photo').toBeGreaterThanOrEqual(CLOSE_UP.roadCore);
-        expect(percentile(roads, 0.5), 'road body over the photo').toBeGreaterThanOrEqual(CLOSE_UP.roadBody);
-        expect(percentile(names, 0.9), 'street-name ink over the photo, halo ignored').toBeGreaterThanOrEqual(CLOSE_UP.nameOverPhoto);
-        expect(pageErrors(page)).toEqual([]);
-      });
-    }
+/** The alpha of a colour as the browser hands it back: `#rrggbbaa` or a `rgb(r g b / a)` / `rgba(r,g,b,a)` form. */
+const alphaOf = (css: string): number => {
+  const s = css.trim();
+  const hex = /^#[0-9a-f]{8}$/i.exec(s);
+  if (hex) return parseInt(s.slice(7, 9), 16) / 255;
+  const fn = /[/,]\s*([\d.]+)\s*\)$/.exec(s);
+  return fn ? Number(fn[1]) : 1;
+};
+
+const CLOSE_UP = { roadCore: 3, roadBody: 1.8, roadCeiling: 7, nameOverPhoto: 3 } as const;
+for (const style of ['physical', 'satellite'] as const) {
+  for (const [box, kind] of [['katowice', '4.17 m orthophoto'], ['greenwich', '10 m Sentinel-2']] as const) {
+    test(`close-up marks over the real photo: ${box} (${kind}), ${style}`, async ({ page }) => {
+      test.setTimeout(90_000);
+      await openPage(page, 'en/lab', '?test');
+      await setMapStyle(page, style);
+      await waitForTexture(page, 'flat');
+      await page.evaluate(() => { (window as unknown as { __mapState: { layers: { daylight: boolean } } }).__mapState.layers.daylight = false; });
+      await page.evaluate((id) => (window as unknown as { __mapState: { showCityBox(id: string): unknown } }).__mapState.showCityBox(id), box);
+      await expect(page.locator(`.view-flat g.streets[data-city-box="${box}"]`)).toHaveCount(1);
+      await expect(page.locator('.view-flat text.street-name').first()).toBeVisible();
+      await textureSettled(page, 'flat');
+      const all = () => true;
+      const roads = await paintedRatios(page, 'flat', '.view-flat .road, .view-flat .road-casing', all);
+      const names = await paintedRatios(page, 'flat', '.view-flat text.street-name', all);
+      expect(roads.length, 'the roads have to be on screen to be measured').toBeGreaterThan(5000);
+      expect(names.length, 'the names have to be on screen to be measured').toBeGreaterThan(1000);
+      expect(percentile(roads, 0.9), 'road mark over the photo').toBeGreaterThanOrEqual(CLOSE_UP.roadCore);
+      expect(percentile(roads, 0.9), 'road mark is not a white cage over the photo').toBeLessThanOrEqual(CLOSE_UP.roadCeiling);
+      expect(percentile(roads, 0.5), 'road body over the photo').toBeGreaterThanOrEqual(CLOSE_UP.roadBody);
+      expect(percentile(names, 0.9), 'street-name ink over the photo, halo ignored').toBeGreaterThanOrEqual(CLOSE_UP.nameOverPhoto);
+      expect(pageErrors(page)).toEqual([]);
+    });
   }
+}
+
+/*
+ * The two numbers the measurements above were taken at, pinned exactly — and this, not the ceiling up there, is
+ * what stops a return to the casing the owner asked to have lightened. Both are also asserted to be the *same* in
+ * both themes, which is the claim `base.css` makes when it pins one pair of street inks over a photograph: a
+ * photograph has no theme, so neither may the ink on it. On a drawn map (Atlas, Political) the weight stays 1,
+ * where these strokes were drawn to be the map rather than to sit on a picture.
+ */
+test('the street weights over a photo are the measured ones, and the same in both themes', async ({ page }) => {
+  await openPage(page, 'en/lab', '?test');
+  const tokens = async (style: 'atlas' | 'physical' | 'satellite' | 'political', scheme: 'light' | 'dark') => {
+    await page.emulateMedia({ colorScheme: scheme });
+    await setMapStyle(page, style);
+    if (style === 'physical' || style === 'satellite') await waitForTexture(page, 'flat');
+    await expect(page.locator('.view-flat .frame')).toHaveAttribute('data-map-style', style);
+    return page.locator('.view-flat .frame').evaluate((f) => {
+      const cs = getComputedStyle(f);
+      return { casing: cs.getPropertyValue('--street-casing').trim(), weight: cs.getPropertyValue('--street-weight').trim() };
+    });
+  };
+  for (const style of ['physical', 'satellite'] as const) {
+    const light = await tokens(style, 'light'), dark = await tokens(style, 'dark');
+    expect(light, `${style}: a photograph has no theme`).toEqual(dark);
+    expect(Number(light.weight), `${style}: the weight the ink figures were measured at`).toBeCloseTo(0.9, 5);
+    // The casing's alpha. Chromium serialises `rgb(252 250 245 / 0.68)` back as the eight-digit hex `#fcfaf5ad`,
+    // so read it from whichever of the two notations comes out, and allow the 1/255 the hex form rounds to.
+    expect(alphaOf(light.casing), `${style}: the casing alpha (${light.casing})`).toBeCloseTo(0.68, 2);
+  }
+  for (const style of ['atlas', 'political'] as const) {
+    expect(Number((await tokens(style, 'light')).weight), `${style}: a drawn map keeps the full weight`).toBeCloseTo(1, 5);
+  }
+});
+
+/*
+ * Atlas draws street names inside a close-up box too (planning ruling R14), and Atlas is the one style `inks()`
+ * above deliberately leaves alone — its palette is pixel-frozen by the seven baselines, so a loop over all its
+ * tokens would be asserting things this feature may not change. `--street-name-ink` is not one of those: it is a
+ * close-up token, it is new, and it is the ink of text a pupil reads. Held on its own, in every style and theme,
+ * at AA and at AAA in presenter mode.
+ */
+for (const scheme of ['light', 'dark'] as const) {
+  test(`the street-name ink clears AA on its halo in every style, AAA in presenter (${scheme})`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: scheme });
+    await openPage(page, 'en/lab', '?test');
+    const ratio = async () => page.locator('.view-flat .frame').evaluate((f) => {
+      const cs = getComputedStyle(f);
+      const rgb = (v: string) => { const c = document.createElement('canvas').getContext('2d')!; c.fillStyle = v.trim(); const h = c.fillStyle as string; return [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)); };
+      const lum = (v: string) => { const [r, g, b] = rgb(v).map((x) => { const s = x / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!; };
+      const [x, y] = [lum(cs.getPropertyValue('--street-name-ink')), lum(cs.getPropertyValue('--halo'))].sort((p, q) => q - p);
+      return (x! + 0.05) / (y! + 0.05);
+    });
+    for (const style of ['atlas', 'physical', 'satellite', 'political'] as const) {
+      await setMapStyle(page, style);
+      if (style === 'physical' || style === 'satellite') await waitForTexture(page, 'flat');
+      await expect(page.locator('.view-flat .frame')).toHaveAttribute('data-map-style', style);
+      expect(await ratio(), `${style} (${scheme})`).toBeGreaterThanOrEqual(4.5);
+    }
+    await page.locator('body').press('p');
+    await expect(page.locator('html')).toHaveAttribute('data-presenter', 'true');
+    for (const style of ['atlas', 'physical', 'satellite', 'political'] as const) {
+      await setMapStyle(page, style);
+      if (style === 'physical' || style === 'satellite') await waitForTexture(page, 'flat');
+      await expect(page.locator('.view-flat .frame')).toHaveAttribute('data-map-style', style);
+      expect(await ratio(), `presenter ${style} (${scheme})`).toBeGreaterThanOrEqual(7);
+    }
+  });
 }

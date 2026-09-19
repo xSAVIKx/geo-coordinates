@@ -133,8 +133,9 @@ const hasAllowedLatin = (key: string, s: string) => latinTokens(s).some((t) => l
  * spelling actually prescribes; this check is what found them.
  *
  *  - en  apostrophe U+0027 ("doesn't"), quotes “ ” (U+201C/U+201D). A curly apostrophe or a Continental quote is drift.
- *  - pl  no apostrophe at all, quotes „ ” (U+201E/U+201D). A straight or curly apostrophe, a straight double
- *        quote, an opening “ or a guillemet is drift.
+ *  - pl  quotes „ ” (U+201E/U+201D), and no apostrophe in these files today — Polish does use one for a foreign
+ *        genitive ("Joyce'a"), so if such a word is ever added, put U+2019 in it and take `'` off this row rather
+ *        than working around the check. A straight double quote, a lone opening “ or a guillemet is drift.
  *  - uk  apostrophe U+2019, quotes « » (U+00AB/U+00BB). A straight apostrophe or double quote, or an English-style
  *        curly quote, is drift.
  *

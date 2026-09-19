@@ -45,15 +45,22 @@ test('AAA in presenter mode inside a box', async ({ page }) => {
  * Axe on a *scrolled* page with a close-up open, at the bottom of it — where the list, the teaching note and the
  * credit line are, and where a pupil who has just read them actually leaves the page.
  *
- * Two earlier runs (close-up-places.spec.ts, schools.spec.ts) were pinned to `scrollTo(0, 0)` because a 44 px map
+ * Be clear about what this does and does not cover. It says the page is clean when scrolled, with the disclosure
+ * open and a teaching note on screen. It does **not** exercise the obscured-target case: measured at the bottom of
+ * the lab page, both map toolbars sit at top -603, entirely above the viewport, and axe returns the identical
+ * result there as at scroll 0 (no violations, the same 73 target-size passes). Scrolling to the bottom restores no
+ * coverage over a run at the top; the reason it is not pinned to `scrollTo(0, 0)` any more is that a pin invites
+ * the reader to believe scrolling was the problem.
+ *
+ * The problem was this. Two earlier runs (close-up-places.spec.ts, schools.spec.ts) were pinned because a 44 px map
  * toolbar button caught half under the sticky header is reported by axe's target-size rule as obscured. Task 8
  * swept the scroll positions and found three ~40 px windows on a 1 819 px page, then did the arithmetic: with an
  * obscuring band [a, b] and a target of height H, the larger unobscured strip is max(a - top, top + H - b), which
  * stays under 24 px for a window of scroll positions (b - a) + 48 - H px wide. The header's own widgets are
  * 44 px tall and so are the toolbar's, so that window is 48 px wherever the header puts them — flush to the top,
  * flush to the bottom or centred — and a taller header band only makes it wider. There is no header offset and
- * no scroll-margin that removes it; what a scroll-margin (and the `scroll-padding-top` base.css already has) does
- * remove is the case WCAG 2.4.11 is actually about, keyboard focus, which the next test holds.
+ * no scroll-margin that removes it. What a scroll-padding *does* remove is the case WCAG 2.4.11 is actually about,
+ * keyboard focus, and the next test is the one that holds it.
  */
 for (const width of [375, 1366]) {
   test(`axe on a scrolled page with a close-up open (${width} px)`, async ({ page }) => {
@@ -73,20 +80,28 @@ for (const width of [375, 1366]) {
 /*
  * WCAG 2.2 AA 2.4.11, Focus Not Obscured: the criterion the pinned runs above were filed under. It is about
  * keyboard focus, and `html { scroll-padding-top: calc(var(--header-h) + 0.5rem) }` in base.css is what keeps it:
- * every scroll the browser makes to bring a focused control into view stops below the sticky header. Measured
- * here on every button in both map toolbars, on a page long enough to scroll, so a change to the header's height
- * or to that padding cannot quietly break it.
+ * every scroll the browser makes to bring a focused control into view stops below the sticky header, not under it.
+ *
+ * Each button is parked ten pixels above the fold before it is focused, and that placement is the whole test. The
+ * first version of this scrolled the page to its bottom and focused from there: the toolbars then sat about
+ * 600 px *above* the viewport, so the browser scrolled them back to y ~ 398, three hundred pixels clear of the
+ * header, and the test passed with `scroll-padding-top: 0` forced on and would have passed with a header twice as
+ * tall. It measured nothing. From ten pixels above the fold the browser has to scroll by almost exactly the
+ * header's height, so the padding is what decides where the button lands. Measured with this placement: 0
+ * overlaps as the page stands, 25 with `scroll-padding-top` forced to 0.
  */
 test('a focused map-toolbar button is never left under the sticky header', async ({ page }) => {
   await openPage(page, 'en/lab', '?test');
   await go(page, 'katowice');
-  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   const overlapping = await page.evaluate(() => {
     const out: string[] = [];
-    const bar = document.querySelector('header.bar')!.getBoundingClientRect();
     for (const b of document.querySelectorAll<HTMLElement>('.view-globe .toolbar button, .view-flat .toolbar button')) {
+      // Just above the fold: the scroll the browser then makes to reveal it is the thing under test.
+      const docTop = b.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo(0, docTop + 10);
       b.focus();
       const r = b.getBoundingClientRect();
+      const bar = document.querySelector('header.bar')!.getBoundingClientRect();
       if (r.top < bar.bottom && r.bottom > bar.top) out.push(`${b.getAttribute('aria-label') ?? b.textContent?.trim()} at ${r.top.toFixed(1)}, header to ${bar.bottom.toFixed(1)}`);
     }
     return out;
@@ -167,10 +182,18 @@ test('the label width model reserves at least the ink of every script a box coul
     t.remove();
     return out;
   });
-  // The model's two buckets, restated here rather than imported: pulling styleLabels.ts into the Playwright
-  // process drags src/i18n/i18n.svelte.ts and its JSON in with it. tests/unit/street-labels.test.ts holds
-  // `streetLabelWidth` to these same two numbers, so the pair cannot drift apart.
-  const GENERIC = 0.74, SQUARE = 1.05;
+  /*
+   * `streetLabelWidth`'s own model, restated here rather than imported: pulling styleLabels.ts into the Playwright
+   * process drags src/i18n/i18n.svelte.ts and its JSON in with it. tests/unit/street-labels.test.ts holds the real
+   * function to these same four numbers, so the two cannot drift apart.
+   *
+   * What is asserted is the guarantee itself — the box the layout reserves is at least the ink the browser draws —
+   * not the per-character bucket on its own. Those are not the same claim: Armenian measures 0.733 em a character
+   * against a 0.74 bucket, 1% of margin, which would read as a near-failure even though the reservation it lands
+   * in is 12% wider than the ink, because the model also charges a 0.3 em lead and a 5% safety factor. Ruling R19
+   * is about the box, so the box is what this measures.
+   */
+  const LEAD = 0.3, SAFETY = 1.05, GENERIC = 0.74, SQUARE = 1.05;
   const SQUARE_SCRIPTS = new Set(['hangul', 'japanese']);
   let drawn = 0;
   for (const [script, { text, ink }] of Object.entries(measured)) {
@@ -178,9 +201,10 @@ test('the label width model reserves at least the ink of every script a box coul
     // rather than pass on an empty box.
     if (ink <= 0) continue;
     drawn++;
-    const emPerChar = ink / 10 / [...text].length;
-    expect(emPerChar, `${script}: ${ink.toFixed(1)} px of ink over ${[...text].length} characters`)
-      .toBeLessThanOrEqual(SQUARE_SCRIPTS.has(script) ? SQUARE : GENERIC);
+    const chars = [...text].length;
+    const reserved = (LEAD + chars * (SQUARE_SCRIPTS.has(script) ? SQUARE : GENERIC)) * SAFETY * 10;
+    expect(reserved, `${script}: reserved ${reserved.toFixed(1)} px for ${ink.toFixed(1)} px of ink over ${chars} characters`)
+      .toBeGreaterThanOrEqual(ink);
   }
   expect(drawn, 'most of the scripts have to be drawable to be measured').toBeGreaterThanOrEqual(10);
 });

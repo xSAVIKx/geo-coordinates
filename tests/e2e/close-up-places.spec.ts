@@ -132,8 +132,13 @@ test('the list and the note pass axe in the lab, standing in a teaching box', as
    * away: with an obscuring band [a, b] and a target of height H, the unobscured part of the target is under
    * 24 px for a window of scroll positions (b - a) + 48 - H px wide, which for a 44 px header widget over a
    * 44 px target is 48 px however the header is laid out — see the Task 8 report for the sweep and the
-   * arithmetic. The bottom of the page is a real place the pupil leaves the page in, and it is defined, so the
-   * run is deterministic rather than pinned. Task 8 measured it clean at 375, 768, 1024, 1366 and 1920.
+   * arithmetic.
+   *
+   * What this run is worth, stated plainly: at the bottom of the page the map toolbars are entirely above the
+   * viewport (measured: top -603), so axe returns exactly what it returns at scroll 0. It adds no coverage of
+   * the obscured-target case; it is here because a defined, real scroll position is a better place to make the
+   * claim than a pin back to zero, which reads as if scrolling were the problem. The case that does matter,
+   * keyboard focus under the header (WCAG 2.4.11), is measured in tests/e2e/city-a11y.spec.ts.
    */
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   expect(await page.evaluate(() => window.scrollY), 'the page really is scrolled').toBeGreaterThan(0);

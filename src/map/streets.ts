@@ -29,16 +29,52 @@ export type { StreetClass } from './cityStreets';
 /**
  * The flat zoom each road class first appears at. Class 0 (motorways and trunk roads) comes in with the layer
  * itself; the smaller classes join as the box grows, so a box that is still a smudge across the view is a few
- * strokes rather than a scribble. The fit zooms are 2 659 to 5 009, so every class is drawn once a box fills
- * the view.
+ * strokes rather than a scribble.
+ *
+ * The last two classes sit *above* every box's fit zoom (2 659 to 5 009), which is the view a pupil arrives at
+ * from the close-up list. That is the Task 8 ruling, and it is what stops the street map from burying the
+ * photograph it is drawn on. Class 4 is the dense one — `residential`, `unclassified` and `living_street`, the
+ * ordinary street grid — and it is dense by a wide margin: drawn subpaths at the fit zoom, measured across the
+ * twelve,
+ *
+ *   box            c0-c3    c4     c5          box            c0-c3    c4     c5
+ *   giza             163  2 540     9          katowice         351    619   178
+ *   tokyo            391  1 899   231          sydney           249    548   193
+ *   greenwich        263  1 502    97          warsaw           343    572   165
+ *   krakow           171    883   124          manhattan        315    274   362
+ *   paris            422    945   604          delhi            404    657    49
+ *   mitaddelmundo     25    697     4          rovaniemi         12    186     1
+ *
+ * so at Giza class 4 was drawing fifteen strokes for every one of the main network's, and the right half of that
+ * box — the city — was a solid mesh with no photograph visible through it at all. Class 5 is `pedestrian` only,
+ * nine subpaths at Giza: holding it back alone would have changed nothing there.
+ *
+ * At the fit view the pupil now sees the photograph with the real network over it — motorway, primary, secondary,
+ * tertiary — and the ordinary streets arrive on zooming past it (the flat map reaches 6 000, so both thresholds
+ * are reachable inside every box). Names follow the same gate: `layersOf` only names a class it is drawing, so a
+ * street name never floats with no street under it.
  */
-export const STREET_CLASS_MIN_ZOOM: readonly number[] = [CITY_STREET_ZOOM, 60, 150, 400, 900, 2000];
+export const STREET_CLASS_MIN_ZOOM: readonly number[] = [CITY_STREET_ZOOM, 60, 150, 400, 5200, 5600];
 /** Street names need a street wide enough to write along: about a fifth of the way to the fit zoom. */
 export const STREET_NAME_ZOOM = 900;
 /** District names (OSM `place=suburb|quarter|neighbourhood`) come earlier — they name a whole area. */
 export const PLACE_NAME_ZOOM = 200;
 
-/** The layer's opacity: it fades in over one octave from CITY_STREET_ZOOM rather than appearing all at once (spec §5). */
+/**
+ * The layer's opacity: it fades in over one octave from CITY_STREET_ZOOM rather than appearing all at once (spec §5).
+ *
+ * Between about zoom 300 and the fit zoom the box is a rectangular patch on the blurred world texture, and the
+ * review asked whether this ramp should hold the street layer back further — a group opacity on `g.streets`, or
+ * simply not drawing — so that no hard-edged rectangle floats there. It was measured before answering: hiding
+ * `g.streets` completely at zoom 800 (shots/t8b/edge2-nostreets-800.png against edge2-streets-800.png) leaves the
+ * rectangle exactly where it was, and if anything crisper. The patch is the *photograph*: the shader feathers the
+ * close-up over `(north - south) / 12`, about 330 m, which at that zoom is a pixel and a half on screen. So a
+ * change here would move ink around inside a rectangle it cannot remove, and the layer would stop drawing for a
+ * reason that is not its own. The feather belongs to the texture pair (shaders.ts FRAGMENT_SHADER with
+ * cpuShade.ts shadePixel, which must change together) and wants a view-relative width rather than a fixed share
+ * of the box; that is a Task 4 change with its own parity tests, and it is written up as a follow-up in the
+ * Task 8 report rather than done here.
+ */
 export function streetFade(zoom: number): number {
   return Math.max(0, Math.min(1, (zoom - CITY_STREET_ZOOM) / CITY_STREET_ZOOM));
 }
@@ -301,7 +337,9 @@ export function streetsFor(box: CityBox, zoom: number, view: GeoBounds, lang: La
 /** The drawable layers of one already-built level of detail; the part of `streetsFor` that may throw. */
 function layersOf(d: BoxData, zoom: number, view: GeoBounds, lang: LangCode): StreetLayers {
   // Pedestrian ways (class 5) are drawn but never named: too many, too short, and a pupil reads the big streets.
-  const named = zoom >= STREET_NAME_ZOOM ? d.names.filter((n) => n.cls <= 4) : [];
+  // A class is named only where it is also drawn, so a name never stands over a street the map is not showing:
+  // class 4 is held back to zoom 5 200 (above), and its names are held back with it.
+  const named = zoom >= STREET_NAME_ZOOM ? d.names.filter((n) => n.cls <= 4 && zoom >= STREET_CLASS_MIN_ZOOM[n.cls]!) : [];
   const districts = zoom >= PLACE_NAME_ZOOM ? d.places : [];
   // Districts first, then streets, and a name only once: two streets can carry the same name in one box, and
   // `readableName` can fold a local and an English name onto one text as well.

@@ -25,7 +25,13 @@ for (const style of STYLES) {
     const streets = page.locator('.view-flat g.streets[data-city-box="katowice"]');
     await expect(streets).toHaveCount(1);
     await expect(streets.locator('path.road.c0')).toHaveCount(1);
+    // The main network at the fit zoom; the ordinary streets (class 4) are held back past it by the Task 8
+    // ruling, so that the photograph shows through the view a pupil arrives at, and they come on zooming in.
+    await expect(streets.locator('path.road.c3')).toHaveCount(1);
+    await expect(streets.locator('path.road.c4')).toHaveCount(0);
+    await setFlatView(page, b.lat, b.lon, 5300);
     await expect(streets.locator('path.road.c4')).toHaveCount(1);
+    await setFlatView(page, b.lat, b.lon, fit(b));
     // Every road has a casing under it, so a junction reads as roads crossing rather than a pile of strokes.
     await expect(streets.locator('path.road-casing')).toHaveCount(await streets.locator('path.road').count());
     // Planning ruling R14: the photo layer only exists for the two texture styles.
