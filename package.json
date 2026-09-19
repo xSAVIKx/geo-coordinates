@@ -24,7 +24,9 @@
     "data:borders": "node --experimental-strip-types scripts/build-world-borders.ts",
     "data:political": "node --experimental-strip-types scripts/build-political.ts",
     "data:water": "node --experimental-strip-types scripts/build-physical-water.ts",
-    "data:textures": "python3 scripts/build-textures.py"
+    "data:textures": "python3 scripts/build-textures.py",
+    "data:city-boxes": "node --experimental-strip-types scripts/city-boxes.ts",
+    "data:city-photos": "cd scripts && python3 build-city-photos.py"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",

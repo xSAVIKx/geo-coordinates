@@ -4,3 +4,4 @@ playwright-report/
 shots/
 .vite/
 .cache/
+__pycache__/
