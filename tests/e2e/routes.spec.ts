@@ -52,11 +52,16 @@ for (const scheme of ['light', 'dark'] as const) {
   }
 }
 
-test('size budget: dist/geo-coordinates.html stays under 5 MiB', async () => {
+test('size budget: dist/geo-coordinates.html stays under 8 MiB', async () => {
   const { statSync } = await import('node:fs');
-  // Limit kept in sync by hand with `scripts/size-check.ts` (the authority; not imported here since running it has
-  // side effects — it reads the built file itself and exits the process on failure).
-  expect(statSync(DIST_FILE).size).toBeLessThan(5_242_880);
+  // 8 MiB, the Places up close spec §7 budget. `scripts/size-check.ts`'s `LIMIT` is the authority and this is a
+  // hand-kept mirror of it: that script cannot be imported here, because it is a top-level programme that reads
+  // the built file and calls process.exit rather than a module that exports its limit.
+  //
+  // The two have now drifted twice (the 5 MiB literal survived Task 3's raise to 8 MiB and left this test failing
+  // against every fresh build). If they drift a third time, stop mirroring and lift the number into a module both
+  // sides import — `scripts/size-report.ts`, which size-check.ts already pulls in, is the natural home.
+  expect(statSync(DIST_FILE).size).toBeLessThan(8_388_608);
 });
 
 test('first visit with reduced-motion preference turns the setting on', async ({ page }) => {
