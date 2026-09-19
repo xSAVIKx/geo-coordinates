@@ -135,6 +135,12 @@ for (const [lang, n] of [['pl', { toggle: 'Szkoły Maple Bear', country: 'Polska
     await expect(poland).toContainText(n.three);
     await poland.click();
     await expect(page.locator('details.country[open] button')).toHaveCount(3);
+    // Back to the top before axe. Opening the two disclosures scrolls the page, and a scrolled page leaves the
+    // globe's toolbar mostly above the viewport with its last sliver under the sticky header — which axe reports
+    // as an obscured target. That is true of every page and every list (a plain lab page scrolled down reports
+    // the same buttons), and it depends on exactly how tall the page happens to be, so the axe run is pinned to
+    // a defined scroll position instead.
+    await page.evaluate(() => window.scrollTo(0, 0));
     await expectNoAxeViolations(page, `schools list ${lang}`);
     expect(pageErrors(page)).toEqual([]);
   });

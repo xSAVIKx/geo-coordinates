@@ -3,6 +3,7 @@
   import { i18n, t } from '../i18n/i18n.svelte';
   import { ui } from '../app/presenter.svelte';
   import type { LatLon } from '../geo/types';
+  import { visibleCityBox } from './cityBoxes';
   import { CLIP_PAD, makeFlatCtx } from './geometry';
   import Layers from './layers/Layers.svelte';
   import MapStyleSwitch from './MapStyleSwitch.svelte';
@@ -183,6 +184,11 @@
     return () => svg.removeEventListener('wheel', handler);
   });
 
+  // Spec §6: standing in a close-up box, the map's text description says what the box shows. It drops back to the
+  // style's own description the moment the pupil leaves the box or turns "Places up close" off, so the description
+  // never names something that is not on the screen.
+  const inCityBox = $derived(mapState.closeUps && visibleCityBox(ctx.bounds, ctx.zoom) !== null);
+
   const PRESETS: FlatPreset[] = ['world', 'europe', 'poland'];
   const PROJECTIONS: FlatProjection[] = ['grid', 'equal-earth', 'mercator'];
 </script>
@@ -208,7 +214,7 @@
     </svg>
   </div>
   <p id="{uid}-hint" class="visually-hidden">{t('map.flat.hint')}</p>
-  <p id="{uid}-style-desc" class="visually-hidden">{t(`map.style.description.${mapState.drawnMapStyle}`)}</p>
+  <p id="{uid}-style-desc" class="visually-hidden">{t(`map.style.description.${mapState.drawnMapStyle}`)}{inCityBox ? ` ${t('closeup.description')}` : ''}</p>
   <div class="toolbar">
     <div class="btn-group" role="group" aria-label={t('map.zoomGroup')}>
       <button type="button" class="btn icon" onclick={() => mapState.zoomFlat(1.5)} aria-label={t('map.zoomIn')} title={t('map.zoomIn')}>

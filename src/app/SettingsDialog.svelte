@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t } from '../i18n/i18n.svelte';
+  import { closeUpSetting, setCloseUps } from '../map/closeUps.svelte';
   import { mapState } from '../map/mapState.svelte';
   import { MAP_STYLES } from '../map/mapStyle';
   import { settings, type Theme } from './settings.svelte';
@@ -28,6 +29,8 @@
       <label class="row"><input type="radio" name="map-style" value={s} checked={mapState.stylePreference === s} onchange={() => mapState.setStylePreference(s)} /> {t(`map.style.${s}`)}</label>
     {/each}
   </fieldset>
+  <label class="row"><input type="checkbox" checked={closeUpSetting.on} onchange={(e) => setCloseUps(e.currentTarget.checked)} aria-describedby="close-ups-hint" /> {t('settings.closeUps')}</label>
+  <p id="close-ups-hint" class="hint">{t('settings.closeUps.hint')}</p>
   <label class="row"><input type="checkbox" bind:checked={settings.largeText} /> {t('settings.largeText')}</label>
   <label class="row"><input type="checkbox" bind:checked={settings.reducedMotion} /> {t('settings.reducedMotion')}</label>
   <form method="dialog"><button class="btn primary">{t('settings.close')}</button></form>
@@ -43,6 +46,10 @@
   legend { font-weight: var(--weight-strong); padding: 0 var(--space-1); }
   .row { display: flex; gap: var(--space-3); align-items: center; min-height: var(--tap); cursor: pointer; }
   .row input { width: 1.25rem; height: 1.25rem; margin: 0; accent-color: var(--accent); }
+  .hint { margin: 0 0 var(--space-3) 2.75rem; color: var(--text-muted); font-size: var(--step--1); }
+  /* On a phone the dialog is barely 17rem of text wide: the hint gives up its indent rather than wrap to
+     four words a line. */
+  @media (max-width: 24rem) { .hint { margin-left: 0; } }
   form { display: flex; justify-content: flex-end; }
   .primary { margin-top: var(--space-4); padding: 0 var(--space-6); }
 </style>

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { i18n, t } from '../i18n/i18n.svelte';
-  import { AUTHOR, IMAGERY, MAP_DATA, SCHOOL_DATA } from './credits';
+  import { AUTHOR, CLOSE_UP_SOURCES, IMAGERY, MAP_DATA, OSM, SCHOOL_DATA } from './credits';
   const year = new Date().getFullYear();
   const retrieved = $derived(new Intl.DateTimeFormat(i18n.lang, { dateStyle: 'long', timeZone: 'UTC' }).format(new Date(`${SCHOOL_DATA.retrieved}T00:00:00Z`)));
 </script>
@@ -19,6 +19,12 @@
     <a href={AUTHOR.github} rel="noopener">{t('footer.github', { name: AUTHOR.name })}</a>
   </p>
   <p class="schools">{t('footer.schools', { date: retrieved })}</p>
+  <p class="close-ups">
+    {t('footer.closeUpPhotos', { source: '' })}{#each CLOSE_UP_SOURCES as s, i (s.key)}{#if i}<span aria-hidden="true">{', '}</span>{/if}<a href={s.url} rel="noopener">{s.name}</a>{/each}
+    <span class="sep" aria-hidden="true"> · </span>
+    {t('footer.closeUpStreets', { source: '' })}<a href={OSM.url} rel="noopener">{OSM.name}</a>
+  </p>
+  <p class="close-ups small">{t('closeup.credit.sentinel')}</p>
 </footer>
 
 <style>
@@ -27,6 +33,8 @@
   footer { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; column-gap: var(--space-4); padding: var(--space-3) var(--space-6) var(--space-4); border-top: 1px solid var(--border); background: var(--bg-deep); color: var(--text-muted); font-size: var(--step--1); }
   footer p { margin: 0; padding: 0; text-align: center; text-wrap: balance; }
   footer p.schools { flex: 1 0 100%; padding-top: var(--space-1); }
+  footer p.close-ups { flex: 1 0 100%; padding-top: var(--space-1); }
+  footer p.small { font-size: var(--step--2); }
   footer a { color: inherit; display: inline-flex; align-items: center; min-height: var(--tap); text-decoration-color: color-mix(in srgb, currentColor 45%, transparent); }
   footer a:hover { color: var(--text); text-decoration-color: currentColor; }
   @media (min-width: 900px) {
@@ -37,5 +45,6 @@
     footer { flex-direction: column; padding: var(--space-2) var(--space-3) var(--space-4); }
     .sep { display: block; height: 0; overflow: hidden; }
     footer p.schools { flex-basis: auto; }
+    footer p.close-ups { flex-basis: auto; }
   }
 </style>

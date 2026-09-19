@@ -26,7 +26,7 @@ export const topic9: TopicDef = {
       },
     },
     { id: 'dms', scene: { views: ['flat'], ...MAP_APP, flatView: { center: KATOWICE, zoom: 40 }, point: KATOWICE, pointEditable: true, precision: 'minute', readout: 'both', layers: { graticuleStep: 'auto', specialLines: true } } },
-    { id: 'find', illustration: 'map-pin', scene: { views: ['flat'], ...MAP_APP, flatView: { center: KATOWICE, zoom: 12 }, point: KATOWICE, precision: 'minute', readout: 'decimal', layers: { graticuleStep: 'auto' }, closeUps: true } },
+    { id: 'find', illustration: 'map-pin', closeUpNote: true, scene: { views: ['flat'], ...MAP_APP, flatView: { center: KATOWICE, zoom: 12 }, point: KATOWICE, precision: 'minute', readout: 'decimal', layers: { graticuleStep: 'auto' }, closeUps: true } },
     // Zoom 0.84 centred at 53°N fits all of Greenland (to 83.6°N) and Africa's southern tip (34.8°S), with a little room at both edges.
     {
       id: 'mercator',

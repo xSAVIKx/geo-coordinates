@@ -8,6 +8,8 @@
   import FlatMap from './FlatMap.svelte';
   import Globe from './Globe.svelte';
   import LabControls from './LabControls.svelte';
+  import CloseUpList from './CloseUpList.svelte';
+  import CloseUpNote from './CloseUpNote.svelte';
   import { isTextureStyle } from './mapStyle';
   import { mapState } from './mapState.svelte';
   import MapStyleNote from './MapStyleNote.svelte';
@@ -56,11 +58,13 @@
   </div>
   <p class="map-status" role="status">{renderHealth.loading && isTextureStyle(mapState.mapStyle) ? t('map.style.loading') : ''}</p>
   <p class="map-source">{mapState.drawnMapStyle !== 'atlas' ? t(`map.style.source.${mapState.drawnMapStyle}`) : ''}</p>
+  <CloseUpNote />
   <MapStyleNote />
   {#if midContent}{@render midContent()}{/if}
   {#if mapState.point}<CoordinateControls />{/if}
   {#if showLab && mapState.labControls.length}<LabControls />{/if}
   {#if showPlaces && mapState.pointEditable}<PlaceList />{/if}
+  {#if mapState.closeUps}<CloseUpList />{/if}
   {#if mapState.schoolsToggle && mapState.layers.schools}<SchoolList />{/if}
 </section>
 

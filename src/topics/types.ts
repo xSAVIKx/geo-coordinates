@@ -8,6 +8,8 @@ export interface ExploreStep {
   showPlaces?: boolean;
   /** A small decorative drawing beside the step text (the text says everything it shows). */
   illustration?: 'map-pin';
+  /** The step shows one extra sentence about the city close-ups, when the pupil has them on (spec §6). */
+  closeUpNote?: boolean;
 }
 
 export interface TopicDef {

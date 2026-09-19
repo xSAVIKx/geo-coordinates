@@ -5,6 +5,8 @@ import { clampLat, normalizeLon, roundTo } from '../geo/format';
 import { eventDay } from '../geo/orbit';
 import { dateFromDayAndMinutes, dayOfYear, daysInYear, sunPoint } from '../geo/sun';
 import type { LatLon, Precision } from '../geo/types';
+import { cityBoxById, type CityBox } from './cityBoxes';
+import { closeUpSetting } from './closeUps.svelte';
 import { clampFlatCenter, flatMinZoom, panFlatCenter } from './geometry';
 import { isolatingFlatZoom, isolatingGlobeZoom, schoolById, type School } from './schools';
 import { readMapStyle, writeMapStyle, type MapStyle } from './mapStyle';
@@ -87,11 +89,11 @@ export class MapState {
   /** Whether the scene offers the Maple Bear schools switch (`SceneSpec.schoolsToggle`). */
   schoolsToggle = $state(false);
   /**
-   * Whether this scene offers the city close-ups at all (spec §2: free play, the lab, topic 9's find step — never
-   * questions, rehearsal or worksheets). The photo, the street layer and the "Places up close" list all check it,
-   * so a close-up can never appear where the lesson does not want one (planning ruling R10).
+   * Whether this *scene* offers the city close-ups at all (`SceneSpec.closeUps`; spec §2: free play, the lab,
+   * topic 9's find step — never questions, rehearsal or worksheets), so a close-up can never appear where the
+   * lesson does not want one (planning ruling R10). What actually draws is the `closeUps` getter below.
    */
-  closeUps = $state(false);
+  closeUpsScene = $state(false);
   /** The remembered map style, read from storage; `setStylePreference` writes it back. */
   stylePreference = $state<MapStyle>(readMapStyle());
   /** The style the scene sets (`SceneSpec.mapStyle`), if any. */
@@ -122,6 +124,15 @@ export class MapState {
 
   set precision(p: Precision | 'auto') {
     this.precisionMode = p;
+  }
+
+  /**
+   * Whether close-ups are drawn and offered right now: the scene has to allow them *and* the pupil's "Places up
+   * close" switch has to be on (spec §6). Everything that draws or lists a close-up reads this one getter, so
+   * turning the switch off takes the photo, the street layer and the list away together.
+   */
+  get closeUps(): boolean {
+    return this.closeUpsScene && closeUpSetting.on;
   }
 
   get flatProjection(): FlatProjection {
@@ -241,7 +252,7 @@ export class MapState {
     this.labControls = [...(scene.labControls ?? [])];
     this.orbitToggle = (scene.labControls ?? []).includes('seasons') && !scene.views.includes('orbit');
     this.schoolsToggle = scene.schoolsToggle ?? false;
-    this.closeUps = scene.closeUps ?? false;
+    this.closeUpsScene = scene.closeUps ?? false;
     this.chosenSchool = null;
     this.phoneView = scene.phoneView && scene.views.includes(scene.phoneView) ? scene.phoneView : scene.views.includes('flat') ? 'flat' : (scene.views[0] ?? 'flat');
     this.lastChange = 'program';
@@ -331,6 +342,23 @@ export class MapState {
     // After the zoom, so a free-play scene's point snaps to minutes at this closer view.
     this.userSetPoint(school, 'slider');
     return school;
+  }
+
+  /**
+   * Goes to a close-up box: the flat map centred on it at the zoom that fills the view with it, the globe centred
+   * too, and the point moved there when it can move. Close-ups are a flat-map feature (planning ruling R1), so a
+   * phone showing the globe is switched to the flat map. Returns the box, or null for an unknown id.
+   */
+  showCityBox(id: string): CityBox | null {
+    const box = cityBoxById(id);
+    if (!box) return null;
+    const centre = { lat: box.lat, lon: box.lon };
+    this.setFlatView(centre, box.fitZoom);
+    this.centerGlobeOn(centre);
+    if (this.views.includes('flat')) this.phoneView = 'flat';
+    // After the zoom, so a free-play scene's point snaps to minutes at this close view.
+    this.userSetPoint(centre, 'slider');
+    return box;
   }
 
   setGlobeZoom(zoom: number): void {

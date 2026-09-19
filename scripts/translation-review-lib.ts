@@ -22,6 +22,10 @@ export interface InfoNote {
 //  - cross.southPole   "S" — same reason as cross.northPole
 //  - place.*           real-world place names shared across languages (Oslo,
 //                       Lima, Sydney, Nairobi, Berlin, Delhi, ...)
+//  - closeup.place.*   real-world place names shared across languages (Giza,
+//                       Sydney, Delhi, Manhattan, ...)
+//  - closeup.credit.*  the licences' own prescribed attribution wording, which
+//                       is not translated (ruling R20)
 //  - label.australia   place-like label, same reasoning as place.*
 //  - classQuiz.seconds  short unit word that happens to match across langs
 //  - spoken.*          spoken-form templates built only from params/units
@@ -43,6 +47,8 @@ const SAME_OK = [
   /^cross\.northPole$/,
   /^cross\.southPole$/,
   /^place\./,
+  /^closeup\.place\./,
+  /^closeup\.credit\./,
   /^label\.australia$/,
   /^classQuiz\.seconds$/,
   /^spoken\./,
@@ -54,7 +60,7 @@ const SAME_OK = [
 
 // Place-name keys are excluded from "info: foreign term" notes — a place name
 // identical across languages isn't a foreign term, it's just a name.
-const PLACE_NAME_KEY = /^place\.|^label\.australia$/;
+const PLACE_NAME_KEY = /^place\.|^closeup\.place\.|^closeup\.credit\.|^label\.australia$/;
 
 const onlySymbols = (s: string) => s.replace(/\{\w+\}/g, '').replace(/[\s\d°′:.,()\-–—·←→#%]/g, '') === '';
 
@@ -101,7 +107,12 @@ const LATIN_OK = new Set(['A', 'B', 'P', 'L', 'UTC', 'Esc', 'Shift', 'Ctrl', 'Go
 const KEY_LATIN_OK: readonly (readonly [RegExp, ReadonlySet<string>])[] = [
   [/^cheat\.foot$/, new Set(['CC', 'BY'])],
 ];
-const latinOk = (key: string, token: string) => LATIN_OK.has(token) || KEY_LATIN_OK.some(([re, words]) => re.test(key) && words.has(token));
+// Keys whose *whole* value is prescribed Latin-script wording that every language repeats verbatim, so
+// listing the individual words would only restate the sentence:
+//  - closeup.credit.*  the imagery licences' own attribution lines, which the services publish in Latin
+//                       script and require unchanged (ruling R20) — there is nothing in them to translate.
+const LATIN_TEXT_KEY = /^closeup\.credit\./;
+const latinOk = (key: string, token: string) => LATIN_TEXT_KEY.test(key) || LATIN_OK.has(token) || KEY_LATIN_OK.some(([re, words]) => re.test(key) && words.has(token));
 
 const LATIN_TOKEN = /[A-Za-z]+/g;
 

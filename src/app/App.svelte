@@ -12,12 +12,14 @@
   import Rehearsal from '../quiz/Rehearsal.svelte';
   import ClassQuiz from '../quiz/ClassQuiz.svelte';
   import { router, startRouter } from './router.svelte';
+  import { initCloseUps } from '../map/closeUps.svelte';
   import { applySettings, initSettings, saveSettings, settings } from './settings.svelte';
   import { installPresenter, presenter } from './presenter.svelte';
   import { layout } from './layout.svelte';
   import { t } from '../i18n/i18n.svelte';
 
   initSettings();
+  initCloseUps();
   onMount(() => {
     const stopRouter = startRouter();
     const stopPresenter = installPresenter();

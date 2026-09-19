@@ -1,5 +1,6 @@
 <script lang="ts">
   import { i18n, t } from '../i18n/i18n.svelte';
+  import { closeUpSetting } from '../map/closeUps.svelte';
   import MapStage from '../map/MapStage.svelte';
   import { mapState } from '../map/mapState.svelte';
   import type { TopicDef } from '../topics/types';
@@ -51,6 +52,7 @@
     <p class="progress eyebrow">{t('explore.progress', { n: index + 1, total })}</p>
     <h2 id="step-title" tabindex="-1" bind:this={heading}>{t(`topic.${topic.id}.step.${current.id}.title`)}</h2>
     {#key index}<p class="body">{t(`topic.${topic.id}.step.${current.id}.body`)}</p>{/key}
+    {#if current.closeUpNote && closeUpSetting.on}<p class="body extra">{t(`topic.${topic.id}.step.${current.id}.closeUp`)}</p>{/if}
     {#if current.illustration === 'map-pin'}
       <!-- Decorative (the step text says it all): a generic map pin with a decimal coordinate pair under it — no app's look. -->
       <svg class="illustration" viewBox="0 0 240 132" aria-hidden="true">
@@ -99,6 +101,8 @@
   @media (forced-colors: active) { h2:focus-visible { outline: 2px solid Highlight; } }
   .body { margin: 0 0 var(--space-5); font-size: var(--step-1); line-height: 1.55; max-width: var(--measure); animation: rise 260ms var(--ease) both; }
   @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  /* The close-up sentence carries on from the step's own text: one block of two paragraphs, not a bolt-on. */
+  .body.extra { margin-top: calc(-1 * var(--space-3)); }
   .illustration { display: block; width: min(100%, 15rem); height: auto; margin: 0 0 var(--space-5); }
   .ill-map { fill: var(--ocean); stroke: var(--border); stroke-width: 2; }
   .ill-grid { fill: none; stroke: var(--grid); stroke-width: 1.5; opacity: 0.6; }
