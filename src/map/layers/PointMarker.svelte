@@ -16,7 +16,7 @@
 
 {#if p}
   {#if part !== 'handle' && mapState.layers.pointGuides}
-    {@const lat = skip.lat || highlighted('lat', p.lat) ? '' : (ctx.path(parallelLine(p.lat, parallelStep(ctx.zoom))) ?? '')}
+    {@const lat = skip.lat || highlighted('lat', p.lat) ? '' : (ctx.path(parallelLine(p.lat, parallelStep(ctx.zoom), ctx.kind === 'flat' ? ctx.bounds : undefined)) ?? '')}
     {@const lon = skip.lon || highlighted('lon', p.lon) ? '' : (ctx.path(meridianLine(p.lon)) ?? '')}
     {#if lat}<path class="guide-casing" d={lat} />{/if}
     {#if lon}<path class="guide-casing" d={lon} />{/if}

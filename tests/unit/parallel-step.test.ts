@@ -15,6 +15,9 @@ function bowUnits(lat: number, stepDeg: number, zoom: number): number {
   return excess * ((960 * zoom) / 360);
 }
 
+/** A flat view `zoom` deep, centred on `lon`: 360/zoom degrees across, as `makeFlatCtx` reports it. */
+const view = (zoom: number, lon: number) => ({ west: lon - 180 / zoom, east: lon + 180 / zoom, south: 0, north: 1 });
+
 describe('parallelStep', () => {
   test('exactly 1 at or below zoom 80, so nothing Atlas draws today moves (planning ruling R3)', () => {
     for (const zoom of [0.5, 1, 3.5, 9, 12, 20, 40, 79.9, 80]) expect(parallelStep(zoom), String(zoom)).toBe(1);
@@ -104,5 +107,40 @@ describe('parallelStep', () => {
       expect(c[c.length - 1], `step ${step}`).toEqual([180, -12]);
       expect(c[c.length - 2]![0], `step ${step}`).toBe(180 - step);
     }
+  });
+
+  /*
+   * A deep flat view builds the parallel over a window round itself instead of the whole world: at zoom 6000
+   * the line is 3 118 vertices and 0.06° of it can be seen, so 3 116 of them were projected and clipped away
+   * seven times a frame. The window has to be wide enough that it never shows an end, and the whole world has
+   * to come back the moment the step is 1 — that is every map the lesson drew before city close-ups existed.
+   */
+  test('a deep flat view builds only the part of a parallel it can see', () => {
+    const full = parallelLine(50.26, parallelStep(6000)).coordinates.length;
+    const windowed = parallelLine(50.26, parallelStep(6000), view(6000, 19.02)).coordinates;
+    expect(full).toBe(3119);
+    expect(windowed.length).toBeLessThan(20);
+    // The ends are outside the view on both sides, so the drawn line still crosses it edge to edge.
+    expect(windowed[0]![0]).toBeLessThan(view(6000, 19.02).west);
+    expect(windowed[windowed.length - 1]![0]).toBeGreaterThan(view(6000, 19.02).east);
+    for (const p of windowed) expect(p[1]).toBe(50.26);
+  });
+
+  test('at a step of 1 the window changes nothing at all, so the Atlas baselines cannot move', () => {
+    for (const zoom of [1, 12, 40, 80]) {
+      for (const lon of [-170, 0, 19.02, 175]) {
+        expect(parallelLine(0, parallelStep(zoom), view(zoom, lon)).coordinates, `zoom ${zoom} lon ${lon}`)
+          .toEqual(parallelLine(0).coordinates);
+      }
+    }
+  });
+
+  test('a view that wraps past the antimeridian, or covers the world, gets the whole line', () => {
+    const step = parallelStep(6000);
+    const whole = parallelLine(0, step).coordinates;
+    expect(parallelLine(0, step, { west: -200, east: -190, south: -1, north: 1 }).coordinates).toEqual(whole);
+    expect(parallelLine(0, step, { west: 170, east: 200, south: -1, north: 1 }).coordinates).toEqual(whole);
+    expect(parallelLine(0, step, { west: -180, east: 180, south: -90, north: 90 }).coordinates).toEqual(whole);
+    expect(parallelLine(0, step, { west: 10, east: 10, south: -1, north: 1 }).coordinates).toEqual(whole);
   });
 });

@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, test } from 'vitest';
 import { cityBoxById } from '../../src/map/cityBoxes';
 import { makeFlatCtx } from '../../src/map/geometry';
 import { overlaps, type LabelBox } from '../../src/map/labelLayout';
-import { loadStreets } from '../../src/map/streets';
+import { loadStreets, streetGeometryBuilds, streetsFor } from '../../src/map/streets';
 import { placeStreetLabels, streetLabelWidth, STREET_FONT } from '../../src/map/styleLabels';
 
 const box = cityBoxById('katowice')!;
@@ -25,6 +25,27 @@ beforeAll(async () => {
 });
 
 describe('street labels', () => {
+  /*
+   * Placing the names must not rebuild the geometry beside them.
+   *
+   * `placeStreetLabels` used to get its names by calling `streetsFor`, which the street layer had already called
+   * for the same box, zoom and view a moment earlier in the same frame — so every road class was re-filtered,
+   * every rail, waterway, water and green part re-tested against the view and five fresh arrays built, twice a
+   * frame, to read one field off the second copy. A frame-time bound is far too noisy to catch that coming back
+   * (the harness in tests/e2e/perf-smoke.spec.ts measures in whole animation frames), so it is counted instead.
+   */
+  test('placing the names builds no geometry at all', () => {
+    const c = ctx();
+    // The layer's own call is the one that builds: prove the counter is live before asserting it stands still.
+    const before = streetGeometryBuilds();
+    streetsFor(box, c.zoom, c.bounds, 'en');
+    expect(streetGeometryBuilds(), 'drawing the layer builds the geometry once').toBe(before + 1);
+    const after = streetGeometryBuilds();
+    const labels = placeStreetLabels(c, box, 'en', []);
+    expect(labels.length, 'and the labels really were placed').toBeGreaterThan(0);
+    expect(streetGeometryBuilds(), 'placing them builds nothing').toBe(after);
+  });
+
   /*
    * Note what these tests can and cannot see. Every assertion below compares one label's box with another's, and
    * both boxes come from the same width model — so a model that under-measures its text looks perfectly tidy here

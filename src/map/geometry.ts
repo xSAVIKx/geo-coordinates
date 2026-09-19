@@ -44,15 +44,45 @@ export const POLAR = 66.56;
 // d3 draws every segment as a great-circle arc; a parallel is not one, so long segments bow towards
 // the pole. 1° keeps that bow under a quarter of a map unit even at zoom 80; past that zoom the step
 // has to shrink — ask `parallelStep` for it.
-export function parallelLine(lat: number, step = 1): GeoJSON.LineString {
+export function parallelLine(lat: number, step = 1, within?: GeoBounds): GeoJSON.LineString {
+  const [from, to] = parallelSpan(step, within);
   const coordinates: [number, number][] = [];
-  for (let lon = -180; lon <= 180; lon += step) coordinates.push([lon, lat]);
-  // The loop stops at the last vertex at or below 180, which a step that does not divide 360 never reaches: at
-  // `parallelStep(6000)` it stops at 179.92°, and a view panned to the date line would show no line at all.
-  // `meridianLine` closes its end the same way. With a step of 1 or 0.5 the last vertex is already 180, so this
-  // adds nothing and every map drawn before this feature is unchanged.
-  if (coordinates[coordinates.length - 1]![0] < 180) coordinates.push([180, lat]);
+  for (let lon = from; lon <= to; lon += step) coordinates.push([lon, lat]);
+  // The loop stops at the last vertex at or below the end, which a step that does not divide the span never
+  // reaches: at `parallelStep(6000)` over the whole world it stops at 179.92°, and a view panned to the date
+  // line would show no line at all. `meridianLine` closes its end the same way. With a step of 1 or 0.5 over
+  // the whole world the last vertex is already 180, so this adds nothing and every map drawn before this
+  // feature is unchanged.
+  if (coordinates[coordinates.length - 1]![0] < to) coordinates.push([to, lat]);
   return { type: 'LineString', coordinates };
+}
+
+/**
+ * The longitudes a parallel is actually built over: the whole world, unless the view is a deep flat one, in
+ * which case a window round it, generous enough that panning cannot outrun it within a frame.
+ *
+ * Only for a step under 1 — that is, only on the flat map above zoom 80 (`parallelStep`). Below it nothing
+ * changes at all: the same 361 vertices from -180 to 180 as before, so the Atlas baselines and every globe
+ * frame are byte-identical (planning rulings R11, R3). Above it the step shrinks as 1/sqrt(zoom) while the view
+ * shrinks as 1/zoom, so the share of the line that can be seen collapses: at zoom 6000 the line is 3 118
+ * vertices and the view is 0.06° wide, which is two of them. The other 3 116 were projected, turned into path
+ * commands and thrown away by the SVG clip, seven times a frame — the equator, both tropics, both polar
+ * circles, the point's own latitude guide and any highlighted parallel.
+ *
+ * Deliberately kept off the globe and off `chosenLabel`: the globe's bounds can wrap past ±180 and report the
+ * whole world, and `chosenLabel` intersects the line as geometry rather than drawing it, so a window round the
+ * view could change its answer rather than only its cost.
+ */
+function parallelSpan(step: number, within?: GeoBounds): [number, number] {
+  const whole: [number, number] = [-180, 180];
+  if (!within || step >= 1) return whole;
+  const span = within.east - within.west;
+  if (!(span > 0) || span >= 360 || within.west < -180 || within.east > 180) return whole;
+  // A quarter of the view either side, and never less than a whole step, so the ends always fall outside it.
+  const pad = Math.max(step, span * 0.25);
+  const from = Math.max(-180, Math.floor((within.west - pad) / step) * step);
+  const to = Math.min(180, Math.ceil((within.east + pad) / step) * step);
+  return to > from ? [from, to] : whole;
 }
 
 /**

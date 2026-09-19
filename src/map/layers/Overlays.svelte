@@ -49,7 +49,7 @@
   {:else if o.kind === 'highlight-region'}
     <path class="hl-region" d={ctx.path(hemisphere(o.region)) ?? ''} />
   {:else if o.kind === 'highlight-line'}
-    {@const d = ctx.path(o.axis === 'lat' ? parallelLine(o.value, parallelStep(ctx.zoom)) : meridianLine(o.value)) ?? ''}
+    {@const d = ctx.path(o.axis === 'lat' ? parallelLine(o.value, parallelStep(ctx.zoom), ctx.kind === 'flat' ? ctx.bounds : undefined) : meridianLine(o.value)) ?? ''}
     <path class="hl-casing" class:draw={o.animate} {d} pathLength={o.animate ? 100 : undefined} />
     <path class="hl-line" class:draw={o.animate} {d} pathLength={o.animate ? 100 : undefined} />
   {:else if o.kind === 'noon-meridian'}

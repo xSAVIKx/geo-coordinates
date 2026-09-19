@@ -7,7 +7,7 @@ import { overlaps, selectLabelPlacements, textBox, type LabelBox } from './label
 import { PHYSICAL_NAMES, type PhysicalKind } from './physical';
 import { tierZoom } from './places';
 import { countryLabels, countryName } from './political';
-import { readableHere, streetsFor } from './streets';
+import { readableHere, streetNamesFor } from './streets';
 
 /*
  * Names that only some map styles write (spec §4): country names (Political) and physical names (Physical).
@@ -232,7 +232,7 @@ function boxRect(ctx: ViewCtx, box: CityBox): LabelBox {
 export function placeStreetLabels(ctx: ViewCtx, box: CityBox, lang: LangCode, obstacles: readonly LabelBox[]): StyleLabel[] {
   const size = STREET_FONT * ctx.px;
   const clip = boxRect(ctx, box);
-  const items = streetsFor(box, ctx.zoom, ctx.bounds, lang).names.flatMap((n) => {
+  const items = streetNamesFor(box, ctx.zoom, lang).flatMap((n) => {
     const xy = ctx.project(n);
     if (!xy || !insideView(ctx, xy)) return [];
     const width = streetLabelWidth(n.text, STREET_FONT, ctx.px);

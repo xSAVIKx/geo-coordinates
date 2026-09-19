@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { CITY_BOXES, cityBoxById, CITY_STREET_ZOOM } from '../../src/map/cityBoxes';
 import { FLAT_MAX_ZOOM } from '../../src/map/mapState.svelte';
-import { disableStreets, loadStreets, readableHere, readableName, resetStreets, streetFade, streetsDisabled, streetsFor, streetsLoaded, STREET_CLASS_MIN_ZOOM } from '../../src/map/streets';
+import { disableStreets, loadStreets, PLACE_NAME_ZOOM, readableHere, readableName, resetStreets, streetClassMinZoom, streetFade, streetNamesFor, streetsDisabled, streetsFor, streetsLoaded, STREET_CLASS_MIN_ZOOM } from '../../src/map/streets';
 import type { GeoBounds } from '../../src/map/geometry';
 
 const box = cityBoxById('katowice')!;
@@ -49,27 +49,34 @@ describe('city streets', () => {
   test('zoomed out, only the main roads are drawn; zoomed in, the small ones join', () => {
     const wide = streetsFor(box, 60, all, 'en');
     const close = streetsFor(box, box.fitZoom, all, 'en');
+    const ladder = streetClassMinZoom(box);
     expect(Math.max(...wide.roads.map((r) => r.cls))).toBeLessThan(Math.max(...close.roads.map((r) => r.cls)));
-    for (const r of wide.roads) expect(60, `class ${r.cls}`).toBeGreaterThanOrEqual(STREET_CLASS_MIN_ZOOM[r.cls]!);
-    expect(STREET_CLASS_MIN_ZOOM).toHaveLength(6);
-    expect(STREET_CLASS_MIN_ZOOM[0]).toBe(CITY_STREET_ZOOM);
-    for (let i = 1; i < 6; i++) expect(STREET_CLASS_MIN_ZOOM[i]!).toBeGreaterThan(STREET_CLASS_MIN_ZOOM[i - 1]!);
+    for (const r of wide.roads) expect(60, `class ${r.cls}`).toBeGreaterThanOrEqual(ladder[r.cls]!);
+    // Four fixed rungs, then two that follow the box itself; the whole ladder still only ever climbs.
+    expect(STREET_CLASS_MIN_ZOOM).toHaveLength(4);
+    expect(ladder).toHaveLength(6);
+    expect(ladder[0]).toBe(CITY_STREET_ZOOM);
+    for (let i = 1; i < 6; i++) expect(ladder[i]!, `class ${i}`).toBeGreaterThan(ladder[i - 1]!);
   });
 
   /*
-   * The Task 8 ruling: the two finest classes arrive *above* every box's fit zoom, so the view a pupil lands on
-   * from the close-up list shows the photograph with the main network over it, and the ordinary streets come on
-   * zooming in. Class 4 (`residential`, `unclassified`, `living_street`) is the dense one — 2 540 drawn subpaths
-   * at Giza against class 5's nine — so it is the one that has to be held back for the photo to show at all.
-   * Both thresholds have to stay under the flat map's own ceiling, or they would never be reachable.
+   * The view the close-up list lands on shows the ordinary street grid, and the alleys arrive one step past it.
+   *
+   * Task 8 held classes 4 and 5 back to a single 5 200 / 5 600 for all twelve, which was the wrong shape: the fit
+   * zooms run 2 659 to 5 009, so that pair sat at 1.04 x the fit zoom at Giza and 1.96 x at Rovaniemi, and in
+   * *every* box the arriving view — `showCityBox` sets the zoom to exactly `fitZoom` — had no `residential`
+   * streets on it at all. A pupil tapping "Katowice — the school" was shown the motorway and four main roads and
+   * not the school's own street. So class 4 now comes in at the box's own fit zoom and class 5 at 1.15 x it.
+   *
+   * Both still have to stay under the flat map's ceiling, or the alleys would never be reachable.
    */
-  test('the two finest road classes arrive above every fit zoom, and below the map\'s ceiling', async () => {
+  test('the ordinary streets are there at the fit zoom and the alleys one step past it, in every box', async () => {
     const unreadable: string[] = [];
     for (const b of CITY_BOXES) {
-      for (const cls of [4, 5]) {
-        expect(STREET_CLASS_MIN_ZOOM[cls]!, `${b.id} class ${cls}`).toBeGreaterThan(b.fitZoom);
-        expect(STREET_CLASS_MIN_ZOOM[cls]!, `class ${cls} has to be reachable`).toBeLessThan(FLAT_MAX_ZOOM);
-      }
+      const ladder = streetClassMinZoom(b);
+      expect(ladder[4]!, `${b.id} class 4 at the fit zoom`).toBeLessThanOrEqual(b.fitZoom);
+      expect(ladder[5]!, `${b.id} class 5 past the fit zoom`).toBeGreaterThan(b.fitZoom);
+      expect(ladder[5]!, `${b.id} class 5 has to be reachable`).toBeLessThan(FLAT_MAX_ZOOM);
       putBlock(b.id);
       // `loadStreets` remembers a box it could not read, and the first test in this file deliberately asks for
       // one while its block is missing, so that id stays unreadable for the rest of the run. Every other box
@@ -77,23 +84,41 @@ describe('city streets', () => {
       if (!(await loadStreets(b.id))) { unreadable.push(b.id); continue; }
       const fit = streetsFor(b, b.fitZoom, b.bounds, 'en');
       expect(fit.roads.length, `${b.id} draws its main network at the fit zoom`).toBeGreaterThan(2);
-      expect(fit.roads.map((r) => r.cls), `${b.id} at its fit zoom`).not.toContain(4);
-      expect(fit.roads.map((r) => r.cls), `${b.id} at its fit zoom`).not.toContain(5);
-      // …and they really do arrive: the same box one step deeper draws class 4.
-      expect(streetsFor(b, STREET_CLASS_MIN_ZOOM[4]! + 1, b.bounds, 'en').roads.map((r) => r.cls), b.id).toContain(4);
+      expect(fit.roads.map((r) => r.cls), `${b.id} shows the ordinary grid on arrival`).toContain(4);
+      expect(fit.roads.map((r) => r.cls), `${b.id} keeps the alleys back on arrival`).not.toContain(5);
+      // …and the alleys really do arrive: the same box one step deeper draws class 5.
+      expect(streetsFor(b, ladder[5]! + 1, b.bounds, 'en').roads.map((r) => r.cls), b.id).toContain(5);
     }
     expect(unreadable, 'only the box this file deliberately broke may be unreadable').toEqual(['warsaw']);
   });
 
   test('a class is only named where it is drawn, so no name stands over a street that is not there', () => {
-    // At the fit zoom class 4 is not drawn, so no class-4 name may be offered either.
+    const ladder = streetClassMinZoom(box);
+    // Below class 3's rung neither the tertiary roads nor their names are there…
+    const shallow = streetsFor(box, ladder[3]! - 1, all, 'en');
+    expect(shallow.roads.map((r) => r.cls)).not.toContain(3);
+    expect(shallow.names.filter((n) => n.cls === 3)).toEqual([]);
+    // …and at the fit zoom, where the ordinary grid arrives, its names arrive with it.
     const fit = streetsFor(box, box.fitZoom, all, 'en');
-    expect(fit.names.length).toBeGreaterThan(5);
-    expect(fit.names.filter((n) => n.cls === 4)).toEqual([]);
-    // Past the gate both the streets and their names are there.
-    const deep = streetsFor(box, STREET_CLASS_MIN_ZOOM[4]! + 1, all, 'en');
-    expect(deep.names.filter((n) => n.cls === 4).length).toBeGreaterThan(0);
-    expect(deep.names.length).toBeGreaterThan(fit.names.length);
+    expect(fit.roads.map((r) => r.cls)).toContain(4);
+    expect(fit.names.filter((n) => n.cls === 4).length).toBeGreaterThan(0);
+    // Class 5 is drawn past the fit zoom but is never named at any zoom: too many, too short.
+    const deep = streetsFor(box, ladder[5]! + 1, all, 'en');
+    expect(deep.roads.map((r) => r.cls)).toContain(5);
+    expect(deep.names.filter((n) => n.cls === 5)).toEqual([]);
+  });
+
+  /*
+   * `streetNamesFor` is the half of `streetsFor` the label layout needs, split out so a frame inside a box does
+   * not build and clip every road, rail, waterway, water and green part twice (the fix report's Important 6).
+   * It has to agree with the whole exactly, or a name could be placed for a street the layer is not drawing.
+   */
+  test('the names-only reading agrees with the full one, box by box and zoom by zoom', () => {
+    for (const zoom of [PLACE_NAME_ZOOM, 1000, box.fitZoom, box.fitZoom * 1.2]) {
+      for (const lang of ['en', 'pl', 'uk'] as const) {
+        expect(streetNamesFor(box, zoom, lang), `${zoom} ${lang}`).toEqual(streetsFor(box, zoom, all, lang).names);
+      }
+    }
   });
 
   test('only the part of the box the view can see is built', () => {
@@ -149,6 +174,22 @@ describe('city streets', () => {
     expect(readableHere('Хрещатик', 'pl')).toBe(false);
     expect(readableHere('渋谷三丁目', 'en')).toBe(false);
     expect(readableHere('كوم الأخضر', 'en')).toBe(false);
+  });
+
+  /*
+   * A name is readable only when *every* letter in it is. The first version asked whether the name contained
+   * any Latin letter at all, so one roman capital in a Japanese name — the JR lines and the expressway ramps
+   * are full of them — was enough to keep the local form and throw the English one away.
+   */
+  test('one Latin letter in a name does not make the rest of it readable', () => {
+    expect(readableHere('JR山手線', 'en')).toBe(false);
+    expect(readableName('JR山手線', 'Yamanote Line', 'en')).toBe('Yamanote Line');
+    expect(readableName('首都高速道路 C1', 'Shuto Expressway C1', 'pl')).toBe('Shuto Expressway C1');
+    expect(readableName('वसंत Marg', 'Vasant Marg', 'uk')).toBe('Vasant Marg');
+    // Digits, spaces and punctuation decide nothing either way.
+    expect(readableHere('Aleja 3 Maja', 'pl')).toBe(true);
+    expect(readableHere('Вулиця 8 Березня', 'uk')).toBe(true);
+    expect(readableHere('66', 'en')).toBe(true);
   });
 
   test('a failure switches this layer off and nothing else, for the session only', () => {

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openPage, pageErrors, setMapStyle, waitForTexture } from './helpers';
+import { openPage, pageErrors, setFlatView, setMapStyle, waitForTexture } from './helpers';
 
 // Spec §8 "Performance smoke". SwiftShader in headless Chromium is far slower than a phone GPU, so the bounds are
 // generous (planning ruling R23); the numbers are printed for the report and the phone check is manual.
@@ -153,5 +153,91 @@ test('Political: globe drag frame times under CPU ×4, against Atlas in the same
   expect(await page.locator('.view-globe path.country').count(), 'countries are still drawn one path each').toBeGreaterThan(50);
   expect(political.median, 'the median frame is no worse than twice Atlas\'s').toBeLessThanOrEqual(Math.max(50, atlas.median * 2));
   expect(political.p90, 'and p90 no worse than twice Atlas\'s').toBeLessThanOrEqual(Math.max(200, atlas.p90 * 2));
+  expect(pageErrors(page)).toEqual([]);
+});
+
+/**
+ * Drags the flat map and reports the frame intervals while it moves, the same way `dragGlobe` does for the globe.
+ *
+ * The press starts away from the middle for the same reason: the point's handle sits at the centre of a lab
+ * scene, and a press that lands on it moves the point instead of panning the map.
+ */
+async function dragFlat(page: Page, rate: number): Promise<{ median: number; p90: number }> {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate });
+  const box = (await page.locator('.view-flat .frame > svg').boundingBox())!;
+  const x = box.x + box.width * 0.28, y = box.y + box.height * 0.3;
+  await page.evaluate(() => {
+    const w = window as unknown as { __frames: number[] };
+    w.__frames = [];
+    let last = performance.now();
+    const tick = (now: number) => { w.__frames.push(now - last); last = now; if (w.__frames.length < 240) requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+  });
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  for (let i = 0; i < 80; i++) await page.mouse.move(x + ((i % 40) - 20) * 3, y + ((i % 16) - 8) * 2);
+  await page.mouse.up();
+  const frames = (await page.evaluate(() => (window as unknown as { __frames: number[] }).__frames.slice(5))).sort((a, b) => a - b);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+  return { median: frames[Math.floor(frames.length / 2)]!, p90: frames[Math.floor(frames.length * 0.9)]! };
+}
+
+/*
+ * Panning inside a city close-up box, against the same map showing the world, in the same run.
+ *
+ * The whole-branch review measured a box at 2.5–3× the world view and nothing in the suite was watching: the
+ * world view drew a frame pair in 33.8 ms, Katowice at its fit zoom in 88.1 and Giza at zoom 5 600 in 101.1 —
+ * about 20–27 fps while dragging, against a 2 GB Chromebook target. Two things paid for most of it, and both
+ * are fixed: `placeStreetLabels` called `streetsFor` a second time each frame purely to read `.names` off it,
+ * rebuilding every clipped array in the box to do so (`streetNamesFor` now reads the names alone); and a
+ * parallel at deep zoom was 3 118 vertices of which two could be seen, seven times a frame (`parallelSpan`).
+ *
+ * Expressed against the world view measured in the same run, like the Political test above and for the same
+ * reason: a shared denominator survives a loaded machine, a wall-clock millisecond does not. Giza is the box
+ * that carries the most ink — 2 540 class-4 subpaths against the main network's 163.
+ */
+test('a city close-up box pans no worse than the world view does, in the same run', async ({ page }) => {
+  test.setTimeout(180_000);
+  await openPage(page, 'en/lab', '?test');
+  await setMapStyle(page, 'physical');
+  await waitForTexture(page, 'flat');
+  const world = await dragFlat(page, 4);
+
+  // Katowice at the view the close-up list lands on: photo, street grid and street names all drawn.
+  await setFlatView(page, 50.26, 19.02, 4270);
+  await expect(page.locator('.view-flat g.streets[data-city-box="katowice"]')).toHaveCount(1);
+  await expect(page.locator('.view-flat text.street-name').first()).toBeAttached();
+  const katowice = await dragFlat(page, 4);
+
+  // Giza deep enough to draw every class, which is the heaviest thing this feature ever asks a frame to do.
+  // Its fit zoom is 5 009 and the alleys come in at 1.15 x that, so 5 900 is past every rung and under the
+  // flat map's ceiling of 6 000.
+  await setFlatView(page, 29.9792, 31.1342, 5900);
+  await expect(page.locator('.view-flat g.streets[data-city-box="giza"] path.road.c5')).toHaveCount(1);
+  const giza = await dragFlat(page, 4);
+
+  console.log(JSON.stringify({ worldMedianMs: world.median, worldP90Ms: world.p90,
+    katowiceMedianMs: katowice.median, katowiceP90Ms: katowice.p90, gizaMedianMs: giza.median, gizaP90Ms: giza.p90 }));
+  /*
+   * Backstops, not targets, set the way the rest of this file sets them: about 1.5× the worst value measured,
+   * and no higher. What this environment gives (median ms a frame, CPU ×4):
+   *
+   *                        before the fix   alone, idle   alone x3   with three other heavy spec files
+   *   world                     16.9            16.7      16.7         16.7
+   *   Katowice, fit zoom        44.1            16.7      16.7–33.2    49.9
+   *   Giza, every class         50.6            50.0      50.0        100.0
+   *
+   * ("Before the fix" is the whole-branch review's own figure, halved: it reported milliseconds per two frames.
+   * Its Giza reading was at zoom 5 600, where the alleys had only just arrived; this one is at 5 900, past every
+   * rung, so the two are not quite the same picture — Giza's honest comparison is that it did not get worse
+   * while gaining a class.)
+   *
+   * Everything here quantises to whole animation frames — 16.7, 33.3, 50, 66.7 — so a bound between two of them
+   * is a coin toss. If one of these ever fails on a loaded machine, re-run this test alone before touching the
+   * number and write the failing run into the table: this test drags three times and is the slowest in the file.
+   */
+  expect(katowice.median, 'Katowice pans no worse than three world frames').toBeLessThanOrEqual(Math.max(75, world.median * 3));
+  expect(giza.median, 'and Giza, with every street class drawn, no worse than six').toBeLessThanOrEqual(Math.max(150, world.median * 6));
   expect(pageErrors(page)).toEqual([]);
 });

@@ -31,11 +31,11 @@ export type { StreetClass } from './cityStreets';
  * itself; the smaller classes join as the box grows, so a box that is still a smudge across the view is a few
  * strokes rather than a scribble.
  *
- * The last two classes sit *above* every box's fit zoom (2 659 to 5 009), which is the view a pupil arrives at
- * from the close-up list. That is the Task 8 ruling, and it is what stops the street map from burying the
- * photograph it is drawn on. Class 4 is the dense one — `residential`, `unclassified` and `living_street`, the
- * ordinary street grid — and it is dense by a wide margin: drawn subpaths at the fit zoom, measured across the
- * twelve,
+ * Only classes 0-3 are here. Classes 4 and 5 are not a fixed zoom at all: they follow each box's own fit zoom
+ * (`streetClassMinZoom` below), because the fit zooms run from 2 659 to 5 009 and one number cannot sit in the
+ * same place relative to all twelve.
+ *
+ * Drawn subpaths at the fit zoom, measured across the twelve — the numbers the split is made on:
  *
  *   box            c0-c3    c4     c5          box            c0-c3    c4     c5
  *   giza             163  2 540     9          katowice         351    619   178
@@ -45,16 +45,37 @@ export type { StreetClass } from './cityStreets';
  *   paris            422    945   604          delhi            404    657    49
  *   mitaddelmundo     25    697     4          rovaniemi         12    186     1
  *
- * so at Giza class 4 was drawing fifteen strokes for every one of the main network's, and the right half of that
- * box — the city — was a solid mesh with no photograph visible through it at all. Class 5 is `pedestrian` only,
- * nine subpaths at Giza: holding it back alone would have changed nothing there.
- *
- * At the fit view the pupil now sees the photograph with the real network over it — motorway, primary, secondary,
- * tertiary — and the ordinary streets arrive on zooming past it (the flat map reaches 6 000, so both thresholds
- * are reachable inside every box). Names follow the same gate: `layersOf` only names a class it is drawing, so a
- * street name never floats with no street under it.
+ * Names follow the same gate: `namesOf` only names a class it is drawing, so a street name never floats with no
+ * street under it.
  */
-export const STREET_CLASS_MIN_ZOOM: readonly number[] = [CITY_STREET_ZOOM, 60, 150, 400, 5200, 5600];
+export const STREET_CLASS_MIN_ZOOM: readonly number[] = [CITY_STREET_ZOOM, 60, 150, 400];
+
+/**
+ * Classes 4 and 5 as multiples of the box's **own** fit zoom, because a single number for all twelve is the
+ * wrong shape: the fit zooms run 2 659 (Rovaniemi) to 5 009, so Task 8's global 5 200 / 5 600 sat at 1.04 x the
+ * fit zoom at Giza and 1.96 x at Rovaniemi — in one box the ordinary streets arrived almost at once, in another
+ * two octaves later, and in *every* box they were missing from the view the close-up list lands on
+ * (`showCityBox` sets the zoom to exactly `fitZoom`). A pupil who tapped "Katowice — the school" was shown a
+ * photograph with the motorway and a few main roads on it and not the school's own street, which is the one
+ * thing that list promises.
+ *
+ * So class 4 — `residential`, `unclassified`, `living_street`, the ordinary grid — comes in **at** the fit zoom,
+ * and class 5 — `pedestrian`, the alleys and the mall paths — one short step past it, at 1.15 x. Task 8's
+ * finding stands behind that split: it was class 4 at Giza (2 540 subpaths against the main network's 163) that
+ * buried the photograph, and class 5 there is nine subpaths. Tying both to the box means the *picture* a pupil
+ * meets is the same everywhere — network and grid on arrival, alleys on the first zoom in — instead of
+ * depending on how wide that particular box happens to be in degrees.
+ *
+ * The first factor is exactly 1 and not a hair under it on purpose: `showCityBox` sets the zoom to `fitZoom`
+ * itself and the gate below compares `>=` against the very same number, so the arriving view is inside the gate
+ * by construction rather than by margin.
+ */
+const CLASS_FIT_FACTOR: readonly number[] = [1, 1.15];
+
+/** The zoom each road class first appears at in `box`. Classes 0-3 are fixed; 4 and 5 follow the box's fit zoom. */
+export function streetClassMinZoom(box: CityBox): readonly number[] {
+  return [...STREET_CLASS_MIN_ZOOM, ...CLASS_FIT_FACTOR.map((f) => box.fitZoom * f)];
+}
 /** Street names need a street wide enough to write along: about a fifth of the way to the fit zoom. */
 export const STREET_NAME_ZOOM = 900;
 /** District names (OSM `place=suburb|quarter|neighbourhood`) come earlier — they name a whole area. */
@@ -87,11 +108,16 @@ export interface StreetName { id: string; text: string; lat: number; lon: number
  * (spec §4, planning ruling R24). Latin for English and Polish; Latin or Cyrillic for Ukrainian. A Tokyo street
  * called 青梅街道 is useless to a pupil in Katowice; a Paris street called Rue de Rivoli is exactly right.
  */
-const READABLE: Record<LangCode, RegExp> = {
-  en: /\p{Script=Latin}/u, pl: /\p{Script=Latin}/u, uk: /\p{Script=Latin}|\p{Script=Cyrillic}/u,
+const UNREADABLE: Record<LangCode, RegExp> = {
+  // "A letter that is not Latin" — \P{L} is everything that is not a letter, so the negated class is letters
+  // only, minus the scripts this language reads. Digits, spaces and punctuation are never the deciding part of
+  // a name.
+  en: /[^\P{L}\p{Script=Latin}]/u,
+  pl: /[^\P{L}\p{Script=Latin}]/u,
+  uk: /[^\P{L}\p{Script=Latin}\p{Script=Cyrillic}]/u,
 };
 export function readableName(local: string, english: string | undefined, lang: LangCode): string {
-  return READABLE[lang].test(local) || !english ? local : english;
+  return readableHere(local, lang) || !english ? local : english;
 }
 
 /**
@@ -102,7 +128,7 @@ export function readableName(local: string, english: string | undefined, lang: L
  * from, and the readable name beside them is worth more.
  */
 export function readableHere(text: string, lang: LangCode): boolean {
-  return READABLE[lang].test(text);
+  return !UNREADABLE[lang].test(text);
 }
 
 export interface StreetLayers {
@@ -304,7 +330,12 @@ export function loadStreets(id: CityBoxId): Promise<boolean> {
       console.warn(`city streets: ${id} could not be read:`, e);
       return false;
     }
-    for (const fn of [...listeners]) fn();
+    // Each listener in its own try: they are the two layers' "redraw, the box has arrived", and one that threw
+    // used to escape into an unhandled rejection and leave the layers after it never told. The data is already
+    // in `boxes` by now, so a listener that fails costs a redraw, not the box.
+    for (const fn of [...listeners]) {
+      try { fn(); } catch (e) { console.warn(`city streets: a listener for ${id} threw:`, e); }
+    }
     return true;
   })();
   loading.set(id, run);
@@ -312,34 +343,62 @@ export function loadStreets(id: CityBoxId): Promise<boolean> {
 }
 
 /**
- * Everything of `box` a view at flat `zoom` covering `view` draws. Call only inside the box (`visibleCityBox`).
- * Empty until the box's block has been unpacked — the first call starts that, and `onStreetsLoaded` says when it
- * is worth asking again.
+ * The box's already-built level of detail for `zoom`, or null when there is nothing to draw yet — the layer is
+ * off for this session, or the block has not been unpacked (the first call starts that, and `onStreetsLoaded`
+ * says when it is worth asking again).
+ *
+ * `level(zoom)` builds a level the first time a zoom reaches it, so a bad topology throws *here*, inside a
+ * caller's render, long after `loadStreets` returned. Both callers below catch it, switch the layer off and
+ * carry on; no caller of theirs ever has to.
  */
-export function streetsFor(box: CityBox, zoom: number, view: GeoBounds, lang: LangCode): StreetLayers {
-  if (disabled) return emptyLayers();
+function levelFor(box: CityBox, zoom: number): BoxData | null {
+  if (disabled) return null;
   const level = boxes.get(box.id);
   if (!level) {
     void loadStreets(box.id);
-    return emptyLayers();
+    return null;
   }
+  return level(zoom);
+}
+
+/**
+ * Everything of `box` a view at flat `zoom` covering `view` draws. Call only inside the box (`visibleCityBox`).
+ */
+export function streetsFor(box: CityBox, zoom: number, view: GeoBounds, lang: LangCode): StreetLayers {
+  let d: BoxData | null;
+  try { d = levelFor(box, zoom); } catch (e) { disableStreets(e); return emptyLayers(); }
+  if (!d) return emptyLayers();
   try {
-    return layersOf(level(zoom), zoom, view, lang);
+    return { ...geometryOf(d, box, zoom, view), names: namesOf(d, box, zoom, lang) };
   } catch (e) {
-    // `level(zoom)` builds a level of detail the first time a zoom reaches it, so a bad topology throws *here*,
-    // inside a caller's render, long after `loadStreets` returned. The layer switches itself off (above) and the
-    // map carries on; no caller of this function ever has to catch.
     disableStreets(e);
     return emptyLayers();
   }
 }
 
-/** The drawable layers of one already-built level of detail; the part of `streetsFor` that may throw. */
-function layersOf(d: BoxData, zoom: number, view: GeoBounds, lang: LangCode): StreetLayers {
+/**
+ * Just the names, without building — and clipping to the view — the geometry beside them.
+ *
+ * `placeStreetLabels` needs nothing but `.names`, and it used to get them by calling `streetsFor`, which the
+ * street layer had already called for the same box, zoom and view a moment earlier in the same frame. That is
+ * every road class re-filtered, every rail, waterway, water and green part re-tested against the view and five
+ * fresh arrays built, twice a frame, to read one field off the second copy. Inside a box at the fit zoom two
+ * frames cost 88 ms at Katowice and 101 ms at Giza against 34 ms for the world view, so the second copy is real:
+ * see the Critical 1 / Important 6 numbers in the final fix report.
+ */
+export function streetNamesFor(box: CityBox, zoom: number, lang: LangCode): StreetName[] {
+  let d: BoxData | null;
+  try { d = levelFor(box, zoom); } catch (e) { disableStreets(e); return []; }
+  if (!d) return [];
+  try { return namesOf(d, box, zoom, lang); } catch (e) { disableStreets(e); return []; }
+}
+
+/** The names one already-built level of detail writes at `zoom`. */
+function namesOf(d: BoxData, box: CityBox, zoom: number, lang: LangCode): StreetName[] {
+  const minZoom = streetClassMinZoom(box);
   // Pedestrian ways (class 5) are drawn but never named: too many, too short, and a pupil reads the big streets.
-  // A class is named only where it is also drawn, so a name never stands over a street the map is not showing:
-  // class 4 is held back to zoom 5 200 (above), and its names are held back with it.
-  const named = zoom >= STREET_NAME_ZOOM ? d.names.filter((n) => n.cls <= 4 && zoom >= STREET_CLASS_MIN_ZOOM[n.cls]!) : [];
+  // A class is named only where it is also drawn, so a name never stands over a street the map is not showing.
+  const named = zoom >= STREET_NAME_ZOOM ? d.names.filter((n) => n.cls <= 4 && zoom >= minZoom[n.cls]!) : [];
   const districts = zoom >= PLACE_NAME_ZOOM ? d.places : [];
   // Districts first, then streets, and a name only once: two streets can carry the same name in one box, and
   // `readableName` can fold a local and an English name onto one text as well.
@@ -351,15 +410,31 @@ function layersOf(d: BoxData, zoom: number, view: GeoBounds, lang: LangCode): St
     seen.add(text);
     names.push({ id: n.id, text, lat: n.lat, lon: n.lon, cls: n.cls });
   }
+  return names;
+}
+
+/**
+ * How many times the clipped geometry has been built this page session. Tests only, and only to hold
+ * `placeStreetLabels` to reading the names alone: the count is the thing Important 6's first half is about, and
+ * a frame-time bound is too noisy to catch it coming back (tests/unit/street-labels.test.ts).
+ */
+let geometryBuilds = 0;
+export function streetGeometryBuilds(): number {
+  return geometryBuilds;
+}
+
+/** The drawable shapes of one already-built level of detail, clipped to the view. */
+function geometryOf(d: BoxData, box: CityBox, zoom: number, view: GeoBounds): Omit<StreetLayers, 'names'> {
+  geometryBuilds++;
+  const minZoom = streetClassMinZoom(box);
   return {
     roads: d.roads
-      .filter((r) => zoom >= STREET_CLASS_MIN_ZOOM[r.cls]!)
+      .filter((r) => zoom >= minZoom[r.cls]!)
       .map((r) => ({ cls: r.cls, line: { type: 'MultiLineString' as const, coordinates: visibleParts(r.parts, view) } }))
       .filter((r) => r.line.coordinates.length > 0),
     rail: { type: 'MultiLineString', coordinates: visibleParts(d.rail, view) },
     waterways: { type: 'MultiLineString', coordinates: visibleParts(d.waterways, view) },
     water: { type: 'MultiPolygon', coordinates: visibleParts(d.water, view) },
     green: { type: 'MultiPolygon', coordinates: visibleParts(d.green, view) },
-    names,
   };
 }
