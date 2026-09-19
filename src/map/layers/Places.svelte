@@ -11,7 +11,7 @@
   import { bracketFmt, markerText, noonText, sceneLatEdgeBoxes, sceneLineLabels } from '../overlayText';
   import { MAP_LABELS, PLACES, tierVisible, tierZoom } from '../places';
   import { CAPITALS } from '../political';
-  import { onStreetsLoaded, PLACE_NAME_ZOOM } from '../streets';
+  import { disableStreets, onStreetsLoaded, PLACE_NAME_ZOOM } from '../streets';
   import { placeCountryLabels, placePhysicalLabels, placeStreetLabels } from '../styleLabels';
   import { reportHealth } from '../texture/health.svelte';
   import { SCHOOL_BADGE_H, schoolBadgeWidth, type SchoolCluster } from '../schools';
@@ -286,8 +286,8 @@
         ...schoolLabels.map((l) => textBox(l.x, l.y, labelWidth(l.name, SCHOOL_FONT, ctx.px), SCHOOL_FONT * ctx.px, l.anchor)),
       ]);
     } catch (e) {
-      console.warn('street names:', e);
-      queueMicrotask(() => reportHealth({ type: 'vector-fail' }));
+      // The street layer's own switch, never `reportHealth` — see `streetsFailed` in Layers.svelte.
+      disableStreets(e);
       return [];
     }
   });
@@ -323,10 +323,13 @@
 {#each schoolLabels as l (l.id)}
   <text class="halo school-name" data-school={l.id} x={l.x} y={l.y} text-anchor={l.anchor} font-size={SCHOOL_FONT * ctx.px}>{l.name}</text>
 {/each}
-<!-- Street names go over the street layer's own strokes, after every other name on the map. -->
+<!-- Street names go over the street layer's own strokes, after every other name on the map.
+     `aria-hidden`, like the street paths they sit on: a close-up view carries up to a hundred of them, and a
+     screen-reader user should not have to wade through every alley in the box to reach the map's own description
+     and the lesson's names, which stay in the tree. No `lang` either — a street name is not translated, so it is
+     in the street's own language rather than the page's. -->
 {#each streetLabels as l (l.id)}
-  <!-- No `lang`: a street name is not translated, so it is in the street's own language, not the page's. -->
-  <text class="halo street-name" x={l.x} y={l.y} text-anchor="middle" font-size={l.size}>{l.text}</text>
+  <text class="halo street-name" x={l.x} y={l.y} text-anchor="middle" font-size={l.size} aria-hidden="true">{l.text}</text>
 {/each}
 
 <style>

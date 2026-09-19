@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { cityBoxById, CITY_STREET_ZOOM } from '../../src/map/cityBoxes';
-import { loadStreets, readableName, streetFade, streetsFor, streetsLoaded, STREET_CLASS_MIN_ZOOM } from '../../src/map/streets';
+import { disableStreets, loadStreets, readableHere, readableName, resetStreets, streetFade, streetsDisabled, streetsFor, streetsLoaded, STREET_CLASS_MIN_ZOOM } from '../../src/map/streets';
 import type { GeoBounds } from '../../src/map/geometry';
 
 const box = cityBoxById('katowice')!;
@@ -100,6 +100,49 @@ describe('city streets', () => {
       expect(readableName('Żeliwna', 'Iron Street', lang)).toBe('Żeliwna');
     }
     expect(streetsFor(box, box.fitZoom, all, 'pl').names.some((n) => /[ąćęłńóśźż]/i.test(n.text))).toBe(true);
+  });
+
+  test('a name is readable here when it is in a script this language uses (ruling R24)', () => {
+    expect(readableHere('Sokolska', 'pl')).toBe(true);
+    expect(readableHere('Хрещатик', 'uk')).toBe(true);
+    expect(readableHere('Хрещатик', 'pl')).toBe(false);
+    expect(readableHere('渋谷三丁目', 'en')).toBe(false);
+    expect(readableHere('كوم الأخضر', 'en')).toBe(false);
+  });
+
+  test('a failure switches this layer off and nothing else, for the session only', () => {
+    expect(streetsDisabled()).toBe(false);
+    expect(streetsFor(box, box.fitZoom, all, 'en').roads.length).toBeGreaterThan(0);
+    // Whatever went wrong — a bad topology, a broken level of detail, a throw inside a render — the layer goes
+    // quiet and `streetsFor` keeps answering. It must never raise the shared vector-fail health event, which
+    // means "this device cannot draw this style" and would take Political and Physical down with it.
+    disableStreets(new Error('forced'));
+    expect(streetsDisabled()).toBe(true);
+    const off = streetsFor(box, box.fitZoom, all, 'en');
+    expect(off.roads).toEqual([]);
+    expect(off.names).toEqual([]);
+    expect(off.green.coordinates).toEqual([]);
+    resetStreets();
+    expect(streetsDisabled()).toBe(false);
+    expect(streetsFor(box, box.fitZoom, all, 'en').roads.length).toBeGreaterThan(0);
+  });
+
+  test('an empty answer is a fresh one each time, never a shared object a caller could edit', () => {
+    disableStreets(new Error('forced'));
+    const a = streetsFor(box, box.fitZoom, all, 'en');
+    a.roads.push({ cls: 0, line: { type: 'MultiLineString', coordinates: [] } });
+    expect(streetsFor(box, box.fitZoom, all, 'en').roads).toEqual([]);
+    resetStreets();
+  });
+
+  test('a name sits in the same place at every level of detail', () => {
+    // The candidates are read once from the unthinned arcs, so crossing a level boundary while zooming cannot
+    // make a name hop to the middle of that level's own copy of its street.
+    const at = (zoom: number) => new Map(streetsFor(box, zoom, all, 'en').names.map((n) => [n.text, `${n.lat},${n.lon}`]));
+    const deep = at(box.fitZoom);
+    for (const zoom of [1000, 1700, 3000]) {
+      for (const [text, spot] of at(zoom)) expect(deep.get(text), `${text} at zoom ${zoom}`).toBe(spot);
+    }
   });
 
   test('the layer fades in over one octave from the street zoom', () => {

@@ -4,7 +4,7 @@ import { cityBoxById } from '../../src/map/cityBoxes';
 import { makeFlatCtx } from '../../src/map/geometry';
 import { overlaps, type LabelBox } from '../../src/map/labelLayout';
 import { loadStreets } from '../../src/map/streets';
-import { placeStreetLabels, STREET_FONT } from '../../src/map/styleLabels';
+import { placeStreetLabels, streetLabelWidth, STREET_FONT } from '../../src/map/styleLabels';
 
 const box = cityBoxById('katowice')!;
 const tokyo = cityBoxById('tokyo')!;
@@ -25,6 +25,30 @@ beforeAll(async () => {
 });
 
 describe('street labels', () => {
+  /*
+   * Note what these tests can and cannot see. Every assertion below compares one label's box with another's, and
+   * both boxes come from the same width model — so a model that under-measures its text looks perfectly tidy here
+   * while the drawn letters overlap. The measurement that can tell is in tests/e2e/city-streets.spec.ts, which
+   * reads the real `getBBox` of the glyphs at Tokyo, Giza and Katowice. These cover the ordering and the rules.
+   */
+  test('a name in a square script reserves a square box (ruling R19 is only as good as this)', () => {
+    // A CJK glyph is drawn about a full em wide where a Latin letter is about 0.62: five Japanese characters are
+    // wider than five Latin ones, not the same width, and the layout used to believe they were the same.
+    expect(streetLabelWidth('渋谷三丁目', 10, 1)).toBeGreaterThan(streetLabelWidth('abcde', 10, 1) * 1.35);
+    // Kana, Hangul and fullwidth forms are on the same square body as the ideographs: a full em each, at least.
+    for (const text of ['渋谷三丁目', 'ストリート', '스트리트', 'ＡＢＣＤＥ']) {
+      expect(streetLabelWidth(text, 10, 1), text).toBeGreaterThan(text.length * 10);
+    }
+    // Cyrillic, Greek, Arabic and Devanagari are not, and neither is Latin.
+    for (const text of ['Хрещатик', 'Sokolska', 'شارع الهرم']) {
+      expect(streetLabelWidth(text, 10, 1) / text.length, text).toBeLessThan(9);
+    }
+    // Longer text is wider text, and the size and px factors scale it.
+    expect(streetLabelWidth('abcdef', 10, 1)).toBeGreaterThan(streetLabelWidth('abcde', 10, 1));
+    expect(streetLabelWidth('Sokolska', 10, 2)).toBeCloseTo(streetLabelWidth('Sokolska', 10, 1) * 2, 10);
+    expect(streetLabelWidth('Sokolska', 20, 1)).toBeCloseTo(streetLabelWidth('Sokolska', 10, 1) * 2, 10);
+  });
+
   test('names are placed, inside the view, and never on top of one another', () => {
     const labels = placeStreetLabels(ctx(), box, 'en', []);
     expect(labels.length).toBeGreaterThan(5);
@@ -78,6 +102,22 @@ describe('street labels', () => {
     // District names (OSM `place` nodes) have no name:en in the data at all, so they stay Japanese — which is
     // honest: nothing better exists to write there. They are never dropped for being unreadable.
     expect(jaNames.length + en.filter((l) => l.id.startsWith('n')).length).toBeGreaterThan(0);
+  });
+
+  test('district names a pupil can read come before ones they cannot, and only a few unreadable ones show', () => {
+    // Every one of Tokyo's 161 district nodes carries a Japanese `name` and no `name:en`, so ruling R24 has
+    // nothing to fall back on for them. Filling the district budget with them pushed out the readable street
+    // names standing right beside them, which is the opposite of what R24 is for.
+    const labels = placeStreetLabels(ctx(tokyo), tokyo, 'en', []);
+    const districts = labels.filter((l) => l.id.startsWith('n'));
+    const japanese = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u;
+    expect(districts.length).toBeGreaterThan(0);
+    expect(districts.filter((l) => japanese.test(l.text)).length).toBeLessThanOrEqual(3);
+    // …and the readable street names that used to be crowded out are written.
+    const latin = labels.filter((l) => l.id.startsWith('r') && /^[\x20-\x7e]+$/.test(l.text));
+    expect(latin.length).toBeGreaterThan(5);
+    // Katowice's districts are all readable in every language, so none of them is held back.
+    expect(placeStreetLabels(ctx(box, 400), box, 'pl', []).length).toBeGreaterThan(1);
   });
 
   test('the same view gives the same names twice running (nothing depends on call order)', () => {

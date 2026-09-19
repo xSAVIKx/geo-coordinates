@@ -7,7 +7,7 @@ import { overlaps, selectLabelPlacements, textBox, type LabelBox } from './label
 import { PHYSICAL_NAMES, type PhysicalKind } from './physical';
 import { tierZoom } from './places';
 import { countryLabels, countryName } from './political';
-import { streetsFor } from './streets';
+import { readableHere, streetsFor } from './streets';
 
 /*
  * Names that only some map styles write (spec §4): country names (Political) and physical names (Physical).
@@ -119,10 +119,18 @@ const STREET_NAME_LIMIT = 160;
 /**
  * How many district names are written before the street names get their turn. A district name is there to say
  * which part of the city this is, and a handful does that; OpenStreetMap, though, tags every 丁目 block in Tokyo as
- * a neighbourhood, so that box carries 157 of them — and because districts outrank streets, all 157 were written
- * and not one street name fitted anywhere. The nearest few to the middle of the view are kept.
+ * a neighbourhood, so that box carries 161 of them — and because districts outrank streets, all of them were
+ * written and not one street name fitted anywhere. The nearest few to the middle of the view are kept.
  */
 const DISTRICT_LIMIT = 12;
+/**
+ * …of which at most this many may be names a reader of this page's language cannot read. Tokyo's district nodes
+ * carry a Japanese `name` and no `name:en`, so ruling R24 has nothing to fall back on for them; spending all
+ * twelve places on 渋谷三丁目 and its neighbours pushed out "Miyuki Street" and "Kotto Dori street" standing right
+ * beside them, which is the opposite of what R24 is for. Two or three still say "this part of the city has its
+ * own name, in its own script" — which is worth seeing — without crowding out what can be read.
+ */
+const UNREADABLE_DISTRICT_LIMIT = 3;
 
 /**
  * The margin a street name reserves around the box `textBox` models for it, as a share of the type size.
@@ -135,6 +143,35 @@ const DISTRICT_LIMIT = 12;
  * sitting so close that they read as one.
  */
 const GAP = 0.2;
+
+/*
+ * How wide a street name really is, in ems — `brackets.ts`'s `labelWidth` cannot be used for these.
+ *
+ * That helper charges every character 0.62 em, which is right for the Latin words the rest of the map writes.
+ * Street names are not all Latin: a Japanese or Chinese glyph is a full em wide, so a six-glyph name was reserved
+ * a box about 35% narrower than its ink — measured across the twelve boxes, real width was 1.51-1.55x the
+ * estimate for CJK — and the reservation is the *whole* of ruling R19's guarantee. In Tokyo a street name
+ * consequently sat across the lesson's own edge number, and 12 of 47 names at the fit zoom overlapped each other.
+ *
+ * So each character is charged by its script: a full em (and a little) for the CJK, kana, Hangul and fullwidth
+ * ranges, which are drawn on a square body; 1.0 for the handful of Latin letters that are nearly that wide; 0.4
+ * for the thin ones; 0.74 for everything else, which covers Cyrillic, Greek, Arabic and Devanagari as well as
+ * ordinary Latin. SAFETY is the margin over that, and the whole model was fitted against the real `getBBox` of
+ * all 9 881 names in the twelve boxes, in the page, in the page's own font: it reserves at least the ink for
+ * every one of them, and 17% too much on average, which costs a name here and there on a crowded view and is the
+ * right side to err on. tests/e2e/city-streets.spec.ts measures the drawn glyphs at Tokyo and holds it.
+ */
+// The last range is the ideographs beyond the basic plane; `for\u2026of` walks code points, so they arrive whole.
+const WIDE_SCRIPTS = /[\u1100-\u11ff\u2e80-\u303e\u3041-\u33ff\u3400-\u4dbf\u4e00-\u9fff\ua000-\ua4cf\uac00-\ud7a3\uf900-\ufaff\ufe30-\ufe4f\uff00-\uff60\uffe0-\uffe6\u{20000}-\u{3ffff}]/u;
+const FAT_LATIN = new Set([...'mwMW@%']);
+const THIN_LATIN = new Set([...'iljItf.,;:\'`!|()[]-r ']);
+const SAFETY = 1.05;
+
+export function streetLabelWidth(text: string, size: number, px: number): number {
+  let em = 0.3;
+  for (const c of text) em += WIDE_SCRIPTS.test(c) ? 1.05 : FAT_LATIN.has(c) ? 1 : THIN_LATIN.has(c) ? 0.4 : 0.74;
+  return em * SAFETY * size * px;
+}
 
 /** District names are OSM `place` nodes, whose ids begin with `n`; a street name's id begins with `r` (streets.ts). */
 const isDistrict = (id: string) => id.startsWith('n');
@@ -152,7 +189,7 @@ export function placeStreetLabels(ctx: ViewCtx, box: CityBox, lang: LangCode, ob
   const items = streetsFor(box, ctx.zoom, ctx.bounds, lang).names.flatMap((n) => {
     const xy = ctx.project(n);
     if (!xy || !insideView(ctx, xy)) return [];
-    const width = labelWidth(n.text, STREET_FONT, ctx.px);
+    const width = streetLabelWidth(n.text, STREET_FONT, ctx.px);
     const at = (dx: number, dy: number) => {
       const x = xy[0] + dx, y = xy[1] + size * 0.35 + dy;
       const b = textBox(x, y, width, size, 'middle');
@@ -173,14 +210,20 @@ export function placeStreetLabels(ctx: ViewCtx, box: CityBox, lang: LangCode, ob
     // class, bucketed in whole CSS px — as every other stable map label is — so a pan of a pixel or two cannot
     // make two of them swap.
     const distance = Math.hypot(xy[0] - ctx.width / 2, xy[1] - ctx.height / 2) / ctx.px;
-    const rank = isDistrict(n.id) ? 0 : 1_000_000 + n.cls * 100_000;
-    return [{ id: n.id, text: n.text, options, rank: rank + Math.floor(distance / 8) }];
+    const readable = readableHere(n.text, lang);
+    // A district whose name cannot be read here goes behind the ones that can, but still ahead of every street.
+    const rank = isDistrict(n.id) ? (readable ? 0 : 500_000) : 1_000_000 + n.cls * 100_000;
+    return [{ id: n.id, text: n.text, readable, options, rank: rank + Math.floor(distance / 8) }];
   });
   const byRank = (a: { rank: number }, b: { rank: number }) => a.rank - b.rank;
-  const considered = [
-    ...items.filter((i) => isDistrict(i.id)).sort(byRank).slice(0, DISTRICT_LIMIT),
-    ...items.filter((i) => !isDistrict(i.id)).sort(byRank).slice(0, STREET_NAME_LIMIT),
-  ];
+  const districts: typeof items = [];
+  let unreadable = 0;
+  for (const i of items.filter((x) => isDistrict(x.id)).sort(byRank)) {
+    if (districts.length >= DISTRICT_LIMIT) break;
+    if (!i.readable && ++unreadable > UNREADABLE_DISTRICT_LIMIT) continue;
+    districts.push(i);
+  }
+  const considered = [...districts, ...items.filter((i) => !isDistrict(i.id)).sort(byRank).slice(0, STREET_NAME_LIMIT)];
   const chosen = selectLabelPlacements(considered, (i) => i.options.map((o) => o.box), (i) => i.rank, obstacles);
   return considered.flatMap((i, k) => {
     const o = chosen[k]! >= 0 ? i.options[chosen[k]!]! : null;

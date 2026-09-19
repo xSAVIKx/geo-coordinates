@@ -58,6 +58,17 @@ export function readableName(local: string, english: string | undefined, lang: L
   return READABLE[lang].test(local) || !english ? local : english;
 }
 
+/**
+ * Whether a name, as it will be written, is in a script this page's language reads. `readableName` puts the
+ * English form on a street whenever the data has one, so a `false` here means the data had nothing better — a
+ * Tokyo district called 恵比寿, say. The map still writes such a name, because it is the only name there is, but
+ * the layout keeps only a couple of them (`placeStreetLabels`): they are the ones a pupil in Katowice gets least
+ * from, and the readable name beside them is worth more.
+ */
+export function readableHere(text: string, lang: LangCode): boolean {
+  return READABLE[lang].test(text);
+}
+
 export interface StreetLayers {
   roads: { cls: StreetClass; line: GeoJSON.MultiLineString }[];
   rail: GeoJSON.MultiLineString;
@@ -96,10 +107,43 @@ type Road = GeometryObject & { properties: StreetRoad };
 const boxes = new Map<CityBoxId, (zoom: number) => BoxData>();
 const loading = new Map<CityBoxId, Promise<boolean>>();
 const listeners = new Set<() => void>();
-const EMPTY: StreetLayers = {
+
+/** A fresh empty result. Not one shared object: callers are handed a value they may keep and read at any time. */
+const emptyLayers = (): StreetLayers => ({
   roads: [], rail: { type: 'MultiLineString', coordinates: [] }, waterways: { type: 'MultiLineString', coordinates: [] },
   water: { type: 'MultiPolygon', coordinates: [] }, green: { type: 'MultiPolygon', coordinates: [] }, names: [],
-};
+});
+
+/*
+ * The street layer's *own* failure switch, and the reason it is not `reportHealth({ type: 'vector-fail' })`.
+ *
+ * That event is a single page-session flag which fallback.ts turns into "political -> atlas, physical -> atlas"
+ * plus the note "This device can't draw this style; showing Atlas". It was right for Political.svelte and
+ * PhysicalWater.svelte, each of which only ever renders inside the one style it names. This layer renders in all
+ * four, so raising that event would take Political and Physical down with it — in Satellite, where neither of
+ * those layers is even mounted, a broken street layer used to switch the pupil to Atlas and tell them their
+ * device could not draw the style. The spec is verbatim "a failure in the street layer disables that layer only".
+ *
+ * So a street failure is remembered here and nowhere else: every `streetsFor` returns nothing from then on, the
+ * two layers that draw streets fall quiet, and the rest of the map — the chosen style included — is untouched.
+ * Like every other failure in this feature it lasts the page session only.
+ */
+let disabled = false;
+
+export function streetsDisabled(): boolean {
+  return disabled;
+}
+
+/** Switches the street layer off for the rest of the session. Safe to call from a render or an error boundary. */
+export function disableStreets(reason: unknown): void {
+  if (!disabled) console.warn('city streets: the street layer is off for this page session:', reason);
+  disabled = true;
+}
+
+/** Tests only: puts the layer back. */
+export function resetStreets(): void {
+  disabled = false;
+}
 
 export function streetsLoaded(id: CityBoxId): boolean {
   return boxes.has(id);
@@ -134,7 +178,9 @@ function stitch(arcs: readonly [number, number][][], indexes: readonly number[])
   const out: [number, number][] = [];
   for (const i of indexes) {
     const arc = arcs[i < 0 ? ~i : i];
-    if (!arc) continue;
+    // An index with no arc behind it means the topology is not what it says it is. Skipping it would join two
+    // unrelated ends into one line and put the name somewhere between them; give the whole line up instead.
+    if (!arc) return [];
     if (i < 0) for (let k = arc.length - (out.length ? 2 : 1); k >= 0; k--) out.push(arc[k]!);
     else for (let k = out.length ? 1 : 0; k < arc.length; k++) out.push(arc[k]!);
   }
@@ -167,7 +213,7 @@ function nameCandidates(t: StreetTopology, roads: readonly Road[]): NameCandidat
   return [...best.values()].map((b) => b.name);
 }
 
-function build(t: StreetTopology, places: NameCandidate[]): BoxData {
+function build(t: StreetTopology, names: NameCandidate[], places: NameCandidate[]): BoxData {
   const roadGeoms = t.objects.roads.geometries as unknown as Road[];
   const byClass = new Map<StreetClass, Road[]>();
   for (const g of roadGeoms) {
@@ -185,7 +231,7 @@ function build(t: StreetTopology, places: NameCandidate[]): BoxData {
     waterways: lines('waterways'),
     water: areas('water'),
     green: areas('green'),
-    names: nameCandidates(t, roadGeoms),
+    names,
     places,
   };
 }
@@ -212,7 +258,11 @@ export function loadStreets(id: CityBoxId): Promise<boolean> {
       }
       // District names have no geometry to thin, so they are read once and handed to every level of detail.
       const places: NameCandidate[] = topo.places.map((p) => ({ id: p.id, local: p.name, lat: p.lat, lon: p.lon, cls: 0 }));
-      boxes.set(id, levelOfDetail(topo, LEVELS, (t) => build(t, places)));
+      // Street names are read once too, from the unthinned arcs. Reading them per level instead put a name at the
+      // middle of *that level's* copy of its street, so a name hopped a few pixels whenever a zoom crossed a level
+      // boundary; and it was four times the work for an answer that should not depend on the zoom at all.
+      const names = nameCandidates(topo, topo.objects.roads.geometries as unknown as Road[]);
+      boxes.set(id, levelOfDetail(topo, LEVELS, (t) => build(t, names, places)));
     } catch (e) {
       // The promise never rejects: `streetsFor` starts this from a render and no caller is waiting to catch it.
       console.warn(`city streets: ${id} could not be read:`, e);
@@ -231,12 +281,25 @@ export function loadStreets(id: CityBoxId): Promise<boolean> {
  * is worth asking again.
  */
 export function streetsFor(box: CityBox, zoom: number, view: GeoBounds, lang: LangCode): StreetLayers {
+  if (disabled) return emptyLayers();
   const level = boxes.get(box.id);
   if (!level) {
     void loadStreets(box.id);
-    return EMPTY;
+    return emptyLayers();
   }
-  const d = level(zoom);
+  try {
+    return layersOf(level(zoom), zoom, view, lang);
+  } catch (e) {
+    // `level(zoom)` builds a level of detail the first time a zoom reaches it, so a bad topology throws *here*,
+    // inside a caller's render, long after `loadStreets` returned. The layer switches itself off (above) and the
+    // map carries on; no caller of this function ever has to catch.
+    disableStreets(e);
+    return emptyLayers();
+  }
+}
+
+/** The drawable layers of one already-built level of detail; the part of `streetsFor` that may throw. */
+function layersOf(d: BoxData, zoom: number, view: GeoBounds, lang: LangCode): StreetLayers {
   // Pedestrian ways (class 5) are drawn but never named: too many, too short, and a pupil reads the big streets.
   const named = zoom >= STREET_NAME_ZOOM ? d.names.filter((n) => n.cls <= 4) : [];
   const districts = zoom >= PLACE_NAME_ZOOM ? d.places : [];

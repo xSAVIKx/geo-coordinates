@@ -5,7 +5,7 @@
   import { useMapState } from '../mapStateContext';
   import type { MapStyle } from '../mapStyle';
   import { i18n } from '../../i18n/i18n.svelte';
-  import { onStreetsLoaded, streetFade, streetsFor } from '../streets';
+  import { onStreetsLoaded, streetFade, streetsDisabled, streetsFor } from '../streets';
   const mapState = useMapState();
   // Drawn above the photo and below the graticule, in all four styles: in Atlas and Political the street map
   // appears without a photo, which suits those styles (Places up close spec §5, planning ruling R14). `style`
@@ -17,8 +17,12 @@
   let unpacked = $state(0);
   $effect(() => onStreetsLoaded(() => unpacked++));
   const layers = $derived.by(() => {
-    if (!box) return null;
-    if (testFlag('vector') === 'fail') throw new Error('street layer failure forced for a test');
+    // `streetsDisabled` covers the case where the *names* failed first (Places.svelte): one failure, one layer off.
+    if (!box || streetsDisabled()) return null;
+    // `vector=fail` breaks all three vector layers at once, as Political.svelte and PhysicalWater.svelte read it
+    // too; `streets=fail` breaks this one alone, which is how the e2e proves a street failure leaves the other
+    // two — and the chosen style — untouched.
+    if (testFlag('vector') === 'fail' || testFlag('streets') === 'fail') throw new Error('street layer failure forced for a test');
     void unpacked;
     return streetsFor(box, ctx.zoom, ctx.bounds, i18n.lang);
   });
