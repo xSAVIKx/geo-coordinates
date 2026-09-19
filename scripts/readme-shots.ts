@@ -1,8 +1,9 @@
-// The README screenshots: docs/screenshots/{home,lesson,lab,satellite}.png, each the first 1366×768 screen (the
-// viewport, not the whole page) of the built file in English, light theme; the satellite shot forces the
-// Satellite map style and a night-side Sun position. PNGs are then reduced to a 256-colour palette with Python
-// and Pillow when they are installed (about a third of the size, no visible change); without them the
-// full-colour PNGs are kept and a note says so.
+// The README screenshots: docs/screenshots/{home,lesson,lab,satellite,close-up}.png, each the first 1366×768
+// screen (the viewport, not the whole page) of the built file in English, light theme; the satellite shot forces
+// the Satellite map style and a night-side Sun position; the close-up shot forces the Satellite style and opens
+// the Katowice city box. PNGs are then reduced to a 256-colour palette with Python and Pillow when they are
+// installed (about a third of the size, no visible change); without them the full-colour PNGs are kept and a
+// note says so.
 //
 //   npm run build && npm run shots:readme [-- --out <dir>]
 import { chromium } from '@playwright/test';
@@ -15,6 +16,7 @@ const SHOTS = [
   { name: 'lesson', hash: 'en/topic-6/explore/5' },
   { name: 'lab', hash: 'en/lab' },
   { name: 'satellite', hash: 'en/lab', style: 'satellite', sun: { utcMinutes: 1020, dayOfYear: 266 } },
+  { name: 'close-up', hash: 'en/lab', style: 'satellite', cityBox: 'katowice' },
 ] as const;
 
 const outFlag = process.argv.indexOf('--out');
@@ -39,6 +41,14 @@ for (const shot of SHOTS) {
     // below: it, not this poll, is what gives the correct (Sun-including) frame time to land on screen.
     await page.evaluate((sun) => { (window as any).__mapState.sun = { ...sun, year: 2026 }; }, shot.sun);
     await page.waitForFunction(() => (window as any).__mapTextures.drawCount('flat') >= 1, null, { timeout: 15_000 });
+  }
+  if ('cityBox' in shot) {
+    // Wait for the style's own first draw before opening the box, then open it and wait for the redraw it
+    // causes (the count growing past its pre-box value), the same >= 1 / grows pattern the Sun shot above uses.
+    await page.waitForFunction(() => (window as any).__mapTextures.drawCount('flat') >= 1, null, { timeout: 15_000 });
+    const before = await page.evaluate(() => (window as any).__mapTextures.drawCount('flat'));
+    await page.evaluate((id) => (window as any).__mapState.showCityBox(id), shot.cityBox);
+    await page.waitForFunction((n) => (window as any).__mapTextures.drawCount('flat') > n, before, { timeout: 15_000 });
   }
   await page.waitForTimeout(600);
   const path = join(outDir, `${shot.name}.png`);

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { SIZE_LIMIT_BYTES } from '../../scripts/size-report.ts';
 import { DIST_FILE, expectNoAxeViolations, openPage, pageErrors } from './helpers';
 
 // Full route sweep: every route the router knows about, in every language, in both colour
@@ -54,14 +55,11 @@ for (const scheme of ['light', 'dark'] as const) {
 
 test('size budget: dist/geo-coordinates.html stays under 8 MiB', async () => {
   const { statSync } = await import('node:fs');
-  // 8 MiB, the Places up close spec §7 budget. `scripts/size-check.ts`'s `LIMIT` is the authority and this is a
-  // hand-kept mirror of it: that script cannot be imported here, because it is a top-level programme that reads
-  // the built file and calls process.exit rather than a module that exports its limit.
-  //
-  // The two have now drifted twice (the 5 MiB literal survived Task 3's raise to 8 MiB and left this test failing
-  // against every fresh build). If they drift a third time, stop mirroring and lift the number into a module both
-  // sides import — `scripts/size-report.ts`, which size-check.ts already pulls in, is the natural home.
-  expect(statSync(DIST_FILE).size).toBeLessThan(8_388_608);
+  // The Places up close spec §7 budget. Both this test and `scripts/size-check.ts` import
+  // `SIZE_LIMIT_BYTES` from `scripts/size-report.ts` — the number drifted twice while it was a
+  // hand-kept literal here (size-check.ts cannot itself be imported: it is a top-level programme
+  // that calls process.exit), so size-report.ts is now the single source of truth for both.
+  expect(statSync(DIST_FILE).size).toBeLessThan(SIZE_LIMIT_BYTES);
 });
 
 test('first visit with reduced-motion preference turns the setting on', async ({ page }) => {

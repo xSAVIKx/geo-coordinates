@@ -1,8 +1,7 @@
 import { readFileSync, statSync } from 'node:fs';
-import { formatBreakdown, sizeBreakdown } from './size-report.ts';
+import { formatBreakdown, sizeBreakdown, SIZE_LIMIT_BYTES } from './size-report.ts';
 
-// Places up close spec §7: the single file stays under 8 MiB (textures, city photos and street data included).
-const LIMIT = 8_388_608;
+const LIMIT = SIZE_LIMIT_BYTES;
 const FILE = 'dist/geo-coordinates.html';
 const size = statSync(FILE).size;
 const html = readFileSync(FILE, 'utf8');

@@ -9,6 +9,7 @@ One self-contained file — works offline, on phones, tablets, laptops and big c
 ![A lesson topic](docs/screenshots/lesson.png)
 ![Day and night lab](docs/screenshots/lab.png)
 ![Satellite map style with city lights](docs/screenshots/satellite.png)
+![A city close-up: the school in Katowice](docs/screenshots/close-up.png)
 
 ## Use it
 
@@ -32,6 +33,13 @@ Open `dist/geo-coordinates.html` in any modern browser (double-click works — n
   colour with their names, in Poland's official border view). The style is remembered; a class quiz can use its
   own style for one run; worksheets and the cheat sheet are always Atlas. Drawn with WebGL, with a canvas
   fallback, and Atlas whenever a device cannot draw a style.
+- **Places up close**: twelve 6 × 4 km boxes — the school in Katowice, Greenwich, Mitad del Mundo, the Arctic
+  Circle at Rovaniemi, Warsaw, Kraków, Paris, Manhattan, Delhi, Sydney, Tokyo and Giza — where the map goes down
+  to the streets: an aerial photo with roads, railways, water and parks drawn over it, and the street names. Six
+  boxes use national open orthophotos at about 4–5 m a pixel, where individual buildings are visible; the other
+  six use Copernicus Sentinel-2 at 10 m, where roads, parks and built-up areas read but single buildings do not.
+  Reached from the "Places up close" list under the map, in free play, the lab and topic 9. A Settings switch
+  turns the whole thing off.
 - **Maple Bear schools layer**: an optional map layer showing Maple Bear school locations
   around the world, for a real-world "find the coordinates" exercise.
 - **Presenter mode**: press `P` (fullscreen, larger text, higher contrast); `L` toggles a
@@ -64,18 +72,21 @@ Requires Node 24 or newer.
     npm run build    # dist/geo-coordinates.html + dist/translation-review.html
     npm run e2e      # Playwright + axe accessibility tests against the built file
     npm run shot -- en/lab lab   # full-page screenshots of one route: shots/lab-375x667.png, shots/lab-1366x768.png
-    npm run shots:readme         # the README screenshots, docs/screenshots/{home,lesson,lab,satellite}.png (after a build)
+    npm run shots:readme         # the README screenshots, docs/screenshots/{home,lesson,lab,satellite,close-up}.png (after a build)
     npm run brand                # icons and the social card in site-static/, from site-static/icon.svg
     npm run data:borders -- --download   # rebuild src/map/data/world-borders-pol.json (raw download cached in .cache/)
     npm run data:textures        # rebuild the map-style textures (needs Python 3 and Pillow with WebP; raw files cached in .cache/textures)
     npm run data:political       # rebuild src/map/data/political-pol.json
     npm run data:water           # rebuild src/map/data/physical-water.json
+    npm run data:city-boxes      # rewrite src/map/data/city/boxes.json (the twelve 6 × 4 km boxes)
+    npm run data:city-photos     # rebuild the twelve close-up photos (Python 3 + Pillow; network; cached in .cache/city)
+    npm run data:city-streets    # rebuild the twelve street topologies from Overpass (network; cached in .cache/overpass)
 
-`npm run shots:readme` captures the first 1366×768 screen of `en/`, `en/topic-6/explore/5`, `en/lab` and
-`en/lab` again in the Satellite style at night, and reduces each PNG to 256 colours when `python3` with Pillow is
-installed (otherwise it keeps full-colour PNGs and says so).
+`npm run shots:readme` captures the first 1366×768 screen of `en/`, `en/topic-6/explore/5`, `en/lab`, `en/lab`
+again in the Satellite style at night, and the Katowice close-up in the lab, and reduces each PNG to 256 colours
+when `python3` with Pillow is installed (otherwise it keeps full-colour PNGs and says so).
 
-The built file must stay under 5 MiB; `npm run build` prints a per-asset breakdown.
+The built file must stay under 8 MiB; `npm run build` prints a per-asset breakdown with a line for each place.
 
 ## Author
 
@@ -109,6 +120,12 @@ Author details for the page footer live in `src/app/credits.ts`.
   (`ne_10m_admin_0_countries_pol`, `ne_50m_rivers_lake_centerlines`, `ne_50m_lakes`).
 - Maple Bear school locations: collected from publicly published Maple Bear school websites;
   see [`LICENSE-CONTENT.md`](LICENSE-CONTENT.md) for the trademark and affiliation note.
+- Close-up photos: Ortofotomapa — Główny Urząd Geodezji i Kartografii, geoportal.gov.pl (Katowice, Warsaw,
+  Kraków); Orthophotos © IGN / Géoplateforme, Licence Ouverte Etalab 2.0 (Paris); Geospatial Information
+  Authority of Japan, seamlessphoto tiles, processed (Tokyo); USDA-FSA National Agriculture Imagery Program
+  (NAIP) via USGS, public domain (Manhattan); Contains modified Copernicus Sentinel data 2024-2026 (Greenwich,
+  Mitad del Mundo, Rovaniemi, Delhi, Sydney, Giza). Close-up streets, railways, water and parks: ©
+  OpenStreetMap contributors, ODbL.
 - Author: Yurii Serhiichuk — [serhiichuk.dev](https://serhiichuk.dev) ·
   [GitHub](https://github.com/xSAVIKx).
 
@@ -119,7 +136,9 @@ data from Natural Earth (public domain). Their copyright and licence notices are
 `dist/geo-coordinates.html` itself, as a comment right after `<!doctype html>`, by the build
 (`scripts/licence-notices.ts`, which lists the packages whose code is actually in the bundle); `npm run build`
 fails if they are missing. The same comment carries the NASA Earth Observatory note for the Blue Marble and
-Black Marble satellite imagery.
+Black Marble satellite imagery, and the six close-up data notices (Copernicus Sentinel-2, OpenStreetMap, GUGiK,
+IGN, GSI and USGS NAIP) described above under Credits and in
+[`LICENSE-CONTENT.md`](LICENSE-CONTENT.md).
 
 ## Publishing
 

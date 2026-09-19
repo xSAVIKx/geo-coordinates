@@ -2,6 +2,12 @@
 // (code plus the vector map data bundled into it), styles, and everything else.
 export interface SizePart { name: string; bytes: number }
 
+// Places up close spec §7: the single file stays under 8 MiB (textures, city photos and street data included).
+// The single source of truth for the size budget — scripts/size-check.ts (a top-level programme that calls
+// process.exit and so cannot itself be imported) and tests/e2e/routes.spec.ts both import this rather than
+// hand-keeping their own copy of the number, which drifted twice before this module existed.
+export const SIZE_LIMIT_BYTES = 8_388_608;
+
 const bytes = (s: string) => Buffer.byteLength(s, 'utf8');
 
 export function sizeBreakdown(html: string): SizePart[] {
