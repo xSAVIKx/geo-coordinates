@@ -1,8 +1,9 @@
 import { describe, expect, test } from 'vitest';
+import { cityBoxById, CITY_PHOTO_FULL_ZOOM, CITY_PHOTO_ZOOM } from '../../src/map/cityBoxes';
 import { makeFlatCtx, makeGlobeCtx } from '../../src/map/geometry';
 import { REGION, REGION_MIN_ZOOM } from '../../src/map/world';
 import { shadePixel, type Sampled } from '../../src/map/texture/cpuShade';
-import { inverseProject, regionMix } from '../../src/map/texture/inverse';
+import { boxMix, inverseProject, regionMix } from '../../src/map/texture/inverse';
 import { sunVector, type DrawInputs } from '../../src/map/texture/renderer';
 import { textureView } from '../../src/map/texture/viewParams';
 
@@ -11,10 +12,11 @@ const solid = (w: number, h: number, f: (x: number, y: number) => [number, numbe
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const [r, g, b] = f(x, y); data.set([r, g, b, 255], (y * w + x) * 4); }
   return { width: w, height: h, data };
 };
+const flat = (w: number, h: number, rgb: [number, number, number]): Sampled => solid(w, h, () => rgb);
 const px = (input: DrawInputs, t: Parameters<typeof shadePixel>[1], x: number, y: number, viewPx = 1) => { const out = new Uint8ClampedArray(4); shadePixel(input, t, x, y, out, 0, viewPx); return [...out]; };
 const inputFor = (ctx: ReturnType<typeof makeFlatCtx>, extra: Partial<DrawInputs> = {}): DrawInputs => {
   const view = textureView(ctx);
-  return { view, regionMix: regionMix(view, REGION, REGION_MIN_ZOOM), night: null, limb: false, glow: false, quality: 'full', debug: 0, ...extra };
+  return { view, regionMix: regionMix(view, REGION, REGION_MIN_ZOOM), night: null, city: null, limb: false, glow: false, quality: 'full', debug: 0, ...extra };
 };
 
 describe('the canvas path shades pixels like the shader', () => {
@@ -24,12 +26,12 @@ describe('the canvas path shades pixels like the shader', () => {
 
   test('samples the world image where the pixel is (western hemisphere red, eastern blue)', () => {
     const input = inputFor(makeFlatCtx(960, 480, { lat: 0, lon: 0 }, 1, 1, 'grid'));
-    expect(px(input, { day: westRedEastBlue, region: black, night: null }, 240, 240)).toEqual([255, 0, 0, 255]);
-    expect(px(input, { day: westRedEastBlue, region: black, night: null }, 720, 240)).toEqual([0, 0, 255, 255]);
+    expect(px(input, { day: westRedEastBlue, region: black, night: null, city: null }, 240, 240)).toEqual([255, 0, 0, 255]);
+    expect(px(input, { day: westRedEastBlue, region: black, night: null, city: null }, 720, 240)).toEqual([0, 0, 255, 255]);
   });
 
   test('blends the detail tile inside Central Europe from zoom 4, softly at its edge', () => {
-    const t = { day: black, region: white, night: null };
+    const t = { day: black, region: white, night: null, city: null };
     const inside = inputFor(makeFlatCtx(960, 480, { lat: 51, lon: 20 }, 9, 1, 'grid'));
     expect(px(inside, t, 480, 240)[0]).toBe(255);
     const low = inputFor(makeFlatCtx(960, 480, { lat: 51, lon: 20 }, 3.5, 1, 'grid'));
@@ -42,7 +44,7 @@ describe('the canvas path shades pixels like the shader', () => {
   });
 
   test('outside the world is transparent; the Satellite globe glows just past its rim', () => {
-    const t = { day: white, region: black, night: null };
+    const t = { day: white, region: black, night: null, city: null };
     expect(px(inputFor(makeFlatCtx(960, 480, { lat: 0, lon: 0 }, 1, 1, 'equal-earth')), t, 2, 2)).toEqual([0, 0, 0, 0]);
     const globe = makeGlobeCtx(500, [0, 0], 1, 1); // rim at radius 244
     const g = { ...inputFor(globe as never), limb: true, glow: true };
@@ -60,7 +62,7 @@ describe('the canvas path shades pixels like the shader', () => {
    * empty — no repeated world beside Equal Earth's oval, none beside a grid map panned over the antimeridian.
    */
   test('clips a wrapped longitude exactly where the shader does, on every flat projection', () => {
-    const t = { day: white, region: black, night: null };
+    const t = { day: white, region: black, night: null, city: null };
     let clipped = 0;
     for (const projection of ['grid', 'equal-earth', 'mercator'] as const) {
       for (const [centre, zoom] of [[{ lat: 0, lon: 0 }, 1], [{ lat: 50.26, lon: 19.02 }, 9], [{ lat: 60, lon: 170 }, 2.5]] as const) {
@@ -85,7 +87,7 @@ describe('the canvas path shades pixels like the shader', () => {
    * interior pixels, where α is exactly 1, which is why it could not see this.
    */
   test('partly transparent pixels carry their full colour, not colour times alpha', () => {
-    const t = { day: white, region: black, night: null };
+    const t = { day: white, region: black, night: null, city: null };
     const globe = makeGlobeCtx(500, [0, 0], 1, 1); // rim at radius 244
     const g = { ...inputFor(globe as never), limb: false, glow: true };
     const glow = px(g, t, 250 + 246, 250);
@@ -104,7 +106,7 @@ describe('the canvas path shades pixels like the shader', () => {
    * softer than the shader's. Twice the resolution, half the fade in view units.
    */
   test("the rim's fade follows the drawing resolution, like the shader's uViewPx", () => {
-    const t = { day: white, region: black, night: null };
+    const t = { day: white, region: black, night: null, city: null };
     const g = { ...inputFor(makeGlobeCtx(500, [0, 0], 1, 1) as never), limb: false, glow: false };
     const at1 = px(g, t, 250 + 243.7, 250)[3]!;
     const at2 = px(g, t, 250 + 243.7, 250, 2)[3]!;
@@ -114,7 +116,7 @@ describe('the canvas path shades pixels like the shader', () => {
   });
 
   test('day and night blend across a twilight band from 0° to −6°', () => {
-    const t = { day: white, region: black, night: black };
+    const t = { day: white, region: black, night: black, city: null };
     const ctx = makeFlatCtx(960, 480, { lat: 0, lon: 0 }, 1, 1, 'grid');
     const input = inputFor(ctx, { night: sunVector({ lat: 0, lon: 0 }) });
     const at = (lon: number) => px(input, t, ctx.project({ lat: 0, lon })![0], 240)[0]!;
@@ -123,5 +125,66 @@ describe('the canvas path shades pixels like the shader', () => {
     expect(at(93)).toBeGreaterThan(0); // Sun 3° down: twilight
     expect(at(93)).toBeLessThan(255);
     expect(at(97)).toBe(0);           // Sun 7° down: night
+  });
+
+  /*
+   * The third blend level (Places up close spec §5). The same three copies of this arithmetic have to agree —
+   * shadePixel here, FRAGMENT_SHADER's `cityW` block, and the canvas tier that calls this function — so the
+   * feather, its width (the box's own height over twelve) and the night dimming are all pinned here.
+   */
+  const box = cityBoxById('katowice')!;
+  const cityCtx = makeFlatCtx(960, 480, { lat: box.lat, lon: box.lon }, box.fitZoom, 1, 'grid');
+  const cityTex = { day: flat(4, 2, [10, 20, 30]), region: flat(2, 2, [40, 50, 60]), night: null, city: flat(2, 2, [200, 100, 50]) };
+  const cityInput = (mix: number): DrawInputs => ({ ...inputFor(cityCtx), regionMix: 0, city: { bounds: box.bounds, mix } });
+
+  test('a city box replaces the world colour inside it and feathers out at its edge', () => {
+    // The middle of the view is the middle of the box: fully the photo.
+    expect(px(cityInput(1), cityTex, 480, 240).slice(0, 3)).toEqual([200, 100, 50]);
+    // Half a feather in from the west edge is half-way through the smoothstep: a blend, not the photo, not the world.
+    const featherDeg = (box.bounds.north - box.bounds.south) / 12;
+    const half = cityCtx.project({ lat: box.lat, lon: box.bounds.west + featherDeg / 2 })![0];
+    const blend = px(cityInput(1), cityTex, half, 240)[0]!;
+    expect(blend).toBeGreaterThan(10);
+    expect(blend).toBeLessThan(200);
+    expect(blend).toBeCloseTo(10 + 190 * 0.5, 0);   // smoothstep(0, f, f/2) = 0.5
+    // Right on the west edge the photo contributes nothing at all: no rectangle appears.
+    const edge = cityCtx.project({ lat: box.lat, lon: box.bounds.west })![0];
+    expect(px(cityInput(1), cityTex, edge + 0.001, 240).slice(0, 3)).toEqual([10, 20, 30]);
+    // With mix 0 nothing of the photo shows.
+    expect(px(cityInput(0), cityTex, 480, 240).slice(0, 3)).toEqual([10, 20, 30]);
+  });
+
+  test('the photo fades in between the two zooms rather than popping', () => {
+    const at = (zoom: number) => {
+      const ctx = makeFlatCtx(960, 480, { lat: box.lat, lon: box.lon }, zoom, 1, 'grid');
+      const view = textureView(ctx);
+      const input: DrawInputs = { ...inputFor(ctx), regionMix: 0, city: { bounds: box.bounds, mix: boxMix(view, box.bounds, CITY_PHOTO_ZOOM, CITY_PHOTO_FULL_ZOOM) } };
+      return px(input, cityTex, 480, 240)[0]!;
+    };
+    expect(at(CITY_PHOTO_ZOOM), 'nothing of the photo at the fade-in zoom').toBe(10);
+    expect(at(CITY_PHOTO_ZOOM + 1)).toBeGreaterThan(10);
+    const half = at((CITY_PHOTO_ZOOM + CITY_PHOTO_FULL_ZOOM) / 2);
+    expect(half).toBeGreaterThan(at(CITY_PHOTO_ZOOM + 1));
+    expect(half).toBeLessThan(200);
+    expect(at(CITY_PHOTO_FULL_ZOOM), 'all of it once fully mixed').toBe(200);
+    expect(at(box.fitZoom)).toBe(200);
+  });
+
+  /*
+   * Planning ruling R23: Black Marble is about 10 km a pixel, so inside a 6 x 4 km box the night image is one flat
+   * smear. Inside the box the night side is a dimmed copy of the close-up instead.
+   */
+  test('at night a city box shows a dimmed close-up, not the Black Marble smear', () => {
+    const t = { ...cityTex, night: flat(4, 2, [0, 0, 0]) };
+    // The Sun at the antipode of the box: deep night over it.
+    const night = sunVector({ lat: -box.lat, lon: box.lon + 180 });
+    const withBox = px({ ...cityInput(1), night }, t, 480, 240);
+    const noBox = px({ ...cityInput(0), night }, t, 480, 240);
+    expect(noBox.slice(0, 3), 'a dark world image under a black night image is black').toEqual([0, 0, 0]);
+    // 0.35 of the photo plus the shader's vec3(0.02, 0.03, 0.06) floor.
+    expect(withBox[0]).toBe(Math.round(200 * 0.35 + 0.02 * 255));
+    expect(withBox[1]).toBe(Math.round(100 * 0.35 + 0.03 * 255));
+    expect(withBox[2]).toBe(Math.round(50 * 0.35 + 0.06 * 255));
+    expect(withBox[0]!, 'dimmer than the daylit photo').toBeLessThan(200);
   });
 });

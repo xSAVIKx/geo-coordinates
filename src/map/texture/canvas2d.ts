@@ -24,6 +24,10 @@ export function createCanvasRenderer(canvas: HTMLCanvasElement, forced: string |
   if (!g) throw new RenderFailure('no-canvas', 'no 2D canvas context');
   const scratch = document.createElement('canvas');
   let tex: CpuTextures | null = null;
+  // The close-up is held as a bitmap as well as as pixels: it belongs to the box, not to Physical or Satellite, so
+  // it outlives a style change, and a photo that arrives before the style's own images is sampled once they land
+  // rather than dropped.
+  let cityBmp: ImageBitmap | null = null;
   let failNextDraw = forced === 'render-fail';
   return {
     tier: 'canvas',
@@ -35,7 +39,12 @@ export function createCanvasRenderer(canvas: HTMLCanvasElement, forced: string |
       if (canvas.height !== h) canvas.height = h;
     },
     setTextures(t: StyleTextures) {
-      tex = { day: sampled(t.day, 2048), region: sampled(t.region, 1440), night: t.night ? sampled(t.night, 2048) : null };
+      tex = { day: sampled(t.day, 2048), region: sampled(t.region, 1440), night: t.night ? sampled(t.night, 2048) : null, city: tex?.city ?? (cityBmp ? sampled(cityBmp, 2048) : null) };
+    },
+    setCityTexture(bmp: ImageBitmap | null) {
+      if (bmp === cityBmp) return;
+      cityBmp = bmp;
+      if (tex) tex.city = bmp ? sampled(bmp, 2048) : null;
     },
     draw(input: DrawInputs) {
       if (!tex) return;
@@ -60,6 +69,6 @@ export function createCanvasRenderer(canvas: HTMLCanvasElement, forced: string |
     },
     readPixels: (x, y, w, h) => new Uint8Array(g.getImageData(x, y, w, h).data.buffer),
     bufferSize: () => ({ width: canvas.width, height: canvas.height }),
-    dispose() { tex = null; },
+    dispose() { tex = null; cityBmp = null; },
   };
 }

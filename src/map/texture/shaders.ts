@@ -37,6 +37,9 @@ uniform sampler2D uDay;    // whole-world equirectangular image, north at the to
 uniform sampler2D uRegion; // Central Europe detail tile
 uniform vec4 uRegionBox;   // west, south, east, north (radians)
 uniform float uRegionMix;
+uniform sampler2D uCity;   // the city close-up photo, in its own box's lon/lat frame
+uniform vec4 uCityBox;     // west, south, east, north (radians); a unit box when uCityMix is 0
+uniform float uCityMix;
 uniform sampler2D uNight;  // Black Marble city lights
 uniform int uNightOn;
 uniform vec3 uSun;         // unit vector towards the point under the Sun
@@ -137,6 +140,9 @@ void main() {
   vec2 ruv = vec2((ll.x - uRegionBox.x) / (uRegionBox.z - uRegionBox.x), (uRegionBox.w - ll.y) / (uRegionBox.w - uRegionBox.y));
   vec2 rdx = dFdx(ruv);
   vec2 rdy = dFdy(ruv);
+  vec2 cuv = vec2((ll.x - uCityBox.x) / (uCityBox.z - uCityBox.x), (uCityBox.w - ll.y) / (uCityBox.w - uCityBox.y));
+  vec2 cdx = dFdx(cuv);
+  vec2 cdy = dFdy(cuv);
 
   if (!ok) {
     if (uProjection == 3 && uGlow == 1) {
@@ -155,11 +161,23 @@ void main() {
     float w = smoothstep(0.0, 0.25 * DEG, edge) * uRegionMix;
     if (w > 0.0) color = mix(color, textureGrad(uRegion, ruv, rdx, rdy).rgb, w);
   }
+  // The third level (Places up close spec §5): the same blend as the region tile, with a feather scaled to the
+  // box so a 6 x 4 km photo never appears as a sharp rectangle against the blur around it.
+  float cityW = 0.0;
+  if (uCityMix > 0.0) {
+    float cedge = min(min(ll.x - uCityBox.x, uCityBox.z - ll.x), min(ll.y - uCityBox.y, uCityBox.w - ll.y));
+    cityW = smoothstep(0.0, (uCityBox.w - uCityBox.y) / 12.0, cedge) * uCityMix;
+    if (cityW > 0.0) color = mix(color, textureGrad(uCity, cuv, cdx, cdy).rgb, cityW);
+  }
   if (uNightOn == 1) {
     vec3 p = vec3(cos(ll.y) * cos(ll.x), cos(ll.y) * sin(ll.x), sin(ll.y));
     float altitude = asin(clamp(dot(p, uSun), -1.0, 1.0));
     float day = smoothstep(-6.0 * DEG, 0.0, altitude);
     vec3 night = min(textureGrad(uNight, uv, dx, dy).rgb * 1.15, vec3(1.0));
+    // Black Marble is 4096 px for the whole world -- about 10 km a pixel -- so inside a 6 km box it is one flat
+    // smear. Fade it towards a dimmed copy of the close-up instead, so a city box at night still shows its
+    // streets rather than a coloured blur (planning ruling R23).
+    night = mix(night, color * 0.35 + vec3(0.02, 0.03, 0.06), cityW);
     color = mix(night, color, day);
   }
   float alpha = 1.0;

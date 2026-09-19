@@ -1,5 +1,6 @@
 import type { ViewCtx } from '../geometry';
 import { cachedTextureBytes } from './assets';
+import { cachedCityPhotoBytes } from './cityAssets';
 import { renderHealth } from './health.svelte';
 import type { DrawInputs, TextureRenderer } from './renderer';
 
@@ -45,6 +46,11 @@ export const textureTestHooks = {
    * down (tests/e2e/perf-smoke.spec.ts).
    */
   counts: () => ({ ...counts, bytes: cachedTextureBytes() }),
+  /**
+   * The decoded RGBA the city close-up cache is holding right now. One photo at a time is the whole point of that
+   * cache (planning ruling R13), and this is what tests/e2e/city-photo.spec.ts measures it by.
+   */
+  cityBytes: () => cachedCityPhotoBytes(),
   /**
    * Mean colour and brightest pixel (r+g+b) within `radius` CSS px of a place, as drawn by the texture layer.
    * `ctx()` is the view the last frame was drawn from — the one `input.view` came from — so the place is projected

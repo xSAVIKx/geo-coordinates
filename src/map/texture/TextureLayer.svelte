@@ -1,14 +1,16 @@
 <script lang="ts">
   import { flushSync } from 'svelte';
   import { testFlag } from '../../app/testMode';
+  import { CITY_PHOTO_FULL_ZOOM, CITY_PHOTO_ZOOM, visibleCityBox, type CityBoxId } from '../cityBoxes';
   import type { ViewCtx } from '../geometry';
   import { mapState } from '../mapState.svelte';
   import { isTextureStyle, type TextureStyle } from '../mapStyle';
   import { REGION, REGION_MIN_ZOOM } from '../world';
   import { loadStyleTextures, releaseTexturesExcept } from './assets';
   import { createCanvasRenderer } from './canvas2d';
+  import { loadCityPhoto, releaseCityPhotosExcept } from './cityAssets';
   import { markReady, renderHealth, reportHealth } from './health.svelte';
-  import { regionMix } from './inverse';
+  import { boxMix, regionMix } from './inverse';
   import { RenderFailure, sunVector, type DrawInputs, type TextureRenderer } from './renderer';
   import { countTextureUpload, registerTextureView } from './testHooks';
   import { textureView } from './viewParams';
@@ -49,6 +51,12 @@
   });
   const withNight = $derived(nightSun !== null);
 
+  // The city close-up box this view is in (spec §5). Only where the scene offers close-ups (planning ruling R10)
+  // and only in the two texture styles — Atlas and Political get the street layer with no photo (ruling R14).
+  const cityBox = $derived(mapState.closeUps && isTextureStyle(style) ? visibleCityBox(ctx.bounds, ctx.zoom) : null);
+  /** The box whose photo the renderer is holding: the draw only names a box once its own photo is uploaded. */
+  let cityLoaded = $state<CityBoxId | null>(null);
+
   // Nothing is drawing this style any more, so the SVG layers go back to Atlas (the owner's "any error falls back to
   // the existing rendering") until a tier has uploaded its own textures and marked the style ready again.
   function unready(): void {
@@ -72,7 +80,7 @@
     let r: TextureRenderer;
     try { r = t === 'webgl' ? createWebGLRenderer(c, testFlag('gl')) : createCanvasRenderer(c, testFlag('canvas')); } catch (e) { fail(e); return; }
     renderer = r;
-    return () => { r.dispose(); renderer = null; loaded = null; loadedNight = false; };
+    return () => { r.dispose(); renderer = null; loaded = null; loadedNight = false; cityLoaded = null; };
   });
 
   // 2. The style's images (decoded once per page, shared by both views), no larger than the device allows. The size
@@ -100,6 +108,22 @@
       },
       (e) => { if (!cancelled) fail(e); },
     ).finally(() => { if (renderHealth.loading === s) renderHealth.loading = null; });
+    return () => { cancelled = true; };
+  });
+
+  // The box's photo, decoded on first entry and given back when the view leaves every box (ruling R13).
+  $effect(() => {
+    const r = renderer, box = cityBox;
+    if (!r) return;
+    if (!box) { r.setCityTexture(null); cityLoaded = null; releaseCityPhotosExcept(null); return; }
+    let cancelled = false;
+    loadCityPhoto(box.id).then(
+      (bmp) => {
+        if (cancelled) return;
+        try { r.setCityTexture(bmp); cityLoaded = box.id; releaseCityPhotosExcept(box.id); } catch (e) { fail(e); }
+      },
+      (e) => { if (!cancelled) fail(e); },
+    );
     return () => { cancelled = true; };
   });
 
@@ -142,7 +166,7 @@
     const r = renderer;
     if (!r || loaded !== style || !isTextureStyle(style)) { queued = null; return; }
     const v = textureView(ctx);
-    const base: DrawInputs = { view: v, regionMix: regionMix(v, REGION, REGION_MIN_ZOOM), night: nightSun && loadedNight ? nightSun : null, limb: v.projection === 3, glow: style === 'satellite' && v.projection === 3, quality: 'full', debug: 0 };
+    const base: DrawInputs = { view: v, regionMix: regionMix(v, REGION, REGION_MIN_ZOOM), night: nightSun && loadedNight ? nightSun : null, city: cityBox && cityLoaded === cityBox.id ? { bounds: cityBox.bounds, mix: boxMix(v, cityBox.bounds, CITY_PHOTO_ZOOM, CITY_PHOTO_FULL_ZOOM) } : null, limb: v.projection === 3, glow: style === 'satellite' && v.projection === 3, quality: 'full', debug: 0 };
     const w = cssWidth, h = cssHeight;
     const c = ctx;
     const now = performance.now();

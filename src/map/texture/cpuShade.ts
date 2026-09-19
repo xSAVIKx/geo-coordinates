@@ -7,16 +7,21 @@ import type { TextureView } from './viewParams';
 /*
  * The fragment shader's `main` (src/map/texture/shaders.ts), on the CPU: the Canvas 2D tier of the fallback chain
  * draws exactly the same picture, only at fewer pixels. Keep this function and FRAGMENT_SHADER in step: any change
- * to one is made to the other in the same commit (tests/e2e/texture-fallback.spec.ts compares the two tiers).
+ * to one is made to the other in the same commit (tests/e2e/texture-fallback.spec.ts compares the two tiers). That
+ * covers all three blend levels — the world image, the Central Europe region tile and the city close-up photo,
+ * including the way the close-up dims the night side inside its box (planning ruling R23).
  */
 
 export interface Sampled { width: number; height: number; data: Uint8ClampedArray }
-export interface CpuTextures { day: Sampled; region: Sampled; night: Sampled | null }
+export interface CpuTextures { day: Sampled; region: Sampled; night: Sampled | null; city: Sampled | null }
 
 const W = REGION.west * RAD, S = REGION.south * RAD, E = REGION.east * RAD, N = REGION.north * RAD;
 const FEATHER = 0.25 * RAD;
 // d3-geo's Equal Earth constants, the same ones inverse.ts and the shader carry.
 const A1 = 1.340264, A2 = -0.081106, A3 = 0.000893, A4 = 0.003796, M = Math.sqrt(3) / 2;
+
+/** The shader's `vec3(0.02, 0.03, 0.06)` night floor, in 0-255, hoisted out of the per-pixel loop. */
+const NIGHT_FLOOR = [0.02 * 255, 0.03 * 255, 0.06 * 255];
 
 const smooth = (e0: number, e1: number, x: number) => { const t = Math.max(0, Math.min(1, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
 const clamp1 = (x: number) => Math.max(-1, Math.min(1, x));
@@ -102,12 +107,32 @@ export function shadePixel(input: DrawInputs, t: CpuTextures, x: number, y: numb
       for (let c = 0; c < 3; c++) day[c] = day[c]! * (1 - w) + other[c]! * w;
     }
   }
+  // The third level (Places up close spec §5): the same blend as the region tile, with a feather scaled to the box
+  // so a 6 x 4 km photo never appears as a sharp rectangle against the blur around it.
+  let cityW = 0;
+  if (input.city && t.city && input.city.mix > 0) {
+    const b = input.city.bounds;
+    const W2 = b.west * RAD, S2 = b.south * RAD, E2 = b.east * RAD, N2 = b.north * RAD;
+    const edge = Math.min(lambda - W2, E2 - lambda, phi - S2, N2 - phi);
+    cityW = smooth(0, (N2 - S2) / 12, edge) * input.city.mix;
+    if (cityW > 0) {
+      sample(t.city, (lambda - W2) / (E2 - W2), (N2 - phi) / (N2 - S2), false, other);
+      for (let c = 0; c < 3; c++) day[c] = day[c]! * (1 - cityW) + other[c]! * cityW;
+    }
+  }
   if (input.night && t.night) {
     const s = input.night;
     const dot = Math.cos(phi) * Math.cos(lambda) * s.x + Math.cos(phi) * Math.sin(lambda) * s.y + Math.sin(phi) * s.z;
     const w = smooth(-6 * RAD, 0, Math.asin(clamp1(dot)));
     sample(t.night, u, vv, true, other);
-    for (let c = 0; c < 3; c++) day[c] = Math.min(255, other[c]! * 1.15) * (1 - w) + day[c]! * w;
+    // Black Marble is 10 km a pixel, so inside a 6 km box it is one flat smear: fade it towards a dimmed copy of
+    // the close-up instead (planning ruling R23), the shader's arithmetic in the shader's order.
+    for (let c = 0; c < 3; c++) {
+      const lit = Math.min(255, other[c]! * 1.15);
+      const dim = day[c]! * 0.35 + NIGHT_FLOOR[c]!;
+      const nightC = lit * (1 - cityW) + dim * cityW;
+      day[c] = nightC * (1 - w) + day[c]! * w;
+    }
   }
   let alpha = 1;
   if (v.projection === 3) {

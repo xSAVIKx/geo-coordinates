@@ -1,4 +1,5 @@
 import type { LatLon } from '../../geo/types';
+import type { GeoBounds } from '../geometry';
 import type { FailReason } from './fallback';
 import type { TextureView } from './viewParams';
 
@@ -20,12 +21,17 @@ export function sunVector(p: LatLon): SunVector {
 
 export interface StyleTextures { day: ImageBitmap; region: ImageBitmap; night: ImageBitmap | null }
 
+/** The city close-up box being blended in, in degrees, and how much of it (0…1) — `inverse.ts`'s `boxMix`. */
+export interface CityDraw { bounds: GeoBounds; mix: number }
+
 export interface DrawInputs {
   view: TextureView;
   /** 0…1: how much of the Central Europe detail tile to blend in (inverse.ts regionMix). */
   regionMix: number;
   /** Satellite with day and night: the Sun; null draws the day image everywhere. */
   night: SunVector | null;
+  /** The city close-up photo to blend over everything else, or null when no box is in view (spec §5). */
+  city: CityDraw | null;
   /** Globe: darken towards the rim. */
   limb: boolean;
   /** Globe, Satellite: an atmosphere glow just outside the rim. */
@@ -41,6 +47,8 @@ export interface TextureRenderer {
   readonly maxTextureSize: number;
   resize(cssWidth: number, cssHeight: number, dpr: number): void;
   setTextures(t: StyleTextures): void;
+  /** The decoded close-up photo for the box in view, or null to drop it. Cheap to call with the same bitmap twice. */
+  setCityTexture(bmp: ImageBitmap | null): void;
   draw(input: DrawInputs): void;
   /** RGBA bytes of a rectangle of the drawing buffer, rows top to bottom (call right after draw). */
   readPixels(x: number, y: number, w: number, h: number): Uint8Array;

@@ -3,7 +3,7 @@ import { REGION } from '../world';
 import { FRAGMENT_SHADER, VERTEX_SHADER } from './shaders';
 import { RenderFailure, type DrawInputs, type StyleTextures, type TextureRenderer } from './renderer';
 
-const UNIFORMS = ['uSize', 'uProjection', 'uScale', 'uOrigin', 'uRotate', 'uMaxLat', 'uViewPx', 'uDay', 'uRegion', 'uRegionBox', 'uRegionMix', 'uNight', 'uNightOn', 'uSun', 'uLimb', 'uGlow', 'uDebug'] as const;
+const UNIFORMS = ['uSize', 'uProjection', 'uScale', 'uOrigin', 'uRotate', 'uMaxLat', 'uViewPx', 'uDay', 'uRegion', 'uRegionBox', 'uRegionMix', 'uCity', 'uCityBox', 'uCityMix', 'uNight', 'uNightOn', 'uSun', 'uLimb', 'uGlow', 'uDebug'] as const;
 type Uniform = (typeof UNIFORMS)[number];
 
 function compile(gl: WebGL2RenderingContext, type: number, source: string): WebGLShader {
@@ -60,6 +60,10 @@ export function createWebGLRenderer(canvas: HTMLCanvasElement, forced: string | 
 
   const maxTextureSize = forced === 'small-textures' ? 2048 : (gl.getParameter(gl.MAX_TEXTURE_SIZE) as number);
   let textures: { day: WebGLTexture; region: WebGLTexture; night: WebGLTexture | null } | null = null;
+  // The city close-up is kept beside `textures`, not in it: entering or leaving a box must not re-upload the
+  // three world images, and a style change must not re-upload the photo.
+  let cityTexture: WebGLTexture | null = null;
+  let citySource: ImageBitmap | null = null;
   let failNextDraw = forced === 'render-fail';
 
   const upload = (bmp: ImageBitmap, repeat: boolean): WebGLTexture => {
@@ -84,6 +88,11 @@ export function createWebGLRenderer(canvas: HTMLCanvasElement, forced: string | 
     if (textures.night) gl.deleteTexture(textures.night);
     textures = null;
   };
+  const freeCityTexture = () => {
+    if (cityTexture) gl.deleteTexture(cityTexture);
+    cityTexture = null;
+    citySource = null;
+  };
 
   return {
     tier: 'webgl',
@@ -98,6 +107,14 @@ export function createWebGLRenderer(canvas: HTMLCanvasElement, forced: string | 
       if (Math.max(t.day.width, t.day.height) > maxTextureSize) throw new RenderFailure('texture-size', `texture ${t.day.width} px > MAX_TEXTURE_SIZE ${maxTextureSize}`);
       freeTextures();
       textures = { day: upload(t.day, true), region: upload(t.region, false), night: t.night ? upload(t.night, true) : null };
+    },
+    setCityTexture(bmp: ImageBitmap | null) {
+      if (bmp === citySource) return;
+      if (cityTexture) { gl.deleteTexture(cityTexture); cityTexture = null; }
+      citySource = bmp;
+      if (!bmp) return;
+      if (Math.max(bmp.width, bmp.height) > maxTextureSize) throw new RenderFailure('texture-size', `city photo ${bmp.width} px > MAX_TEXTURE_SIZE ${maxTextureSize}`);
+      cityTexture = upload(bmp, false);   // clamped on both axes, like the region tile
     },
     draw(input: DrawInputs) {
       if (gl.isContextLost() || !textures) return;
@@ -116,6 +133,10 @@ export function createWebGLRenderer(canvas: HTMLCanvasElement, forced: string | 
       gl.uniform1f(u.uViewPx, canvas.width / v.width);
       gl.uniform4f(u.uRegionBox, REGION.west * RAD, REGION.south * RAD, REGION.east * RAD, REGION.north * RAD);
       gl.uniform1f(u.uRegionMix, input.regionMix);
+      const city = input.city;
+      gl.uniform1f(u.uCityMix, city && cityTexture ? city.mix : 0);
+      gl.uniform4f(u.uCityBox, city ? city.bounds.west * RAD : 0, city ? city.bounds.south * RAD : 0,
+        city ? city.bounds.east * RAD : 1, city ? city.bounds.north * RAD : 1);
       const night = input.night && textures.night ? input.night : null;
       gl.uniform1i(u.uNightOn, night ? 1 : 0);
       gl.uniform3f(u.uSun, night?.x ?? 0, night?.y ?? 0, night?.z ?? 1);
@@ -126,6 +147,7 @@ export function createWebGLRenderer(canvas: HTMLCanvasElement, forced: string | 
       bind(0, textures.day, 'uDay');
       bind(1, textures.region, 'uRegion');
       bind(2, textures.night ?? textures.day, 'uNight');
+      bind(3, cityTexture ?? textures.region, 'uCity');
       gl.bindVertexArray(vao);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       checkError(gl, 'draw');
@@ -144,7 +166,7 @@ export function createWebGLRenderer(canvas: HTMLCanvasElement, forced: string | 
       if (ext && restoreAfterMs !== null) setTimeout(() => ext.restoreContext(), restoreAfterMs);
     },
     dispose() {
-      if (!gl.isContextLost()) { freeTextures(); gl.deleteBuffer(quad); gl.deleteVertexArray(vao); gl.deleteProgram(program); }
+      if (!gl.isContextLost()) { freeTextures(); freeCityTexture(); gl.deleteBuffer(quad); gl.deleteVertexArray(vao); gl.deleteProgram(program); }
     },
   };
 }

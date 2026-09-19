@@ -27,11 +27,18 @@ export async function expectNoAxeViolations(page: Page, context = ''): Promise<v
   expect(summary, `axe violations ${context}`).toEqual([]);
 }
 
-type Win = { __mapState: { chooseMapStyle(s: string): void; mapStyle: string; drawnMapStyle: string }; __mapTextures: { tier(): string; health(): unknown; drawCount(v: string): number; probe(v: string, lat: number, lon: number, r?: number): { avg: [number, number, number]; maxSum: number } | null; debugCoords(v: string, p: [number, number][]): ({ x: number; y: number; lon: number; lat: number } | null)[]; loseContext(v: string, ms: number | null): void } };
+type Win = { __mapState: { chooseMapStyle(s: string): void; mapStyle: string; drawnMapStyle: string; flat: { center: { lat: number; lon: number }; zoom: number } }; __mapTextures: { tier(): string; cityBytes(): number; health(): unknown; drawCount(v: string): number; probe(v: string, lat: number, lon: number, r?: number): { avg: [number, number, number]; maxSum: number } | null; debugCoords(v: string, p: [number, number][]): ({ x: number; y: number; lon: number; lat: number } | null)[]; loseContext(v: string, ms: number | null): void } };
 
 /** Chooses a map style through MapState (the page must be opened with ?test). */
 export async function setMapStyle(page: Page, style: 'atlas' | 'physical' | 'satellite' | 'political'): Promise<void> {
   await page.evaluate((s) => (window as unknown as Win).__mapState.chooseMapStyle(s), style);
+}
+
+/** Puts the flat map at a centre and zoom through MapState (the page must be opened with ?test). */
+export async function setFlatView(page: Page, lat: number, lon: number, zoom: number): Promise<void> {
+  await page.evaluate(([la, lo, z]) => {
+    (window as unknown as { __mapState: { flat: unknown } }).__mapState.flat = { center: { lat: la, lon: lo }, zoom: z };
+  }, [lat, lon, zoom] as const);
 }
 
 /** Waits until a view's texture layer has drawn at least `draws` frames of the chosen texture style. */
