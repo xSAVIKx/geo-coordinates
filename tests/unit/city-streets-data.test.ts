@@ -6,6 +6,7 @@ import type { GeometryCollection, Topology } from 'topojson-specification';
 import boxesJson from '../../src/map/data/city/boxes.json';
 import manifest from '../../src/map/data/city/streets/manifest.json';
 import { decodeArcs } from '../../src/map/world';
+import { waterAreaM2 } from '../../scripts/build-city-streets';
 
 const DIR = 'src/map/data/city/streets/';
 const OBJECTS = ['roads', 'rail', 'waterways', 'water', 'green'] as const;
@@ -129,5 +130,75 @@ describe('city street data', () => {
 
   test('no building outlines anywhere (planning ruling R6: they would be 12-25 MB)', () => {
     for (const id of ids) expect(Object.keys(topo(id).objects), id).not.toContain('buildings');
+  });
+
+  /*
+   * Water, per box, as a share of the 6 x 4 km box — the check that did not exist when the release shipped
+   * Sydney Harbour as solid land.
+   *
+   * The first build asked Overpass for `way["natural"="water"]` only. Ruling R16 skipped relations and nothing
+   * asked for `natural=coastline`, so the water a city is actually built around was missing everywhere it is
+   * too big to be one closed way: Sydney 0.00 %, Manhattan 0.65 % (an island that was not one), Paris 0.12 %
+   * (the Seine as a hairline), Warsaw 1.15 % and Kraków 1.07 % (no Vistula), Greenwich 4.91 % (the Thames
+   * stopping at the peninsula). Every test in this file passed on that data, which is why it shipped.
+   *
+   * So each box carries a floor, and a box with no water carries a ceiling instead and has to say why. The
+   * floors are roughly two thirds of what the committed files hold, which leaves room for OSM to be re-surveyed
+   * without leaving room for a river to vanish.
+   */
+  const BOX_M2 = boxesJson.widthM * boxesJson.heightM;
+  /** Least water each box must hold, as a share of the box. */
+  const WATER_FLOOR: Readonly<Record<string, number>> = {
+    sydney: 0.40,      // Sydney Harbour, Darling Harbour and Walsh Bay: measured 0.5163
+    manhattan: 0.22,   // the Hudson and the East River: measured 0.3146
+    greenwich: 0.050,  // the Thames round the peninsula and past it: measured 0.0764
+    warsaw: 0.035,     // the Vistula: measured 0.0565
+    delhi: 0.030,      // the Yamuna's channels and the ponds: measured 0.0468
+    paris: 0.025,      // the Seine and the Bois de Boulogne lakes: measured 0.0418
+    krakow: 0.020,     // the Vistula under Wawel: measured 0.0351
+    katowice: 0.010,   // Bolina and the pit ponds: measured 0.0186
+  };
+  /**
+   * Boxes with no water worth drawing, each checked against its own photograph (shots/water/<id>-water.png):
+   * a floor here would be a floor on something that is not there. They carry a ceiling instead, so a box that
+   * quietly *gains* a river — a box moved, a query widened — stops being covered by this list without anyone
+   * noticing.
+   */
+  const WATER_NONE: Readonly<Record<string, string>> = {
+    mitaddelmundo: 'the equator monument on a dry Andean plateau above Quito: no water in the box at all',
+    rovaniemi: 'forest, the airport and the Arctic Circle village; the Kemijoki and the Ounasjoki are both south of the box',
+    tokyo: 'Shibuya and Yoyogi: the Shibuya river is culverted under the streets, only two park ponds are open',
+    giza: 'the pyramid plateau and the desert west of it; the Nile is about 8 km east of the box',
+  };
+
+  test('every box holds the water it is built around, or says in writing that it has none', () => {
+    expect(Object.keys(WATER_FLOOR).length + Object.keys(WATER_NONE).length, 'every box is accounted for')
+      .toBe(ids.length);
+    for (const b of boxesJson.boxes) {
+      const box: [number, number, number, number] = [b.west, b.south, b.east, b.north];
+      const share = waterAreaM2(topo(b.id), box) / BOX_M2;
+      const floor = WATER_FLOOR[b.id];
+      if (floor === undefined) {
+        expect(WATER_NONE[b.id], `${b.id} is in neither list`).toBeTruthy();
+        expect(share, `${b.id} now holds ${(share * 100).toFixed(2)} % water but is on the "no water" list`)
+          .toBeLessThan(0.01);
+      } else {
+        expect(share, `${b.id} holds ${(share * 100).toFixed(2)} % water, floor ${(floor * 100).toFixed(1)} %`)
+          .toBeGreaterThanOrEqual(floor);
+      }
+      // The manifest is what the report and the release notes quote, so it may not drift from the file.
+      const e = manifest.streets[b.id as keyof typeof manifest.streets];
+      expect(Math.round(waterAreaM2(topo(b.id), box)), `${b.id} manifest waterM2`).toBe(e.waterM2);
+    }
+  });
+
+  test('water is measured as ground under water, not as shapes added up', () => {
+    // Sydney's box holds Sydney Harbour, Port Jackson and the Parramatta River over one stretch of water, so
+    // adding the shapes' own areas gives 103 % of a box that is half water. The floors above would be
+    // meaningless if the measure double-counted, and a box could pass one by being mapped twice.
+    const b = boxesJson.boxes.find((x) => x.id === 'sydney')!;
+    const share = waterAreaM2(topo('sydney'), [b.west, b.south, b.east, b.north]) / BOX_M2;
+    expect(share).toBeLessThan(1);
+    expect(share).toBeGreaterThan(0.4);
   });
 });
