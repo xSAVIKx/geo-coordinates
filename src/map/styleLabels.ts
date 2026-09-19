@@ -1,11 +1,13 @@
 import type { LangCode } from '../geo/types';
 import { t } from '../i18n/i18n.svelte';
 import { labelWidth } from './brackets';
+import type { CityBox } from './cityBoxes';
 import type { ViewCtx } from './geometry';
 import { overlaps, selectLabelPlacements, textBox, type LabelBox } from './labelLayout';
 import { PHYSICAL_NAMES, type PhysicalKind } from './physical';
 import { tierZoom } from './places';
 import { countryLabels, countryName } from './political';
+import { streetsFor } from './streets';
 
 /*
  * Names that only some map styles write (spec §4): country names (Political) and physical names (Physical).
@@ -103,5 +105,85 @@ export function placePhysicalLabels(ctx: ViewCtx, lang: LangCode, obstacles: rea
   return items.flatMap((i, k) => {
     const o = chosen[k]! >= 0 ? i.options[chosen[k]!]! : null;
     return o ? [{ id: i.id, text: i.text, x: o.x, y: o.y, size, box: o.box, kind: i.kind }] : [];
+  });
+}
+
+export const STREET_FONT = 10;
+/**
+ * How many street names the layout even considers. A view 960 x 480 holds forty or fifty names at this size, and
+ * Giza's box alone carries 1 883 of them; laying every one of them out on every frame of a pan is work whose
+ * answer is "no" for nine names in ten. What is kept is the head of the map's own order (the biggest streets, and
+ * within a class the ones nearest the middle of the view), so what is dropped here is what a pupil needs least.
+ */
+const STREET_NAME_LIMIT = 160;
+/**
+ * How many district names are written before the street names get their turn. A district name is there to say
+ * which part of the city this is, and a handful does that; OpenStreetMap, though, tags every 丁目 block in Tokyo as
+ * a neighbourhood, so that box carries 157 of them — and because districts outrank streets, all 157 were written
+ * and not one street name fitted anywhere. The nearest few to the middle of the view are kept.
+ */
+const DISTRICT_LIMIT = 12;
+
+/**
+ * The margin a street name reserves around the box `textBox` models for it, as a share of the type size.
+ *
+ * `textBox` models a line of text as 0.8 em above the baseline and 0.25 em below, which is the ink of ordinary
+ * words; the font's own box reaches a full em above the baseline, which is where a capital Ś keeps its accent.
+ * 0.2 em covers both that and the same overhang on the *other* label — the lesson's names hand their unpadded
+ * boxes in as obstacles — so a street name written a line under "Katowice" no longer brushes it (it used to, by a
+ * tenth of a pixel, and a lesson name must never be touched: ruling R19). It also keeps two street names from
+ * sitting so close that they read as one.
+ */
+const GAP = 0.2;
+
+/** District names are OSM `place` nodes, whose ids begin with `n`; a street name's id begins with `r` (streets.ts). */
+const isDistrict = (id: string) => id.startsWith('n');
+
+/**
+ * Street and district names inside a city close-up box (spec §5). Placed last of everything on the map: the
+ * `obstacles` Places.svelte hands in are every label the lesson has already put down — places, schools, the point,
+ * the special-line names, overlay texts and the edge numbers — so a street name is left out rather than pushed
+ * over one of them (planning ruling R19). A few district names rank before the street names; the streets then go
+ * biggest first, and within one class the ones nearest the middle of the view, so the names stay steady while the
+ * map is panned and a motorway is named before the alley beside it.
+ */
+export function placeStreetLabels(ctx: ViewCtx, box: CityBox, lang: LangCode, obstacles: readonly LabelBox[]): StyleLabel[] {
+  const size = STREET_FONT * ctx.px;
+  const items = streetsFor(box, ctx.zoom, ctx.bounds, lang).names.flatMap((n) => {
+    const xy = ctx.project(n);
+    if (!xy || !insideView(ctx, xy)) return [];
+    const width = labelWidth(n.text, STREET_FONT, ctx.px);
+    const at = (dx: number, dy: number) => {
+      const x = xy[0] + dx, y = xy[1] + size * 0.35 + dy;
+      const b = textBox(x, y, width, size, 'middle');
+      // A street name reserves a little more than `textBox` models. These are the smallest, densest names on the
+      // map, and the model is an estimate: without the margin two of them sat a hair apart and read as one word,
+      // and one ran a tenth of a pixel into "Katowice" — a lesson name, which must never happen (ruling R19).
+      return { x, y, box: { left: b.left - size * GAP, right: b.right + size * GAP, top: b.top - size * GAP, bottom: b.bottom + size * GAP } };
+    };
+    const step = size * 1.2;
+    const options = [at(0, 0), at(0, -step), at(0, step)]
+      .filter((o) => o.box.left >= 0 && o.box.right <= ctx.width && o.box.top >= 0 && o.box.bottom <= ctx.height);
+    if (options.length === 0) return [];
+    // District names come first: their ids begin with `n` (an OSM node), a street name's with `r`
+    // (see scripts/build-city-streets.ts and streets.ts). Then the streets, biggest first — the road a pupil can
+    // follow across the whole box is the one worth naming, and taking them in that order also spreads the names
+    // over the view instead of piling the nearest two hundred alley names into the middle of it (Giza's box holds
+    // 1 883 names, nearly all of them alleys). Distance to the middle of the view is the tiebreaker within a
+    // class, bucketed in whole CSS px — as every other stable map label is — so a pan of a pixel or two cannot
+    // make two of them swap.
+    const distance = Math.hypot(xy[0] - ctx.width / 2, xy[1] - ctx.height / 2) / ctx.px;
+    const rank = isDistrict(n.id) ? 0 : 1_000_000 + n.cls * 100_000;
+    return [{ id: n.id, text: n.text, options, rank: rank + Math.floor(distance / 8) }];
+  });
+  const byRank = (a: { rank: number }, b: { rank: number }) => a.rank - b.rank;
+  const considered = [
+    ...items.filter((i) => isDistrict(i.id)).sort(byRank).slice(0, DISTRICT_LIMIT),
+    ...items.filter((i) => !isDistrict(i.id)).sort(byRank).slice(0, STREET_NAME_LIMIT),
+  ];
+  const chosen = selectLabelPlacements(considered, (i) => i.options.map((o) => o.box), (i) => i.rank, obstacles);
+  return considered.flatMap((i, k) => {
+    const o = chosen[k]! >= 0 ? i.options[chosen[k]!]! : null;
+    return o ? [{ id: i.id, text: i.text, x: o.x, y: o.y, size, box: o.box }] : [];
   });
 }

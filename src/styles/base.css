@@ -101,6 +101,21 @@ svg text.halo { paint-order: stroke; stroke: var(--halo); stroke-width: 3px; str
    guide or a marker rim, which must stay the most prominent thing on the map. The grid comes last, so its
    casing keeps the lighter weight Graticule.svelte gives it. */
 .frame[data-map-style]:not([data-map-style="atlas"]) { --grid-ink: 0.7; }
+/* City close-ups (spec §5): Physical and Satellite draw the street map on the box's aerial photo, and a photo has
+   no theme — roofs, tarmac and shadows are the same picture in light and dark. So both themes use one pair there:
+   a near-black road on a light, translucent casing, which is what reads on a photograph (the theme's own dark
+   casing vanishes into the shadows, and a light dark-theme ink vanishes into the roofs). The casing keeps some
+   transparency so the photo still shows between the roads, and the park and water fills only tint the photo
+   rather than paint over the thing the pupil came to look at. Atlas and Political draw the streets on a drawn map
+   and keep the theme's own values (src/styles/tokens.css). */
+.frame[data-map-style="physical"], .frame[data-map-style="satellite"] {
+  --street-ink: #141414;
+  --street-major: #a4521c;
+  --street-casing: rgb(252 250 245 / 0.85);
+  --street-rail: #33383d;
+  --street-water: rgb(86 150 200 / 0.42);
+  --street-green: rgb(150 196 118 / 0.42);
+}
 .frame[data-map-style]:not([data-map-style="atlas"]) .guide-casing,
 .frame[data-map-style]:not([data-map-style="atlas"]) .casing,
 .frame[data-map-style]:not([data-map-style="atlas"]) .hl-casing,

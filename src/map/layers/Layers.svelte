@@ -17,6 +17,7 @@
   import PointMarker from './PointMarker.svelte';
   import Schools from './Schools.svelte';
   import SpecialLines from './SpecialLines.svelte';
+  import Streets from './Streets.svelte';
   const mapState = useMapState();
   // While the flat map is dragged, `ctx` is the view where the drag began (drawn with a wide pad) and
   // `offset` slides it to where the map is now; `edgeCtx` is the live view, for the edge numbers.
@@ -59,6 +60,10 @@
 {#if style === 'physical'}
   <svelte:boundary onerror={vectorFailed}><PhysicalWater {ctx} /></svelte:boundary>
 {/if}
+<!-- The city close-up street map (spec §5): above the photo, below the graticule, in all four styles. It draws
+     nothing outside a box, so it needs no condition here; a failure in it drops this layer alone, exactly as it
+     does for Political and PhysicalWater above. -->
+<svelte:boundary onerror={vectorFailed}><Streets {ctx} {style} /></svelte:boundary>
 {#if ctx.kind === 'globe' && !isTextureStyle(style)}
   <!-- Decorative sphere shading: a soft highlight up-left and a darker limb, so the disc reads as a ball. -->
   <defs>

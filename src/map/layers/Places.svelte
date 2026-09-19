@@ -1,6 +1,7 @@
 <script lang="ts">
   import { i18n, t } from '../../i18n/i18n.svelte';
   import { labelWidth } from '../brackets';
+  import { visibleCityBox } from '../cityBoxes';
   import type { ViewCtx } from '../geometry';
   import { sunPoint } from '../../geo/sun';
   import { createLabelMemory, overlaps, placeLabelOptions, pointBox, selectStablePlacements, textBox, type LabelBox, type PlaceLabelOption } from '../labelLayout';
@@ -10,7 +11,8 @@
   import { bracketFmt, markerText, noonText, sceneLatEdgeBoxes, sceneLineLabels } from '../overlayText';
   import { MAP_LABELS, PLACES, tierVisible, tierZoom } from '../places';
   import { CAPITALS } from '../political';
-  import { placeCountryLabels, placePhysicalLabels } from '../styleLabels';
+  import { onStreetsLoaded, PLACE_NAME_ZOOM } from '../streets';
+  import { placeCountryLabels, placePhysicalLabels, placeStreetLabels } from '../styleLabels';
   import { reportHealth } from '../texture/health.svelte';
   import { SCHOOL_BADGE_H, schoolBadgeWidth, type SchoolCluster } from '../schools';
   import { LABELLED_RIVERS, REGION_DETAIL_ZOOM, regionActive, riverLabelPoints } from '../world';
@@ -262,6 +264,33 @@
     schoolLabelMemory.remember(new Set(out.map((l) => l.id)));
     return out;
   });
+
+  // Street and district names inside a city close-up box (spec §5), last of everything, with every other label
+  // on the map as an obstacle: the lesson's own names always win (planning ruling R19). Only where the scene
+  // offers close-ups, and only from the zoom at which a district name is worth writing.
+  const cityBox = $derived(mapState.closeUps ? visibleCityBox(ctx.bounds, ctx.zoom) : null);
+  // The box's data arrives from a stream (streets.ts), so this counter re-runs the placement when it does.
+  let streetsUnpacked = $state(0);
+  $effect(() => onStreetsLoaded(() => streetsUnpacked++));
+  const streetLabels = $derived.by(() => {
+    if (!cityBox || !mapState.layers.places || ctx.zoom < PLACE_NAME_ZOOM) return [];
+    void streetsUnpacked;
+    void i18n.lang;
+    try {
+      return placeStreetLabels(ctx, cityBox, i18n.lang, [
+        ...lineObstacles, ...continentObstacles, ...edgeObstacles, ...pointObstacles, ...overlayObstacles,
+        ...schoolMarks, ...chosenBoxes, ...lineAvoid,
+        ...[...placements.values()].map((o) => o.box),
+        ...countryObstacles, ...physicalObstacles,
+        ...riverLabels.map((r) => textBox(r.x, r.y, labelWidth(t(`river.${r.id}`), RIVER_FONT, ctx.px), RIVER_FONT * ctx.px, 'start')),
+        ...schoolLabels.map((l) => textBox(l.x, l.y, labelWidth(l.name, SCHOOL_FONT, ctx.px), SCHOOL_FONT * ctx.px, l.anchor)),
+      ]);
+    } catch (e) {
+      console.warn('street names:', e);
+      queueMicrotask(() => reportHealth({ type: 'vector-fail' }));
+      return [];
+    }
+  });
 </script>
 
 {#if mapState.layers.places}
@@ -294,12 +323,21 @@
 {#each schoolLabels as l (l.id)}
   <text class="halo school-name" data-school={l.id} x={l.x} y={l.y} text-anchor={l.anchor} font-size={SCHOOL_FONT * ctx.px}>{l.name}</text>
 {/each}
+<!-- Street names go over the street layer's own strokes, after every other name on the map. -->
+{#each streetLabels as l (l.id)}
+  <!-- No `lang`: a street name is not translated, so it is in the street's own language, not the page's. -->
+  <text class="halo street-name" x={l.x} y={l.y} text-anchor="middle" font-size={l.size}>{l.text}</text>
+{/each}
 
 <style>
   .place { fill: var(--text); stroke: var(--map-casing); stroke-width: calc(1.5px * var(--stroke-scale)); vector-effect: non-scaling-stroke; }
   .place.minor { fill: var(--map-label); fill-opacity: 0.55; stroke-width: calc(1px * var(--stroke-scale)); }
   .place-name { fill: var(--text); }
   .school-name { fill: var(--school-text); font-weight: 650; }
+  /* Street names are the smallest text on the map and sit on the busiest picture. Weight and the halo come from
+     .halo (base.css); this adds the style's own ink — one step quieter than --text, so the lesson's own place
+     names still read as the louder thing — and a touch of tracking for the small size. */
+  .street-name { fill: var(--street-name-ink); letter-spacing: 0.01em; }
   .river-name { fill: var(--river-label); font-style: italic; font-weight: 650; letter-spacing: 0.02em; }
   .country-name { fill: var(--map-label); font-weight: 650; letter-spacing: 0.05em; }
   /* A capital is a city with a ring around its dot; the name and the list say so too, so the ring is never the only signal. */

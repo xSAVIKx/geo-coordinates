@@ -139,6 +139,17 @@
   /* Political style: pastel country fills (neighbours never share one), their borders and coasts. */
   --pol-0: #f6e3b4; --pol-1: #cfe6c1; --pol-2: #f5cfc6; --pol-3: #d6d9f2; --pol-4: #c9e7e5; --pol-5: #efd9ea;
   --pol-border: #6b6152; --pol-coast: #7d8fa0;
+  /* City close-ups (Places up close spec §5): the street map drawn inside one of the twelve boxes. The ink and the
+     casing swap over a photo — see the Physical/Satellite rule in base.css, which is where the streets sit on an
+     aerial picture rather than on a drawn map. --street-major marks motorways and primary roads, so the road
+     hierarchy is told by width as well as colour, never by colour alone. */
+  --street-ink: #2b2b2b;
+  --street-major: #b4642a;
+  --street-casing: #f6f2ea;
+  --street-rail: #6b6b6b;
+  --street-water: #7fb3d5;
+  --street-green: #bcd9a6;
+  --street-name-ink: #3a3a3a;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -166,6 +177,8 @@
     --relief-label: #5a3a1c; --sea-label: #1d4f7a; --relief-halo: #f8fbfd;
   --pol-0: #4a4231; --pol-1: #34462f; --pol-2: #4d3632; --pol-3: #383b52; --pol-4: #2f4948; --pol-5: #463646;
     --pol-border: #c9bfa6; --pol-coast: #8fa6ba;
+    --street-ink: #e6e6e6; --street-major: #e08a45; --street-casing: #1a1d22;
+    --street-rail: #a8a8a8; --street-water: #3a6f95; --street-green: #3d5a36; --street-name-ink: #d8dde2;
   }
 }
 :root[data-theme="dark"] {
@@ -192,6 +205,8 @@
   --relief-label: #5a3a1c; --sea-label: #1d4f7a; --relief-halo: #f8fbfd;
   --pol-0: #4a4231; --pol-1: #34462f; --pol-2: #4d3632; --pol-3: #383b52; --pol-4: #2f4948; --pol-5: #463646;
   --pol-border: #c9bfa6; --pol-coast: #8fa6ba;
+  --street-ink: #e6e6e6; --street-major: #e08a45; --street-casing: #1a1d22;
+  --street-rail: #a8a8a8; --street-water: #3a6f95; --street-green: #3d5a36; --street-name-ink: #d8dde2;
 }
 /* Presenter mode (spec §3.4, §7): AAA contrast (7:1 for text; see the Task 18 report for the table), sizes that
  * follow the viewport (base.css) and thicker map lines. --ui-scale is the root font size / 16, written by
@@ -249,6 +264,8 @@
   --river: #7dbbef; --river-label: #d6ecfb; --school-text: #f9a8d4;
   --marker-a: #82b1ff; --marker-b: #fb923c; --marker-c: #c4b5fd; --marker-d: #5eead4; --marker-answer: #6fdd8b; --marker-wrong: #ff8a80;
   --accent: #9cc2ff;
+  /* A street name is text, so it follows this style's pinned pair: a light ink on the dark halo above. */
+  --street-name-ink: #dde5ec;
 }
 :root[data-presenter="true"] .frame[data-map-style="satellite"] {
   --text: #ffffff; --map-label: #ffffff; --ocean-label: #e1f0fb; --grid: #eef4fa;
@@ -291,6 +308,9 @@
   --school: #9d174d; --school-border: #ffffff; --school-contrast: #ffffff; --school-text: #9d174d;
   --sun: #f59e0b; --sun-stroke: #b45309; --noon: #d97706; --moon: #4f5bb5;
   --accent: #1759c9;
+  /* Physical pins the light palette in both themes, and inside a close-up box it draws the same photo Satellite
+     does: a dark name on this style's pinned light halo. */
+  --street-name-ink: #2b2b2b;
 }
 /* Presenter mode is AAA: the two relief inks step darker against the same fixed light --relief-halo (both are
  * already past 7:1, so this is headroom for the bright terrain showing through the halo's edges), and the pinned
