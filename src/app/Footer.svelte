@@ -2,6 +2,19 @@
   import { i18n, t } from '../i18n/i18n.svelte';
   import { AUTHOR, CLOSE_UP_SOURCES, IMAGERY, MAP_DATA, OSM, SCHOOL_DATA } from './credits';
   const year = new Date().getFullYear();
+  /*
+   * A credit line is "Map data: {source}" and the source itself is a link, so the text has to be written round
+   * the anchor rather than through it. Appending the link after `t(key, { source: '' })` reads the same in all
+   * three languages today only because all three happen to end on `{source}`; a translator who writes
+   * „Źródło {source} — dane mapy” would have put the link at the end of a sentence it belongs in the middle of,
+   * with nothing failing anywhere. So the placeholder is filled with a character no text contains and the line
+   * is cut there, which puts the link exactly where the translation asks for it.
+   */
+  const MARK = '\u0000';
+  const around = (key: string): [string, string] => {
+    const [before = '', after = ''] = t(key, { source: MARK }).split(MARK);
+    return [before, after];
+  };
   const retrieved = $derived(new Intl.DateTimeFormat(i18n.lang, { dateStyle: 'long', timeZone: 'UTC' }).format(new Date(`${SCHOOL_DATA.retrieved}T00:00:00Z`)));
 </script>
 
@@ -9,9 +22,9 @@
   <p>
     © {year} {t('footer.madeBy', { name: AUTHOR.name })}
     <span class="sep" aria-hidden="true"> · </span>
-    {t('footer.mapData', { source: '' })}<a href={MAP_DATA.url} rel="noopener">{MAP_DATA.name}</a>
+    {around('footer.mapData')[0]}<a href={MAP_DATA.url} rel="noopener">{MAP_DATA.name}</a>{around('footer.mapData')[1]}
     <span class="sep" aria-hidden="true"> · </span>
-    {t('footer.imagery', { source: '' })}<a href={IMAGERY.url} rel="noopener">{IMAGERY.name}</a>
+    {around('footer.imagery')[0]}<a href={IMAGERY.url} rel="noopener">{IMAGERY.name}</a>{around('footer.imagery')[1]}
   </p>
   <p class="links">
     <a href={AUTHOR.url} rel="author">{t('footer.website', { name: AUTHOR.name })}</a>
@@ -20,9 +33,9 @@
   </p>
   <p class="schools">{t('footer.schools', { date: retrieved })}</p>
   <p class="close-ups">
-    {t('footer.closeUpPhotos', { source: '' })}{#each CLOSE_UP_SOURCES as s, i (s.key)}{#if i}<span aria-hidden="true">{', '}</span>{/if}<a href={s.url} rel="noopener">{s.name}</a>{/each}
+    {around('footer.closeUpPhotos')[0]}{#each CLOSE_UP_SOURCES as s, i (s.key)}{#if i}<span aria-hidden="true">{', '}</span>{/if}<a href={s.url} rel="noopener">{s.name}</a>{/each}{around('footer.closeUpPhotos')[1]}
     <span class="sep" aria-hidden="true"> · </span>
-    {t('footer.closeUpStreets', { source: '' })}<a href={OSM.url} rel="noopener">{OSM.name}</a>
+    {around('footer.closeUpStreets')[0]}<a href={OSM.url} rel="noopener">{OSM.name}</a>{around('footer.closeUpStreets')[1]}
   </p>
   <p class="close-ups small">{t('closeup.credit.sentinel')}</p>
 </footer>

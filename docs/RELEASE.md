@@ -34,12 +34,23 @@ without the owner's go-ahead.
 
 ## Known issues (left for the owner to accept or defer)
 
-- **Missing water at two boxes.** Sydney Harbour and the Hudson at Manhattan have no water fill in the two styles
-  that have no photo (Atlas, Political) — their street data's water polygons don't reach that far (Manhattan) or
-  are empty (Sydney). The photo carries the water in Physical and Satellite. (The Thames at Greenwich **is**
-  filled — its `water` object is an 11-polygon MultiPolygon that includes the tidal river way on the Thames'
-  course, confirmed by decoding the committed `greenwich.json.gz` — so that box is not affected and needs no
-  owner decision.)
+- **Water is complete at every box, as of the final fix wave — the entry that used to stand here was wrong in
+  both directions.** It said the gap was two boxes and only in the styles with no photo. It was six boxes, and
+  it showed in *every* style including Physical and Satellite, because the water fill is drawn over the photo
+  and the photo is only 10 m to a pixel at half of them. Measured water as a share of each box, before and
+  after: Sydney 0.00 % → 51.63 %, Manhattan 0.65 % → 31.46 % (the island was not one), Paris 0.12 % → 4.18 %
+  (the Seine was a hairline under its own bridge names), Warsaw 1.15 % → 5.65 % and Kraków 1.07 % → 3.51 % (no
+  Vistula at either), Greenwich 4.91 % → 7.64 % (the Thames stopped at the peninsula). The cause was planning
+  ruling R16, which skipped OpenStreetMap relations, together with a query that never asked for
+  `natural=coastline`: the big water of a city is never one closed way. `scripts/build-city-streets.ts` now
+  assembles multipolygon relations and closes coastlines against the box, and `tests/unit/
+  city-streets-data.test.ts` holds a floor under each box's water so a rebuild cannot drop a river again. Four
+  boxes hold no water at all and say so in writing there: Mitad del Mundo, Rovaniemi, Tokyo and Giza.
+- **Rovaniemi is Sentinel-2 at 10 m, not Finland's 0.5 m orthophotos.** The NLS open WMTS needs a free API key
+  (`avoin-karttakuva.maanmittauslaitos.fi` answers 401 to every route, re-checked during the final fix wave);
+  the only keyless mirror found redirects to a host whose certificate does not match its own name. A school
+  lesson's build does not hang on that, and an API key is not something this repository can carry. The box
+  stays as it is, and that box is forest, an airport and a village, which 10 m resolves.
 - **Rovaniemi's one-minute gap — already resolved, kept here for awareness only.** The box centre (and the
   card/readout it drives) sits at 66°33′N, the village's own painted Arctic Circle line; the drawn Arctic Circle
   is at 66°34′N, about 180 m north of the box centre. This is a real geometric fact, not a bug, and it no longer
@@ -48,6 +59,26 @@ without the owner's go-ahead.
 - **The photo's box-edge feather at middling zooms.** The blend between the close-up photo and the world image
   around it is a soft gradient rather than a hard edge; at zooms between the fit zoom and full zoom in on the
   photo it can read as a faint band near the box boundary.
+- **Two boxes are dark on a projector.** Rovaniemi's photo averages 35.6 of 255 and Sydney's 50.7 — a September
+  evening over forest and a winter-morning harbour. Both read well on a laptop screen and both go muddy on a
+  classroom projector in a lit room. The lesson does not brighten a photo per box, and the honest fixes are a
+  different Sentinel scene for each (a data change, needing the twelve looked at again) or a projector-mode
+  lift applied to the close-up only. Giza, the third box the review named, is fixed: it now uses a January
+  scene with the sun 33.8° up instead of a September one at 61.5°, so the pyramids cast shadows and read as
+  pyramids — its mean moved 204 → 161 and its spread 45.8 → 61.5.
+- **Rovaniemi letterboxes at its fit zoom.** Rovaniemi's box is 0.135° of longitude — the widest of the twelve,
+  because 6 km is a lot of longitude at 66°N — so it fills the view's width long before its height, and a strip
+  of ordinary world map shows above and below it. Every other box is bound by its 4 km height instead. It is
+  geometry, not a bug; closing it would mean a different box shape at high latitude.
+- **The street grid is dense at Tokyo and at Giza's city half.** From the final fix wave: the ordinary streets
+  (`residential`, `unclassified`, `living_street`) now arrive at each box's own fit zoom, which is the view the
+  close-up list lands on, so a pupil who taps "Katowice — the school" sees the school's own street. At the two
+  boxes with the densest grids — Tokyo draws 1 899 of those subpaths at that zoom and Giza 2 540 — that leaves
+  little of the photograph showing between them until the pupil zooms further in. Giza's plateau, which is what
+  that box exists for, has no streets on it and is completely clear. If the owner would rather have the
+  photograph back at the arriving view, the lever is the road casing (a 3.4 px light stroke under a 1.8 px
+  core) rather than the threshold: dropping the casing on classes 4 and 5 until a deeper zoom recovers most of
+  the ink without taking the streets away.
 
 ## Publish steps
 

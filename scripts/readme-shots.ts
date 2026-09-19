@@ -16,7 +16,11 @@ const SHOTS = [
   { name: 'lesson', hash: 'en/topic-6/explore/5' },
   { name: 'lab', hash: 'en/lab' },
   { name: 'satellite', hash: 'en/lab', style: 'satellite', sun: { utcMinutes: 1020, dayOfYear: 266 } },
-  { name: 'close-up', hash: 'en/lab', style: 'satellite', cityBox: 'katowice' },
+  // The Sun is pinned to local midday over Katowice (19.02°E, so solar noon is 10:44 UTC = 644 minutes) on
+  // midsummer's day. Without it the hero was whatever time the build happened to run at, and the one committed
+  // before this fix was taken at dusk: the school box lay on the night side, dimmed to `photo x 0.35` by ruling
+  // R23, and the picture a reader met first was a dark blue rectangle with street names on it.
+  { name: 'close-up', hash: 'en/lab', style: 'satellite', cityBox: 'katowice', sun: { utcMinutes: 644, dayOfYear: 172 } },
 ] as const;
 
 const outFlag = process.argv.indexOf('--out');
