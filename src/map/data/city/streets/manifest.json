@@ -3,8 +3,9 @@
  "attribution": "© OpenStreetMap contributors (ODbL)",
  "streets": {
   "katowice": {
-   "file": "katowice.json",
-   "bytes": 216714,
+   "file": "katowice.json.gz",
+   "bytes": 66243,
+   "rawBytes": 216714,
    "arcs": 5287,
    "roads": 456,
    "named": 450,
@@ -16,8 +17,9 @@
    "retrieved": "2026-09-19"
   },
   "greenwich": {
-   "file": "greenwich.json",
-   "bytes": 299115,
+   "file": "greenwich.json.gz",
+   "bytes": 80962,
+   "rawBytes": 299115,
    "arcs": 6424,
    "roads": 1285,
    "named": 1279,
@@ -29,8 +31,9 @@
    "retrieved": "2026-09-19"
   },
   "mitaddelmundo": {
-   "file": "mitaddelmundo.json",
-   "bytes": 91263,
+   "file": "mitaddelmundo.json.gz",
+   "bytes": 27932,
+   "rawBytes": 91263,
    "arcs": 2221,
    "roads": 298,
    "named": 293,
@@ -42,8 +45,9 @@
    "retrieved": "2026-09-19"
   },
   "rovaniemi": {
-   "file": "rovaniemi.json",
-   "bytes": 39062,
+   "file": "rovaniemi.json.gz",
+   "bytes": 11327,
+   "rawBytes": 39062,
    "arcs": 575,
    "roads": 159,
    "named": 156,
@@ -55,8 +59,9 @@
    "retrieved": "2026-09-19"
   },
   "warsaw": {
-   "file": "warsaw.json",
-   "bytes": 257148,
+   "file": "warsaw.json.gz",
+   "bytes": 78616,
+   "rawBytes": 257148,
    "arcs": 6694,
    "roads": 541,
    "named": 536,
@@ -68,8 +73,9 @@
    "retrieved": "2026-09-19"
   },
   "krakow": {
-   "file": "krakow.json",
-   "bytes": 252673,
+   "file": "krakow.json.gz",
+   "bytes": 75549,
+   "rawBytes": 252673,
    "arcs": 6315,
    "roads": 689,
    "named": 684,
@@ -81,8 +87,9 @@
    "retrieved": "2026-09-19"
   },
   "paris": {
-   "file": "paris.json",
-   "bytes": 333356,
+   "file": "paris.json.gz",
+   "bytes": 91701,
+   "rawBytes": 333356,
    "arcs": 6933,
    "roads": 1449,
    "named": 1443,
@@ -94,8 +101,9 @@
    "retrieved": "2026-09-19"
   },
   "manhattan": {
-   "file": "manhattan.json",
-   "bytes": 213772,
+   "file": "manhattan.json.gz",
+   "bytes": 64096,
+   "rawBytes": 213772,
    "arcs": 5955,
    "roads": 398,
    "named": 392,
@@ -107,8 +115,9 @@
    "retrieved": "2026-09-19"
   },
   "delhi": {
-   "file": "delhi.json",
-   "bytes": 136161,
+   "file": "delhi.json.gz",
+   "bytes": 44067,
+   "rawBytes": 136161,
    "arcs": 3765,
    "roads": 225,
    "named": 219,
@@ -120,8 +129,9 @@
    "retrieved": "2026-09-19"
   },
   "sydney": {
-   "file": "sydney.json",
-   "bytes": 162404,
+   "file": "sydney.json.gz",
+   "bytes": 45050,
+   "rawBytes": 162404,
    "arcs": 3681,
    "roads": 647,
    "named": 641,
@@ -133,8 +143,9 @@
    "retrieved": "2026-09-19"
   },
   "tokyo": {
-   "file": "tokyo.json",
-   "bytes": 300646,
+   "file": "tokyo.json.gz",
+   "bytes": 96733,
+   "rawBytes": 300646,
    "arcs": 8249,
    "roads": 383,
    "named": 377,
@@ -146,8 +157,9 @@
    "retrieved": "2026-09-19"
   },
   "giza": {
-   "file": "giza.json",
-   "bytes": 432339,
+   "file": "giza.json.gz",
+   "bytes": 103073,
+   "rawBytes": 432339,
    "arcs": 7338,
    "roads": 1927,
    "named": 1921,

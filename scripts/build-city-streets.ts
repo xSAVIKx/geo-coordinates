@@ -1,6 +1,18 @@
-// Builds src/map/data/city/streets/<id>.json — the street map inside each city close-up box (Places up close
+// Builds src/map/data/city/streets/<id>.json.gz — the street map inside each city close-up box (Places up close
 // spec §4). One quantized, Visvalingam-simplified TopoJSON per box, read at runtime by src/map/streets.ts through
 // the same world.ts level-of-detail machinery every other vector layer uses (planning ruling R7).
+//
+// THE COMMITTED FILES ARE GZIPPED, and the raw .json is an intermediate that is never written to disk.
+// Why: the page is one offline file capped at 8 388 608 B. The twelve photos cost 2 374 752 B once base64'd, and
+// these twelve topologies are 2 734 653 B as text, which would have put the file at 8 497 108 B — 108 500 B over
+// the cap before Tasks 4-8 wrote a line. Gzipped they are 785 349 B (28.7 % of raw), 1 047 132 B base64'd in the
+// page, which lands it at 6 809 587 B with 1.5 MB to spare. Nothing is lost; the alternative was trimming real
+// content, such as Giza's 1 918 English street names.
+// Who unpacks it: src/map/cityStreets.ts — `unpackStreetTopology(base64)`, which base64-decodes, inflates with
+// DecompressionStream('gzip') and parses. It returns null instead of throwing, so a browser without
+// DecompressionStream, or a damaged block, costs the street layer only and leaves the rest of the map standing
+// (the fallback rule every other vector layer follows). Task 3 embeds each file as base64 in its own
+// <script type="application/x-geo-city"> block.
 //
 // Source: OpenStreetMap via Overpass (https://overpass-api.de/api/interpreter), © OpenStreetMap contributors,
 // ODbL. Overpass answers 406 to a bare request: it needs an identifying User-Agent and a POSTed query
@@ -13,10 +25,13 @@
 // NOT included: building outlines (planning ruling R6 — measured at 2.3 MB for one box) and multipolygon
 // relations (planning ruling R16 — ways only, so a park mapped only as a relation is missing).
 //
+// Manifest `bytes` is the committed .gz; `rawBytes` is the JSON inside it.
+//
 // Manifest counts describe the file, not the query: `roads`, `named` and `english` count features after the
 // merge in collect() — streets, not the OSM ways they were cut into — while `rail`, `water` and `green` count
 // the source ways, because those layers are one merged feature each and counting them would always say 1.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { gzipSync } from 'node:zlib';
 import { join } from 'node:path';
 import { clipPolygon, clipPolyline } from 'lineclip';
 import type { Feature, FeatureCollection, LineString, Polygon, Position } from 'geojson';
@@ -192,7 +207,13 @@ interface Built {
 
 /** One box's row in streets/manifest.json. */
 interface StreetEntry {
-  file: string; bytes: number; arcs: number; roads: number; named: number; english: number;
+  /** The committed artefact, `<id>.json.gz`. */
+  file: string;
+  /** Bytes of that gzipped file, as committed. */
+  bytes: number;
+  /** Bytes of the TopoJSON inside it, which is what the page holds once unpacked. */
+  rawBytes: number;
+  arcs: number; roads: number; named: number; english: number;
   rail: number; water: number; green: number; places: number; retrieved: string;
 }
 
@@ -312,26 +333,32 @@ async function main(): Promise<void> {
     const out = quantize(simplify(presimplify(raw), MIN_WEIGHT), QUANTIZATION) as unknown as StreetTopology;
     const retrieved = (answer.osm3s?.timestamp_osm_base ?? new Date().toISOString()).slice(0, 10);
     const json = JSON.stringify({ ...out, places, source: `OpenStreetMap via Overpass, ${ATTRIBUTION}` });
-    const file = `${b.id}.json`;
-    writeFileSync(join(OUT, file), json);
+    // Level 9. Node writes a zero MTIME into the gzip header, so rebuilding the same answer gives the same bytes
+    // and a committed artefact never churns; `npm run data:city-streets` twice over is a no-op in git.
+    const packed = gzipSync(Buffer.from(json, 'utf8'), { level: 9 });
+    const file = `${b.id}.json.gz`;
+    writeFileSync(join(OUT, file), packed);
     // Counts describe what is in the file: `roads` is streets after the merge, `ways` the OSM ways behind them.
     const road = collections.roads.features;
     streets[b.id] = {
-      file, bytes: Buffer.byteLength(json, 'utf8'), arcs: out.arcs.length,
+      file, bytes: packed.byteLength, rawBytes: Buffer.byteLength(json, 'utf8'), arcs: out.arcs.length,
       roads: road.length,
       named: road.filter((f) => f.properties && 'n' in f.properties).length,
       english: road.filter((f) => f.properties && 'e' in f.properties).length,
       rail: ways.rail, water: ways.water, green: ways.green, places: places.length, retrieved,
     };
     const e = streets[b.id]!;
-    console.log(`${join(OUT, file)}: ${(e.bytes / 1024).toFixed(1)} KiB, ${e.roads} streets from ${ways.roads} ways (${e.named} named), ${out.arcs.length} arcs`);
+    console.log(`${join(OUT, file)}: ${(e.bytes / 1024).toFixed(1)} KiB gz of ${(e.rawBytes / 1024).toFixed(1)} KiB, `
+      + `${e.roads} streets from ${ways.roads} ways (${e.named} named), ${out.arcs.length} arcs`);
   }
 
   const ordered: Record<string, StreetEntry> = Object.fromEntries(
     boxes.boxes.filter((b) => b.id in streets).map((b) => [b.id, streets[b.id]!] as const));
   writeFileSync(manifestPath, `${JSON.stringify({ generatedBy: 'scripts/build-city-streets.ts', attribution: ATTRIBUTION, streets: ordered }, null, 1)}\n`);
   const total = Object.values(ordered).reduce((n, e) => n + e.bytes, 0);
-  console.log(`${manifestPath}: ${Object.keys(ordered).length} boxes, ${(total / 1024).toFixed(1)} KiB total`);
+  const raw = Object.values(ordered).reduce((n, e) => n + e.rawBytes, 0);
+  console.log(`${manifestPath}: ${Object.keys(ordered).length} boxes, ${(total / 1024).toFixed(1)} KiB gz `
+    + `of ${(raw / 1024).toFixed(1)} KiB raw (${((total / raw) * 100).toFixed(0)} %)`);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

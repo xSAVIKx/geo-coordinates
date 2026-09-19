@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { gunzipSync } from 'node:zlib';
 import { describe, expect, test } from 'vitest';
 import { feature } from 'topojson-client';
 import type { GeometryCollection, Topology } from 'topojson-specification';
@@ -14,7 +15,10 @@ type StreetTopology = Topology<
   { roads: GeometryCollection<RoadProps> } & Record<Exclude<(typeof OBJECTS)[number], 'roads'>, GeometryCollection>
 > & { places: { id: string; name: string; lat: number; lon: number }[]; source: string };
 
-const topo = (id: string) => JSON.parse(readFileSync(DIR + `${id}.json`, 'utf8')) as StreetTopology;
+// The committed artefact is gzipped (see scripts/build-city-streets.ts); src/map/cityStreets.ts unpacks it in
+// the page, and these tests read it the same way from disk.
+const raw = (id: string) => gunzipSync(readFileSync(DIR + `${id}.json.gz`)).toString('utf8');
+const topo = (id: string) => JSON.parse(raw(id)) as StreetTopology;
 const roadsOf = (t: StreetTopology) => feature(t, t.objects.roads).features;
 const ids = boxesJson.boxes.map((b) => b.id);
 
@@ -24,8 +28,9 @@ describe('city street data', () => {
     expect(manifest.attribution).toBe('© OpenStreetMap contributors (ODbL)');
     for (const id of ids) {
       const e = manifest.streets[id as keyof typeof manifest.streets];
-      expect(e.file, id).toBe(`${id}.json`);
+      expect(e.file, id).toBe(`${id}.json.gz`);
       expect(e.bytes, id).toBe(readFileSync(DIR + e.file).length);
+      expect(e.rawBytes, id).toBe(Buffer.byteLength(raw(id), 'utf8'));
       expect(e.retrieved, id).toMatch(/^\d{4}-\d\d-\d\d$/);
     }
   });
@@ -94,33 +99,28 @@ describe('city street data', () => {
     expect(manifest.streets.katowice.green).toBeGreaterThan(0);    // parks
   });
 
-  // DEVIATION from the task brief, for the plan owner to rule on (see task-2-report.md).
-  //
-  // Planning ruling R22 set 200 KiB a box and 1.9 MiB for the twelve. That was measured on the ROADS of one box
-  // (Katowice, ~113 KiB); the four other layers this task also has to carry — rail, waterways, water, green —
-  // very nearly double a dense box, and six of the twelve are denser than Katowice.
-  //
-  // R22 is not reachable by simplifying harder. Most arcs run junction to junction and already hold only their
-  // two end points, so Visvalingam has nothing left to drop: pushing the weight from 2e-8 to 1e-5 (a 75 000 m²
-  // triangle, which flattens every curve in the data) still leaves Giza at 401 KiB and eight boxes over 200 KiB,
-  // for a 2.37 MiB total. Dropping content does not reach it either: no green layer, names only on main roads
-  // and no pedestrian streets together still give 2.05 MiB with five boxes over.
-  //
-  // So these assert the constraint that is real — the 8 MiB single file — with the arithmetic written out, and
-  // keep a per-box ceiling as a regression guard at a height the data can actually hold.
+  // Ruling R22 (200 KiB a box, 1.9 MiB for the twelve) was extrapolated from one box's ROADS; with the four other
+  // layers this task carries, the twelve are 2 670.6 KiB as text and no amount of simplifying reaches it (pushing
+  // the Visvalingam weight 500x, which flattens every curve, still gives 2.37 MiB). The coordinator ruled that
+  // the data stays whole and ships gzipped instead — so what the page pays is the .gz, base64'd into a block.
   const FILE_CAP = 8 * 1024 * 1024;   // global constraint: the built single file
   const TODAY = 3_387_703;            // dist/geo-coordinates.html before this feature
   const PHOTOS = 1_781_062;           // Task 1's twelve aerial photos
-  const RESERVE = 400 * 1024;         // left for Tasks 3-8 (the layer, settings, i18n, tests)
+  const base64 = (n: number) => Math.ceil(n / 3) * 4;
 
   test('every file stays inside its byte ceiling, and the twelve inside the budget', () => {
     let total = 0;
     for (const id of ids) {
       const e = manifest.streets[id as keyof typeof manifest.streets];
       total += e.bytes;
-      expect(e.bytes, `${id} (${(e.bytes / 1024).toFixed(1)} KiB)`).toBeLessThanOrEqual(450 * 1024);
+      expect(e.bytes, `${id} (${(e.bytes / 1024).toFixed(1)} KiB gz)`).toBeLessThanOrEqual(128 * 1024);
+      expect(e.bytes, `${id} gz is not smaller than its JSON`).toBeLessThan(e.rawBytes);
     }
-    expect(total, `${(total / 1024 / 1024).toFixed(2)} MiB`).toBeLessThanOrEqual(FILE_CAP - TODAY - PHOTOS - RESERVE);
+    expect(total, `${(total / 1024).toFixed(1)} KiB gz`).toBeLessThanOrEqual(1024 * 1024);
+    // What the twelve photos and the twelve street blocks actually cost the page, base64 included.
+    const inPage = base64(PHOTOS) + base64(total);
+    expect(TODAY + inPage, `${((TODAY + inPage) / 1024 / 1024).toFixed(2)} MiB before Tasks 4-8`)
+      .toBeLessThanOrEqual(FILE_CAP - 1024 * 1024);
   });
 
   test('no building outlines anywhere (planning ruling R6: they would be 12-25 MB)', () => {
