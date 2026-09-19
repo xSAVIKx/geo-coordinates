@@ -16,6 +16,25 @@ export const DATA_NOTICES: Notice[] = [{
 }, {
   name: 'NASA Earth Observatory', version: 'images', license: 'Public domain', url: 'https://earthobservatory.nasa.gov/',
   text: 'Satellite images: Blue Marble Next Generation (July 2004) and Black Marble 2016 by NASA Earth Observatory. NASA imagery is not subject to copyright in the United States; credit: NASA Earth Observatory.',
+}, {
+  name: 'Copernicus Sentinel-2 imagery', version: 'Free, full and open', license: 'Free, full and open',
+  url: 'https://sentinels.copernicus.eu/',
+  text: 'City close-up photos for Greenwich, Mitad del Mundo, Rovaniemi, Delhi, Sydney and Giza: Contains modified Copernicus Sentinel data 2024-2026, obtained from the Earth Search catalogue on AWS. Copernicus Sentinel data are made available under the Copernicus free, full and open data policy.',
+}, {
+  name: 'OpenStreetMap', version: 'ODbL 1.0', license: 'ODbL 1.0', url: 'https://www.openstreetmap.org/copyright',
+  text: 'Street, railway, water and park data inside the twelve city close-up boxes is (c) OpenStreetMap contributors, available under the Open Database Licence (ODbL) 1.0. Any rights in individual contents of the database are licensed under the Database Contents Licence.',
+}, {
+  name: 'GUGiK ORTOFOTOMAPA', version: 'Geoportal regulations', license: 'Geoportal regulations',
+  url: 'https://www.geoportal.gov.pl/', text: 'City close-up photos for Katowice, Warsaw and Krakow: Ortofotomapa, Glowny Urzad Geodezji i Kartografii, geoportal.gov.pl. The service capabilities state no access constraints; use of the service means accepting the Geoportal regulations.',
+}, {
+  name: 'IGN BD ORTHO', version: 'Licence Ouverte Etalab 2.0', license: 'Licence Ouverte Etalab 2.0',
+  url: 'https://data.geopf.fr/', text: 'The city close-up photo for Paris: Orthophotos (c) IGN / Geoplateforme (data.geopf.fr), Licence Ouverte / Open Licence Etalab 2.0.',
+}, {
+  name: 'GSI seamlessphoto', version: 'GSI tile terms', license: 'GSI tile terms',
+  url: 'https://maps.gsi.go.jp/development/ichiran.html', text: 'The city close-up photo for Tokyo is made from the Geospatial Information Authority of Japan seamlessphoto tiles and has been processed (cropped and resampled).',
+}, {
+  name: 'USDA-FSA NAIP', version: 'Public domain', license: 'Public domain',
+  url: 'https://imagery.nationalmap.gov/', text: 'The city close-up photo for Manhattan: USDA-FSA National Agriculture Imagery Program (NAIP), obtained through the USGS imagery service. US federal imagery is in the public domain.',
 }];
 
 /** The package a bundled module belongs to (its innermost node_modules folder), or null for the project's own code. */
@@ -38,10 +57,15 @@ export function readNotice(dir: string): Notice {
   return { name: pkg.name, version: pkg.version, license: pkg.license ?? 'see licence text', text, url: pkg.homepage };
 }
 
-/** The comment itself. `--` may not appear inside an HTML comment, so any run of dashes in a licence text is spaced out. */
+/** The comment itself. `--` may not appear inside an HTML comment, so any run of dashes in a licence text is spaced out.
+ * A notice with no separate version (its `version` equals its `license`, or is left empty) skips that segment, so the
+ * header reads "name (license)" instead of repeating the licence name twice. */
 export function noticeComment(notices: readonly Notice[]): string {
   const safe = (s: string) => s.replace(/-{2,}/g, (m) => m.split('').join(' ')).replace(/\r\n/g, '\n');
-  const blocks = notices.map((n) => [`${n.name} ${n.version} (${n.license})${n.url ? ` ${n.url}` : ''}`, '', safe(n.text)].join('\n'));
+  const blocks = notices.map((n) => {
+    const header = n.version && n.version !== n.license ? `${n.name} ${n.version} (${n.license})` : `${n.name} (${n.license})`;
+    return [`${header}${n.url ? ` ${n.url}` : ''}`, '', safe(n.text)].join('\n');
+  });
   return `<!--\nThird-party licences\n\nThis page bundles the following libraries and data.\n\n${blocks.join('\n\n- - -\n\n')}\n-->`;
 }
 

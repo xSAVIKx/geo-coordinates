@@ -12,3 +12,20 @@ test('the built file is broken down into textures, app script, styles and the re
   const text = formatBreakdown(parts, Buffer.byteLength(html));
   expect(text).toMatch(/texture satellite-day\s+0\.1 KiB/);
 });
+
+test('city photos and street data get a line each, named by their place', () => {
+  const html = [
+    '<html><body>',
+    '<script type="application/x-geo-texture" id="geo-texture-physical-world">AAAA</script>',
+    '<script type="application/x-geo-photo" id="geo-photo-katowice" data-width="1440" data-height="960">BBBB</script>',
+    '<script type="application/x-geo-city" id="geo-city-katowice">BBBB</script>',
+    '<script type="module">const a = 1;</script>',
+    '<style>body{margin:0}</style>',
+    '</body></html>',
+  ].join('\n');
+  const names = sizeBreakdown(html).map((p) => p.name);
+  expect(names).toEqual(['texture physical-world', 'photo katowice', 'streets katowice',
+    'app script and vector data', 'styles', 'html and head']);
+  const photo = sizeBreakdown(html).find((p) => p.name === 'photo katowice')!;
+  expect(photo.bytes).toBeGreaterThan(90);          // the tag plus its four base64 characters
+});

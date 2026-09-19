@@ -41,6 +41,41 @@ MIT), and it does not cover the third-party data described below.
   The Political map style's country shapes are Natural Earth's Poland
   point-of-view admin-0 countries (`ne_10m_admin_0_countries_pol`, public domain).
 
+- **City close-up photos and street data** — the twelve city close-up boxes
+  (Places up close) bundle an aerial or satellite photo and an OpenStreetMap
+  street/rail/water/park extract for each place, from six sources:
+
+  - **Copernicus Sentinel-2 L2A** (Greenwich, Mitad del Mundo, Rovaniemi,
+    Delhi, Sydney, Giza) — Free, full and open data policy.
+    Credit: "Contains modified Copernicus Sentinel data 2024-2026", obtained
+    from the Earth Search catalogue on AWS.
+    <https://sentinels.copernicus.eu/>
+  - **GUGiK ORTOFOTOMAPA** (Katowice, Warsaw, Krakow) — Geoportal
+    regulations. Credit: "Ortofotomapa, Główny Urząd Geodezji i
+    Kartografii, geoportal.gov.pl."
+    <https://www.geoportal.gov.pl/>
+  - **IGN BD ORTHO** (Paris) — Licence Ouverte / Open Licence Etalab 2.0.
+    Credit: "Orthophotos © IGN / Géoplateforme (data.geopf.fr), Licence
+    Ouverte / Open Licence Etalab 2.0."
+    <https://data.geopf.fr/>
+  - **GSI seamlessphoto** (Tokyo) — GSI tile terms of use. Credit:
+    "Geospatial Information Authority of Japan, seamlessphoto tiles
+    (processed: cropped and resampled)."
+    <https://maps.gsi.go.jp/development/ichiran.html>
+  - **USDA-FSA NAIP** (Manhattan) — public domain. Credit: "USDA-FSA
+    National Agriculture Imagery Program (NAIP), via USGS." US federal
+    imagery is in the public domain.
+    <https://imagery.nationalmap.gov/>
+  - **OpenStreetMap** (all twelve boxes: streets, railways, waterways,
+    water and green areas) — Open Database Licence (ODbL) 1.0. Credit:
+    "© OpenStreetMap contributors." Any rights in individual contents of
+    the database are licensed under the Database Contents Licence.
+    <https://www.openstreetmap.org/copyright>
+
+  Every one of these six credit lines also travels inside the built file
+  itself, in the third-party licence notice comment written by
+  `scripts/licence-notices.ts`.
+
 - **Maple Bear school locations** — the coordinates and names shown on the
   optional Maple Bear schools layer are factual data (approximate school
   locations) collected from publicly published Maple Bear school websites.

@@ -6,10 +6,11 @@ const bytes = (s: string) => Buffer.byteLength(s, 'utf8');
 
 export function sizeBreakdown(html: string): SizePart[] {
   const parts: SizePart[] = [];
-  let rest = html.replace(/<script type="application\/x-geo-texture" id="geo-texture-([a-z-]+)"[^>]*>[^<]*<\/script>\n?/g, (m, id: string) => {
-    parts.push({ name: `texture ${id}`, bytes: bytes(m) });
-    return '';
-  });
+  const strip = (s: string, re: RegExp, name: (id: string) => string) =>
+    s.replace(re, (m, id: string) => { parts.push({ name: name(id), bytes: bytes(m) }); return ''; });
+  let rest = strip(html, /<script type="application\/x-geo-texture" id="geo-texture-([a-z-]+)"[^>]*>[^<]*<\/script>\n?/g, (id) => `texture ${id}`);
+  rest = strip(rest, /<script type="application\/x-geo-photo" id="geo-photo-([a-z]+)"[^>]*>[^<]*<\/script>\n?/g, (id) => `photo ${id}`);
+  rest = strip(rest, /<script type="application\/x-geo-city" id="geo-city-([a-z]+)"[^>]*>[^<]*<\/script>\n?/g, (id) => `streets ${id}`);
   let js = 0;
   rest = rest.replace(/<script type="module"[^>]*>[\s\S]*?<\/script>/g, (m) => { js += bytes(m); return ''; });
   let css = 0;

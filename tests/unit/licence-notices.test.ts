@@ -39,4 +39,14 @@ describe('third-party licence notices', () => {
     expect(injectNotices('<!doctype html>\n<html></html>', comment)).toBe(`<!doctype html>\n${comment}\n<html></html>`);
     expect(injectNotices('<html></html>', comment)).toBe(`${comment}\n<html></html>`);
   });
+
+  test('the six city close-up data notices travel with the file, one per source', () => {
+    const comment = noticeComment(DATA_NOTICES);
+    for (const name of ['Copernicus Sentinel-2 imagery', 'OpenStreetMap', 'GUGiK ORTOFOTOMAPA', 'IGN BD ORTHO',
+      'GSI seamlessphoto', 'USDA-FSA NAIP']) expect(comment).toContain(name);
+    expect(comment).toContain('Contains modified Copernicus Sentinel data');
+    expect(comment).toContain('Open Database Licence (ODbL) 1.0');
+    // An HTML comment may not contain two dashes; only the wrapper's own `<!--`/`-->` may (see the test above).
+    expect(comment.slice(4, -3)).not.toMatch(/--/);
+  });
 });
