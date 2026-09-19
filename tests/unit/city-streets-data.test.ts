@@ -103,6 +103,10 @@ describe('city street data', () => {
   // layers this task carries, the twelve are 2 670.6 KiB as text and no amount of simplifying reaches it (pushing
   // the Visvalingam weight 500x, which flattens every curve, still gives 2.37 MiB). The coordinator ruled that
   // the data stays whole and ships gzipped instead — so what the page pays is the .gz, base64'd into a block.
+  // Deliberately not scripts/size-report.ts's SIZE_LIMIT_BYTES: this is a planning-time projection against
+  // fixed historical baselines (TODAY, PHOTOS below), checked once at data-authoring time, not a live check of
+  // the built file (tests/e2e/routes.spec.ts and scripts/size-check.ts do that, against the real dist/ bytes).
+  // If the budget ever moves, update this literal too — it won't follow SIZE_LIMIT_BYTES automatically.
   const FILE_CAP = 8 * 1024 * 1024;   // global constraint: the built single file
   const TODAY = 3_387_703;            // dist/geo-coordinates.html before this feature
   const PHOTOS = 1_781_062;           // Task 1's twelve aerial photos

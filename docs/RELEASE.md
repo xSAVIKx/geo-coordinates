@@ -34,13 +34,17 @@ without the owner's go-ahead.
 
 ## Known issues (left for the owner to accept or defer)
 
-- **Missing water at three boxes.** Sydney Harbour, and the Thames and the Hudson at Greenwich and Manhattan, have
-  no water fill in the two styles that have no photo (Atlas, Political) — their street data comes from coastline
-  relations, which the street build excludes. The photo carries the water in Physical and Satellite.
-- **Rovaniemi's one-minute seam.** The box centre (and the card/readout it drives) sits at 66°33′N, the village's
-  own painted Arctic Circle line; the teaching note and the drawn Arctic Circle are at 66°34′N, about 180 m north
-  of the box centre. Both are individually correct for what they measure, but a pupil comparing the readout to
-  the note side by side will notice the one-minute gap.
+- **Missing water at two boxes.** Sydney Harbour and the Hudson at Manhattan have no water fill in the two styles
+  that have no photo (Atlas, Political) — their street data's water polygons don't reach that far (Manhattan) or
+  are empty (Sydney). The photo carries the water in Physical and Satellite. (The Thames at Greenwich **is**
+  filled — its `water` object is an 11-polygon MultiPolygon that includes the tidal river way on the Thames'
+  course, confirmed by decoding the committed `greenwich.json.gz` — so that box is not affected and needs no
+  owner decision.)
+- **Rovaniemi's one-minute gap — already resolved, kept here for awareness only.** The box centre (and the
+  card/readout it drives) sits at 66°33′N, the village's own painted Arctic Circle line; the drawn Arctic Circle
+  is at 66°34′N, about 180 m north of the box centre. This is a real geometric fact, not a bug, and it no longer
+  needs an owner decision: Task 8's teaching note already names both numbers and says they are one minute apart,
+  so the pupil-facing contradiction is resolved by design.
 - **The photo's box-edge feather at middling zooms.** The blend between the close-up photo and the world image
   around it is a soft gradient rather than a hard edge; at zooms between the fit zoom and full zoom in on the
   photo it can read as a faint band near the box boundary.
