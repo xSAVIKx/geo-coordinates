@@ -65,7 +65,7 @@ SCENE_OVERRIDES = {
     # desert sand are the same brightness from above, the box read 204/255 mean with its 99th percentile at 254,
     # and the two large pyramids were barely separable from the plateau they stand on. This scene is January,
     # with the sun 33.8 degrees up, so each pyramid lays a shadow the length of itself across the sand and the
-    # shape a pupil came to see is the thing that reads. 0.18 % granule cloud, 2 January 2025.
+    # shape a pupil came to see is the thing that reads. 0.002 % granule cloud, 2 January 2025.
     'giza': 'S2A_36RUU_20250102_0_L2A',
 }
 # A tile mosaic is fetched at about twice the output resolution (tiles.zoom_for) and resampled onto the box's

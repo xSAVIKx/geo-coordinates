@@ -156,7 +156,7 @@ describe('city street data', () => {
     delhi: 0.030,      // the Yamuna's channels and the ponds: measured 0.0468
     paris: 0.025,      // the Seine and the Bois de Boulogne lakes: measured 0.0418
     krakow: 0.020,     // the Vistula under Wawel: measured 0.0351
-    katowice: 0.010,   // Bolina and the pit ponds: measured 0.0186
+    katowice: 0.013,   // Bolina and the pit ponds: measured 0.0186
   };
   /**
    * Boxes with no water worth drawing, each checked against its own photograph (shots/water/<id>-water.png):
@@ -168,7 +168,7 @@ describe('city street data', () => {
     mitaddelmundo: 'the equator monument on a dry Andean plateau above Quito: no water in the box at all',
     rovaniemi: 'forest, the airport and the Arctic Circle village; the Kemijoki and the Ounasjoki are both south of the box',
     tokyo: 'Shibuya and Yoyogi: the Shibuya river is culverted under the streets, only two park ponds are open',
-    giza: 'the pyramid plateau and the desert west of it; the Nile is about 8 km east of the box',
+    giza: 'the pyramid plateau and the desert west of it; the Nile is about 8 km east of the box, and the only water mapped inside it is an irrigation canal at the city edge (0.22 % of the box)',
   };
 
   test('every box holds the water it is built around, or says in writing that it has none', () => {

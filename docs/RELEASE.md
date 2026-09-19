@@ -45,7 +45,9 @@ without the owner's go-ahead.
   `natural=coastline`: the big water of a city is never one closed way. `scripts/build-city-streets.ts` now
   assembles multipolygon relations and closes coastlines against the box, and `tests/unit/
   city-streets-data.test.ts` holds a floor under each box's water so a rebuild cannot drop a river again. Four
-  boxes hold no water at all and say so in writing there: Mitad del Mundo, Rovaniemi, Tokyo and Giza.
+  boxes have no water worth drawing and say so in writing there, each with a ceiling of 1 % instead of a floor:
+  Mitad del Mundo (nothing mapped at all), Rovaniemi (two small lakes, 0.05 %), Tokyo (two park ponds, 0.08 %;
+  the Shibuya river is culverted) and Giza (an irrigation canal at the city edge, 0.22 %).
 - **Rovaniemi is Sentinel-2 at 10 m, not Finland's 0.5 m orthophotos.** The NLS open WMTS needs a free API key
   (`avoin-karttakuva.maanmittauslaitos.fi` answers 401 to every route, re-checked during the final fix wave);
   the only keyless mirror found redirects to a host whose certificate does not match its own name. A school
