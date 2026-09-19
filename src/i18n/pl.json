@@ -447,7 +447,7 @@
   "closeup.place.giza": "Giza — piramidy",
   "closeup.note.greenwich": "Południk zerowy jest namalowany w poprzek tego dziedzińca. Stań na linii, a twoja długość geograficzna wynosi 0°.",
   "closeup.note.mitaddelmundo": "Przez ten teren biegnie linia: równik, 0° szerokości geograficznej. Wszystko na północ od niej to półkula północna, a wszystko na południe — półkula południowa.",
-  "closeup.note.rovaniemi": "Linia na tym terenie oznacza koło podbiegunowe północne, 66°34′N. Na północ od niego w środku lata Słońce nie zachodzi, a w środku zimy nie wschodzi.",
+  "closeup.note.rovaniemi": "Koło podbiegunowe północne, 66°34′N, to przerywana linia tuż na północ od punktu. Rovaniemi ma swój znak na ziemi tam, gdzie stoi punkt, na 66°33′N — różnica to jedna minuta. Na północ od koła w środku lata Słońce nie zachodzi, a w środku zimy nie wschodzi.",
   "closeup.credit": "Z bliska: {photo} · {streets}",
   "closeup.credit.gugik": "Ortofotomapa: Główny Urząd Geodezji i Kartografii, geoportal.gov.pl",
   "closeup.credit.ign": "Orthophotos: © IGN / Géoplateforme (data.geopf.fr), Licence Ouverte Etalab 2.0",

@@ -43,6 +43,12 @@ describe('street labels', () => {
     for (const text of ['Хрещатик', 'Sokolska', 'شارع الهرم']) {
       expect(streetLabelWidth(text, 10, 1) / text.length, text).toBeLessThan(9);
     }
+    // The two buckets, pinned: tests/e2e/city-a11y.spec.ts measures the real ink of a dozen scripts in the
+    // browser against these same two numbers, and restates them because it cannot import this module. A change
+    // here without a change there would leave that measurement checking the wrong bucket.
+    const em = (text: string) => streetLabelWidth(text, 10, 1) / 10 / 1.05;   // SAFETY divided back out
+    expect((em('aaaaaaaaaa') - 0.3) / 10).toBeCloseTo(0.74, 10);              // the generic bucket
+    expect((em('渋渋渋渋渋渋渋渋渋渋') - 0.3) / 10).toBeCloseTo(1.05, 10);      // the square-body bucket
     // Longer text is wider text, and the size and px factors scale it.
     expect(streetLabelWidth('abcdef', 10, 1)).toBeGreaterThan(streetLabelWidth('abcde', 10, 1));
     expect(streetLabelWidth('Sokolska', 10, 2)).toBeCloseTo(streetLabelWidth('Sokolska', 10, 1) * 2, 10);
@@ -80,11 +86,37 @@ describe('street labels', () => {
   });
 
   test('district names are written before street names', () => {
-    // Zoom 400 is past PLACE_NAME_ZOOM but short of STREET_NAME_ZOOM: districts only. The whole box is 89 px
-    // across at that zoom, so only the two or three nearest the middle of it have room.
+    // Zoom 400 is past PLACE_NAME_ZOOM but short of STREET_NAME_ZOOM: districts only. The whole box is 90 px
+    // across at that zoom, and a name has to fit inside it (see the box-clip test below), so only the shortest
+    // of them — "Dąb" — has room. At 1400 the box is 315 px across and several do.
     const districts = placeStreetLabels(ctx(box, 400), box, 'en', []);
-    expect(districts.length).toBeGreaterThan(1);
+    expect(districts.length).toBeGreaterThan(0);
     expect(districts.every((l) => l.id.startsWith('n'))).toBe(true);
+    expect(placeStreetLabels(ctx(box, 1400), box, 'en', []).filter((l) => l.id.startsWith('n')).length).toBeGreaterThan(1);
+  });
+
+  /*
+   * A street name names something inside the box, and outside the box the roads simply stop: a name written past
+   * the box's edge floats on the bare world map. Below the fit zoom that used to be most of them — at zoom 200,
+   * where district names start, Katowice's box is 45 px across and "Osiedle Paderewskiego" was written 155 px
+   * wide beside it — and even at the fit zoom a box is 3 by 2 km in a 2:1 view, so one axis leaves a strip of
+   * world map (Rovaniemi 67 px above and below, Mitad del Mundo 72 px either side) that names stood in.
+   */
+  test('no name is written outside the box it belongs to', () => {
+    for (const zoom of [200, 400, 900, 2500, box.fitZoom]) {
+      const c = ctx(box, zoom);
+      const halfW = ((box.bounds.east - box.bounds.west) / (360 / zoom)) * c.width / 2;
+      const halfH = ((box.bounds.north - box.bounds.south) / (180 / zoom)) * c.height / 2;
+      for (const l of placeStreetLabels(c, box, 'en', [])) {
+        expect(l.box.left, `${l.text} @ ${zoom}`).toBeGreaterThanOrEqual(Math.max(0, c.width / 2 - halfW) - 0.5);
+        expect(l.box.right, `${l.text} @ ${zoom}`).toBeLessThanOrEqual(Math.min(c.width, c.width / 2 + halfW) + 0.5);
+        expect(l.box.top, `${l.text} @ ${zoom}`).toBeGreaterThanOrEqual(Math.max(0, c.height / 2 - halfH) - 0.5);
+        expect(l.box.bottom, `${l.text} @ ${zoom}`).toBeLessThanOrEqual(Math.min(c.height, c.height / 2 + halfH) + 0.5);
+      }
+    }
+    // At zoom 200 the box is 45 px across: nothing fits, and the map says nothing rather than writing a district
+    // name on open countryside.
+    expect(placeStreetLabels(ctx(box, 200), box, 'en', [])).toEqual([]);
   });
 
   test('a name in a script the reader cannot read is written in English instead (ruling R24)', () => {
@@ -117,7 +149,7 @@ describe('street labels', () => {
     const latin = labels.filter((l) => l.id.startsWith('r') && /^[\x20-\x7e]+$/.test(l.text));
     expect(latin.length).toBeGreaterThan(5);
     // Katowice's districts are all readable in every language, so none of them is held back.
-    expect(placeStreetLabels(ctx(box, 400), box, 'pl', []).length).toBeGreaterThan(1);
+    expect(placeStreetLabels(ctx(box, 1400), box, 'pl', []).length).toBeGreaterThan(1);
   });
 
   test('the same view gives the same names twice running (nothing depends on call order)', () => {

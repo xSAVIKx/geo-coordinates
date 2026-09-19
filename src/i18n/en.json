@@ -439,7 +439,7 @@
   "closeup.place.giza": "Giza — the pyramids",
   "closeup.note.greenwich": "The prime meridian is painted right across this courtyard. Stand on the line and your longitude is 0°.",
   "closeup.note.mitaddelmundo": "A line runs across this site: the equator, 0° latitude. Everything north of it is the northern hemisphere, everything south of it the southern.",
-  "closeup.note.rovaniemi": "A line across the site marks the Arctic Circle, 66°34′N. North of it the Sun does not set at midsummer and does not rise at midwinter.",
+  "closeup.note.rovaniemi": "The Arctic Circle, 66°34′N, is the dashed line just north of the point. Rovaniemi marks it on the ground where the point stands, at 66°33′N — one minute apart. North of the circle the Sun does not set at midsummer and does not rise at midwinter.",
   "closeup.credit": "Close-up: {photo} · {streets}",
   "closeup.credit.gugik": "Ortofotomapa: Główny Urząd Geodezji i Kartografii, geoportal.gov.pl",
   "closeup.credit.ign": "Orthophotos: © IGN / Géoplateforme (data.geopf.fr), Licence Ouverte Etalab 2.0",

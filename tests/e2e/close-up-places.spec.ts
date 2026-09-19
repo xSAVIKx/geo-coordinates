@@ -122,11 +122,22 @@ test('the list and the note pass axe in the lab, standing in a teaching box', as
   await list(page).locator('> summary').click();
   await go(page, 'greenwich');
   await expect(page.locator('.close-up-note')).toBeVisible();
-  // Back to the top first: opening the disclosure scrolls it into view, and a scrolled page puts the globe's
-  // toolbar under the sticky header, which axe reports as an obscured target — true of every page, not of this
-  // list (a plain, untouched lab page scrolled down reports the same two buttons).
-  await page.evaluate(() => window.scrollTo(0, 0));
-  await expectNoAxeViolations(page, 'lab with the close-up list open at Greenwich');
+  /*
+   * Run axe on the *scrolled* page, at the bottom of it, where the close-up list, the note and the credit all
+   * are — not pinned back to the top, which is what this used to do.
+   *
+   * The pin was there because a 44 px target caught half under the sticky header is reported by axe's
+   * target-size rule as obscured, and Playwright's own scroll-into-view before a click had parked the globe's
+   * "Show the point" button exactly there. That is geometry, not a bug in this list, and it cannot be designed
+   * away: with an obscuring band [a, b] and a target of height H, the unobscured part of the target is under
+   * 24 px for a window of scroll positions (b - a) + 48 - H px wide, which for a 44 px header widget over a
+   * 44 px target is 48 px however the header is laid out — see the Task 8 report for the sweep and the
+   * arithmetic. The bottom of the page is a real place the pupil leaves the page in, and it is defined, so the
+   * run is deterministic rather than pinned. Task 8 measured it clean at 375, 768, 1024, 1366 and 1920.
+   */
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  expect(await page.evaluate(() => window.scrollY), 'the page really is scrolled').toBeGreaterThan(0);
+  await expectNoAxeViolations(page, 'lab with the close-up list open at Greenwich, scrolled to the bottom');
 });
 
 for (const lang of ['pl', 'uk'] as const) {

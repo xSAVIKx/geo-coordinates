@@ -111,10 +111,26 @@ svg text.halo { paint-order: stroke; stroke: var(--halo); stroke-width: 3px; str
 .frame[data-map-style="physical"], .frame[data-map-style="satellite"] {
   --street-ink: #141414;
   --street-major: #a4521c;
-  --street-casing: rgb(252 250 245 / 0.85);
+  /* 0.68, not the 0.85 this rule was born at. The casing is what carries a road over a dark yard or a bright
+     roof, so it has to be there; at 0.85 it was also the loudest thing in the picture. Katowice's box paints 657
+     residential segments at its fit zoom and Tokyo's 1 899, each with a light casing under it, and at 0.85 those
+     casings joined into a white web that hid the roofs, the yards, the tracks and the allotments — the whole
+     reason the photo is there. How far down it could come was measured rather than chosen: the road mark against
+     the real photo pixels, at the ninetieth percentile of what it paints, over the school's 4.17 m orthophoto and
+     over Greenwich's 10 m Sentinel scene, in both texture styles and both themes. Worst square on that board:
+     3.02 at 0.55, 3.24 at 0.60, 3.62 at 0.68 — against the 3:1 WCAG 1.4.11 asks of a graphical object. 0.55
+     passes by less than one per cent, which is a number and not a margin; 0.68 keeps a fifth of the ratio in
+     hand and still lets the photograph through. tests/e2e/map-style-readability.spec.ts holds all eight squares. */
+  --street-casing: rgb(252 250 245 / 0.68);
   --street-rail: #33383d;
   --street-water: rgb(86 150 200 / 0.42);
   --street-green: rgb(150 196 118 / 0.42);
+  /* Nine tenths of the drawn-map weight: the same ladder, the same hierarchy, less ink on the photograph.
+     Not further, and where it stops is arithmetic rather than taste. The thinnest class, a footway, is 1.1 px; at
+     0.9 it draws 0.99 px, which still covers a pixel, so the colour on screen is the colour it was given — the
+     same rule the Political graticule's 0.95 px was settled at (src/styles/tokens.css). At 0.8 the footway falls
+     to 0.88 px and is never fully painted, so its measured contrast is an antialiased average and not an ink. */
+  --street-weight: 0.9;
 }
 .frame[data-map-style]:not([data-map-style="atlas"]) .guide-casing,
 .frame[data-map-style]:not([data-map-style="atlas"]) .casing,

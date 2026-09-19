@@ -2,8 +2,8 @@ type Lang = 'en' | 'pl' | 'uk';
 type Messages = Record<Lang, Record<string, string>>;
 export interface Suspicious {
   key: string;
-  lang: 'pl' | 'uk';
-  reason: 'same-as-en' | 'latin-in-uk' | 'cyrillic-in-pl';
+  lang: Lang;
+  reason: 'same-as-en' | 'latin-in-uk' | 'cyrillic-in-pl' | 'punctuation' | 'mixed-script';
 }
 export interface InfoNote {
   key: string;
@@ -124,6 +124,40 @@ function latinTokens(s: string): string[] {
 const hasDisallowedLatin = (key: string, s: string) => latinTokens(s).some((t) => !latinOk(key, t));
 const hasAllowedLatin = (key: string, s: string) => latinTokens(s).some((t) => latinOk(key, t));
 
+/*
+ * Punctuation each language writes, and the marks that mean the file has drifted.
+ *
+ * The three files each settled on one set, and a stray straight quote is invisible in a review table read for
+ * meaning — it shows up only on paper and in a screen reader's pronunciation. Six older Ukrainian values still
+ * carried a straight apostrophe (U+0027) where the other eleven use U+2019, which is the character Ukrainian
+ * spelling actually prescribes; this check is what found them.
+ *
+ *  - en  apostrophe U+0027 ("doesn't"), quotes “ ” (U+201C/U+201D). A curly apostrophe or a Continental quote is drift.
+ *  - pl  no apostrophe at all, quotes „ ” (U+201E/U+201D). A straight or curly apostrophe, a straight double
+ *        quote, an opening “ or a guillemet is drift.
+ *  - uk  apostrophe U+2019, quotes « » (U+00AB/U+00BB). A straight apostrophe or double quote, or an English-style
+ *        curly quote, is drift.
+ *
+ * The primes ′ ″ (coordinates), the dashes – — and the ellipsis … are shared by all three and are not listed.
+ */
+const PUNCTUATION: Record<Lang, RegExp> = {
+  en: /["’‘„«»]/,
+  pl: /['"’‘“«»]/,
+  uk: /['"‘“”„]/,
+};
+
+/*
+ * Look-alikes: one word written in two alphabets at once. Cyrillic а с е і о р х and Latin a c e i o p x are the
+ * same shape in every font this page uses, so "Кraków" (Cyrillic К) or "Оslo" (Cyrillic О) looks perfect on screen
+ * and sorts, searches and reads aloud as nonsense. The `latin-in-uk` and `cyrillic-in-pl` checks above each look at
+ * one language only and at the value as a whole; this one looks at every word in all three files, English included,
+ * which is the file those two checks never open.
+ */
+const MIXED_SCRIPT = /[\p{Script=Latin}][\p{Script=Cyrillic}]|[\p{Script=Cyrillic}][\p{Script=Latin}]/u;
+// A parameter becomes a space, not nothing: `{n}` between two letters is a word break at run time, and deleting
+// it would push the letters either side of it together into an adjacency that is not in any rendered string.
+const mixedScript = (s: string) => MIXED_SCRIPT.test(s.replace(/\{\w+\}/g, ' '));
+
 export function findSuspicious(m: Messages): Suspicious[] {
   const out: Suspicious[] = [];
   for (const key of Object.keys(m.en)) {
@@ -134,6 +168,14 @@ export function findSuspicious(m: Messages): Suspicious[] {
       if (v === en && !onlySymbols(v) && !SAME_OK.some((r) => r.test(key))) out.push({ key, lang, reason: 'same-as-en' });
       else if (lang === 'uk' && hasDisallowedLatin(key, v)) out.push({ key, lang, reason: 'latin-in-uk' });
       else if (lang === 'pl' && /[Ѐ-ӿ]/.test(v)) out.push({ key, lang, reason: 'cyrillic-in-pl' });
+    }
+    // Punctuation and look-alikes are checked in all three files, English included: a straight quote or a Cyrillic
+    // "о" in an English string is the same drift, and nothing else in this file ever reads en.json.
+    for (const lang of ['en', 'pl', 'uk'] as const) {
+      const v = m[lang][key];
+      if (v === undefined) continue;
+      if (PUNCTUATION[lang].test(v)) out.push({ key, lang, reason: 'punctuation' });
+      if (mixedScript(v)) out.push({ key, lang, reason: 'mixed-script' });
     }
   }
   return out;
@@ -181,14 +223,14 @@ export function buildReviewHtml(m: Messages): string {
 
   const rows = [...groups.entries()]
     .map(([group, keys]) => {
-      const groupFlagCount = keys.filter((k) => flagged.has(`${k}|pl`) || flagged.has(`${k}|uk`)).length;
+      const groupFlagCount = keys.filter((k) => flagged.has(`${k}|en`) || flagged.has(`${k}|pl`) || flagged.has(`${k}|uk`)).length;
       const groupInfoCount = keys.filter((k) => info.has(`${k}|pl`) || info.has(`${k}|uk`)).length;
       const groupCounts = `${keys.length}${groupFlagCount ? `, ${groupFlagCount} flagged` : ''}${groupInfoCount ? `, ${groupInfoCount} info` : ''}`;
       return `
     <tbody><tr class="group"><th colspan="4">${esc(group)} <span class="count">(${groupCounts})</span></th></tr>
     ${keys
       .map((k) => {
-        const isFlagged = flagged.has(`${k}|pl`) || flagged.has(`${k}|uk`);
+        const isFlagged = flagged.has(`${k}|en`) || flagged.has(`${k}|pl`) || flagged.has(`${k}|uk`);
         const isInfo = info.has(`${k}|pl`) || info.has(`${k}|uk`);
         return `<tr data-key="${esc(k)}"${isFlagged ? ' data-flagged="1"' : ''}${isInfo ? ' data-info="1"' : ''}><td class="key">${esc(k)}</td>${(
           ['en', 'pl', 'uk'] as const

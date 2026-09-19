@@ -5,6 +5,7 @@ import uk from '../../src/i18n/uk.json';
 import photoManifest from '../../src/map/data/city/photos/manifest.json';
 import { formatLatLon } from '../../src/geo/format';
 import { CITY_BOXES } from '../../src/map/cityBoxes';
+import { POLAR } from '../../src/map/geometry';
 import { CLOSE_UPS_KEY, closeUpSetting, initCloseUps, parseCloseUps, setCloseUps } from '../../src/map/closeUps.svelte';
 import { MapState } from '../../src/map/mapState.svelte';
 import { topic9 } from '../../src/topics/t9-phone';
@@ -125,6 +126,24 @@ describe('the close-up texts', () => {
     expect(pl['closeup.note.rovaniemi']).toContain('66°34′N');
     expect(uk['closeup.note.greenwich']).toContain('Нульовий меридіан');
     expect(uk['closeup.note.rovaniemi']).toContain('66°34′ пн. ш.');
+  });
+
+  /*
+   * Rovaniemi's one-minute seam, said out loud instead of left for the pupil to trip over. The box is centred on
+   * the mark Rovaniemi paints on the ground, so the card and the readout say 66°33′N; the Arctic Circle the app
+   * draws (POLAR = 66.56, geometry.ts) is 66°34′N and its dashed line runs across the box about 1.5 km north of
+   * the point — measured at the fit zoom: 75 px down a 288 px frame whose box starts at 67 px, so the line is on
+   * screen and labelled, seven pixels inside the box's northern edge. The note now names both numbers, so a
+   * reader of the note and a reader of the readout are told the same thing.
+   */
+  test("the Arctic Circle note names the readout's own minute as well as the circle's", () => {
+    const readout = formatLatLon(CITY_BOXES.find((b) => b.id === 'rovaniemi')!, 'en', 'minute');
+    expect(readout).toBe('66°33′N, 25°51′E');
+    expect(en['closeup.note.rovaniemi']).toContain('66°33′N');
+    expect(pl['closeup.note.rovaniemi']).toContain('66°33′N');
+    expect(uk['closeup.note.rovaniemi']).toContain('66°33′ пн. ш.');
+    // And the circle the app draws really is the 66°34′ the note claims.
+    expect(formatLatLon({ lat: POLAR, lon: 0 }, 'en', 'minute').startsWith('66°34′N')).toBe(true);
   });
 
   test('every photo source has a credit line, identical in all three languages, matching the manifest', () => {

@@ -67,6 +67,50 @@ test('review page lists every key with lang attributes', () => {
   expect(html).toContain('<title>');
 });
 
+/*
+ * Punctuation and look-alikes: the class of drift the sheet could not see before. Six Ukrainian values were
+ * carrying a straight apostrophe (U+0027) where the other eleven used U+2019 — invisible in a table read for
+ * meaning, audible in a screen reader and visible on paper.
+ */
+test('each language keeps its own apostrophes and quotation marks', () => {
+  const found = findSuspicious({
+    en: { 'a.ok': "It doesn't move.", 'a.bad': 'It doesn’t move.', 'b.ok': 'He said “north”.', 'b.bad': 'He said "north".' },
+    pl: { 'a.ok': 'To się nie rusza.', 'a.bad': 'To się nie rusza.', 'b.ok': 'Powiedział „połnoc”.', 'b.bad': 'Powiedział «północ».' },
+    uk: { 'a.ok': 'З’єднує.', 'a.bad': "З'єднує.", 'b.ok': '«північ»', 'b.bad': '“північ”' },
+  });
+  expect(found).toEqual([
+    { key: 'a.bad', lang: 'en', reason: 'punctuation' },
+    { key: 'a.bad', lang: 'uk', reason: 'punctuation' },
+    { key: 'b.bad', lang: 'en', reason: 'punctuation' },
+    { key: 'b.bad', lang: 'pl', reason: 'punctuation' },
+    { key: 'b.bad', lang: 'uk', reason: 'punctuation' },
+  ]);
+});
+
+test('a word written in two alphabets at once is flagged in every file, English included', () => {
+  // Cyrillic К in "Kraków", Cyrillic о in "Oslo", Latin i in "Київ" — identical on screen, nonsense underneath.
+  const found = findSuspicious({
+    en: { 'c.one': 'Кraków', 'c.two': 'Oslo' },
+    pl: { 'c.one': 'Kraków', 'c.two': 'Оslo' },
+    uk: { 'c.one': 'Краків', 'c.two': 'Киiв' },
+  });
+  expect(found).toEqual([
+    { key: 'c.one', lang: 'en', reason: 'mixed-script' },
+    { key: 'c.two', lang: 'pl', reason: 'cyrillic-in-pl' },
+    { key: 'c.two', lang: 'uk', reason: 'latin-in-uk' },
+    { key: 'c.two', lang: 'pl', reason: 'mixed-script' },
+    { key: 'c.two', lang: 'uk', reason: 'mixed-script' },
+  ]);
+});
+
+test('a Latin brand beside Cyrillic words is not a look-alike', () => {
+  expect(findSuspicious({
+    en: { 'd.one': 'Open Google Maps', 'd.two': 'GPS receiver' },
+    pl: { 'd.one': 'Otwórz Google Mapy', 'd.two': 'Odbiornik GPS' },
+    uk: { 'd.one': 'Відкрий Google Карти', 'd.two': 'GPS-приймач' },
+  })).toEqual([]);
+});
+
 test('the CC BY licence words are allowed in the licence line only', () => {
   const found = findSuspicious({
     en: { 'cheat.foot': 'Licence: CC BY 4.0', 'other.key': 'Licence: CC BY 4.0' },

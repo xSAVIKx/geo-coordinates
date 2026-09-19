@@ -10,7 +10,10 @@ const inks = (page: Page, view: 'flat' | 'globe') => page.locator(`.view-${view}
   const lum = (v: string) => { const [r, g, b] = rgb(v).map((x) => { const s = x / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!; };
   const ratio = (a: string, b: string) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x! + 0.05) / (y! + 0.05); };
   const halo = cs.getPropertyValue('--halo');
-  return Object.fromEntries(['--text', '--map-label', '--ocean-label', '--equator-text', '--prime-text', '--antimeridian-text', '--tropics-text', '--river-label'].map((t) => [t, ratio(cs.getPropertyValue(t), halo)]));
+  // `--street-name-ink` is on the list because a street name inside a close-up box is map text like any other:
+  // it is read against the style's own halo, not against the photograph (the close-up block at the foot of this
+  // file measures it against the photograph too, as a second, weaker claim).
+  return Object.fromEntries(['--text', '--map-label', '--ocean-label', '--equator-text', '--prime-text', '--antimeridian-text', '--tropics-text', '--river-label', '--street-name-ink'].map((t) => [t, ratio(cs.getPropertyValue(t), halo)]));
 });
 
 // Every non-Atlas style's map *text* ink keeps AA against its own halo normally, AAA in presenter mode — Satellite's
@@ -149,9 +152,36 @@ for (const scheme of ['light', 'dark'] as const) {
  * caller cares about.
  */
 async function paintedGridRatios(page: Page, view: 'flat' | 'globe', keep: (bg: [number, number, number]) => boolean): Promise<number[]> {
+  return paintedRatios(page, view, '.grid, .grid-casing', keep);
+}
+
+/*
+ * Waits until the texture layer has stopped redrawing, so that the two screenshots `paintedRatios` compares are of
+ * the same picture.
+ *
+ * `waitForTexture` returns on the *first* drawn frame, and Satellite has three images to decode and hand to two
+ * renderers, so more frames follow it. A redraw landing between the two shots turns the whole frame into a
+ * difference and the measurement becomes one of the terminator rather than of the mark: the Satellite night-side
+ * test below read 1.61, 2.01, 2.25 and 2.46 on four consecutive runs of the same build, on either side of the
+ * 2.5 floor, and the same trap put 144 055 "painted" pixels into an early close-up sample where the settled runs
+ * had 44 000. Nothing about the page changed between those runs — the committed build before this task's changes
+ * fails the same way — so it is a race in the measurement, not a regression in the map.
+ */
+async function textureSettled(page: Page, view: 'flat' | 'globe'): Promise<void> {
+  let last = -1;
+  for (let i = 0; i < 40; i++) {
+    const n = await page.evaluate((v) => (window as unknown as { __mapTextures: { drawCount(v: string): number } }).__mapTextures.drawCount(v), view);
+    if (n === last) return;
+    last = n;
+    await page.waitForTimeout(150);
+  }
+}
+
+/** The same, for any mark: `hide` is the selector whose ink is being measured against what is under it. */
+async function paintedRatios(page: Page, view: 'flat' | 'globe', hide: string, keep: (bg: [number, number, number]) => boolean): Promise<number[]> {
   const frame = page.locator(`.view-${view} .frame`);
   const drawn = PNG.decode(await frame.screenshot());
-  const tag = await page.addStyleTag({ content: '.grid, .grid-casing { display: none !important; }' });
+  const tag = await page.addStyleTag({ content: `${hide} { display: none !important; }` });
   await page.waitForTimeout(150);
   const bare = PNG.decode(await frame.screenshot());
   await tag.evaluate((n) => (n as unknown as Element).remove());
@@ -184,6 +214,7 @@ for (const scheme of ['light', 'dark'] as const) {
     await setMapStyle(page, 'satellite');
     await waitForTexture(page, 'flat');
     await expect(page.locator('.view-flat .frame')).toHaveAttribute('data-map-style', 'satellite');
+    await textureSettled(page, 'flat');
     const night = await paintedGridRatios(page, 'flat', (bg) => luminance(bg) < 0.05);
     expect(night.length, 'the night side has to be on screen to be measured').toBeGreaterThan(500);
     expect(percentile(night, 0.75), 'grid over the night side is not a white cage').toBeLessThanOrEqual(7);
@@ -352,3 +383,76 @@ test('the source of each style is named under the map; the footer credits NASA E
   await expect(page.locator('footer').getByRole('link', { name: 'NASA Earth Observatory' })).toHaveAttribute('href', 'https://earthobservatory.nasa.gov/');
   await expect(page.locator('footer')).toContainText('Satellite images: NASA Earth Observatory');
 });
+
+/*
+ * The close-up box's own marks, read off the real photograph under them (Places up close, Task 8 step 3).
+ *
+ * The blocks above measure the grid over relief, over the Black Marble and over country fills. Inside one of the
+ * twelve boxes the picture is different in kind: an aerial photograph, whose roofs, tarmac, shadows and trees go
+ * from bright to near-black a few metres apart, and over which two new marks are drawn — the road, which WCAG
+ * 1.4.11 asks 3:1 of as a graphical object, and the street name.
+ *
+ * Both halves of the twelve are sampled, because they are not the same picture: Katowice is a 4.17 m/px
+ * orthophoto, where a road is a road-shaped thing in the image and the ink lies along it, and Greenwich is a 10 m
+ * Sentinel-2 scene, which is far noisier under the same ink. Both themes too, because base.css deliberately pins
+ * one pair of street inks over a photo — a photograph has no theme — so the dark-theme rows are the test of that
+ * decision rather than a repetition of the light ones, and they come out identical, which is the point.
+ *
+ * The night shading is turned off first, as the Political block does: the lab starts at the real Sun, and the
+ * terminator moving between the two screenshots put a whole extra texture redraw into one early sample (144 055
+ * "painted" pixels where the other runs had 44 000).
+ *
+ * A road is a dark core inside a light casing, so both halves of its cross-section are painted pixels and the
+ * ninetieth percentile is where the mark itself is, exactly as the Political comment above works out for the
+ * graticule. Measured with `--street-weight: 0.9` and `--street-casing` at 0.68 alpha:
+ *
+ *   box        style       scheme   road p50  road p90   name p50  name p90
+ *   katowice   physical    light      2.22      4.57       2.84      8.71
+ *   katowice   physical    dark       2.22      4.57       2.84      8.71
+ *   katowice   satellite   light      2.24      4.26       2.95      7.67
+ *   katowice   satellite   dark       2.24      4.26       2.95      7.67
+ *   greenwich  physical    light      2.05      3.89       3.00     10.61
+ *   greenwich  physical    dark       2.05      3.89       3.00     10.61
+ *   greenwich  satellite   light      2.05      3.62       3.00      8.66
+ *   greenwich  satellite   dark       2.05      3.62       3.00      8.66
+ *
+ * The worst square on the board is Greenwich in Satellite at 3.62, a fifth clear of the 3:1 floor. At the casing
+ * alphas this task tried on the way there the same square measured 3.02 (0.55) and 3.24 (0.60) — see base.css
+ * for why 0.68 was kept. The p50 floor is the same guard the graticule has: a mark whose median painted pixel is
+ * fringe is not a line, whatever its strongest pixel says.
+ *
+ * The street name is *not* held to 4.5 here, and the reason matters. A map label's background is its halo, not
+ * the picture: base.css gives every non-Atlas style a full-strength 4 px halo behind map text precisely so the
+ * photograph is never what the letters are read against, and the ink-against-halo ratio — the one WCAG 1.4.3 is
+ * about — is measured by `inks()` at the top of this file, at 4.5 normally and 7 in presenter mode, with
+ * `--street-name-ink` on its list. What is held here is the weaker second claim: that even ignoring its halo the
+ * name is a mark on the picture at 3:1. The measured 7.67 is the margin on that.
+ */
+const CLOSE_UP = { roadCore: 3, roadBody: 1.9, nameOverPhoto: 3 } as const;
+for (const scheme of ['light', 'dark'] as const) {
+  for (const style of ['physical', 'satellite'] as const) {
+    for (const [box, kind] of [['katowice', '4.17 m orthophoto'], ['greenwich', '10 m Sentinel-2']] as const) {
+      test(`close-up marks over the real photo: ${box} (${kind}), ${style}, ${scheme}`, async ({ page }) => {
+        test.setTimeout(90_000);
+        await page.emulateMedia({ colorScheme: scheme });
+        await openPage(page, 'en/lab', '?test');
+        await setMapStyle(page, style);
+        await waitForTexture(page, 'flat');
+        await page.evaluate(() => { (window as unknown as { __mapState: { layers: { daylight: boolean } } }).__mapState.layers.daylight = false; });
+        await page.evaluate((id) => (window as unknown as { __mapState: { showCityBox(id: string): unknown } }).__mapState.showCityBox(id), box);
+        await expect(page.locator(`.view-flat g.streets[data-city-box="${box}"]`)).toHaveCount(1);
+        await expect(page.locator('.view-flat text.street-name').first()).toBeVisible();
+        await textureSettled(page, 'flat');
+        const all = () => true;
+        const roads = await paintedRatios(page, 'flat', '.view-flat .road, .view-flat .road-casing', all);
+        const names = await paintedRatios(page, 'flat', '.view-flat text.street-name', all);
+        expect(roads.length, 'the roads have to be on screen to be measured').toBeGreaterThan(5000);
+        expect(names.length, 'the names have to be on screen to be measured').toBeGreaterThan(1000);
+        expect(percentile(roads, 0.9), 'road mark over the photo').toBeGreaterThanOrEqual(CLOSE_UP.roadCore);
+        expect(percentile(roads, 0.5), 'road body over the photo').toBeGreaterThanOrEqual(CLOSE_UP.roadBody);
+        expect(percentile(names, 0.9), 'street-name ink over the photo, halo ignored').toBeGreaterThanOrEqual(CLOSE_UP.nameOverPhoto);
+        expect(pageErrors(page)).toEqual([]);
+      });
+    }
+  }
+}

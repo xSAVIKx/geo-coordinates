@@ -150,6 +150,10 @@
   --street-water: #7fb3d5;
   --street-green: #bcd9a6;
   --street-name-ink: #3a3a3a;
+  /* One factor on the whole road ladder (Streets.svelte). 1 where the street map *is* the map; base.css takes it
+     down over an aerial photo, where the same ink closed over the picture. Not theme-dependent: a photo has no
+     theme, and Atlas's and Political's drawn maps want the full weight in both. */
+  --street-weight: 1;
 }
 
 @media (prefers-color-scheme: dark) {

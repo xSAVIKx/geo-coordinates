@@ -160,6 +160,19 @@ const GAP = 0.2;
  * all 9 881 names in the twelve boxes, in the page, in the page's own font: it reserves at least the ink for
  * every one of them, and 17% too much on average, which costs a name here and there on a crowded view and is the
  * right side to err on. tests/e2e/city-streets.spec.ts measures the drawn glyphs at Tokyo and holds it.
+ *
+ * The 0.74 bucket was fitted on the scripts the twelve boxes actually carry, which left the question of a
+ * thirteenth box in one they do not. The scripts a world map might plausibly reach were therefore measured too,
+ * in the page, at the street font, with `getComputedTextLength`. Em per character, measured:
+ *
+ *   Devanagari 0.24 · Tibetan 0.38 · Myanmar 0.45 · Thai 0.47 · Arabic 0.48 · Hebrew 0.53 · Latin 0.55
+ *   Khmer 0.56 · Georgian 0.63 · Ethiopic 0.63 · Greek 0.65 · Cyrillic 0.67 · Armenian 0.73 · Hangul/CJK 1.01
+ *
+ * The bucket holds for every one of them: Thai, Tibetan and Hebrew — the three the review asked about — are
+ * reserved 57%, 96% and 40% more than their ink, and the tightest non-square script anywhere near the bucket is
+ * Armenian at 0.73, which SAFETY still covers by 6%. Hangul and CJK are the square-body case WIDE_SCRIPTS below
+ * already carries at 1.05. Nothing needed widening; what was missing was the measurement, and
+ * tests/e2e/city-a11y.spec.ts now takes it on every run.
  */
 // The last range is the ideographs beyond the basic plane; `for\u2026of` walks code points, so they arrive whole.
 const WIDE_SCRIPTS = /[\u1100-\u11ff\u2e80-\u303e\u3041-\u33ff\u3400-\u4dbf\u4e00-\u9fff\ua000-\ua4cf\uac00-\ud7a3\uf900-\ufaff\ufe30-\ufe4f\uff00-\uff60\uffe0-\uffe6\u{20000}-\u{3ffff}]/u;
@@ -177,6 +190,38 @@ export function streetLabelWidth(text: string, size: number, px: number): number
 const isDistrict = (id: string) => id.startsWith('n');
 
 /**
+ * The part of the view the box itself covers, in CSS px — where a street name is allowed to be written.
+ *
+ * A street name names something inside the box, and outside the box there is nothing under it: the roads stop at
+ * the box's edge, so a name written past it floats on the bare world map. Three things used to do that.
+ *
+ *  - Below the fit zoom the box is smaller than the view. At flat zoom 200 — the zoom district names start at —
+ *    Katowice's box is 45 px across, and "Osiedle Paderewskiego" was written 155 px wide beside it, on open
+ *    countryside. That is the finding this rule answers, and it answers it at every zoom rather than by moving
+ *    PLACE_NAME_ZOOM to another number that is right at one zoom and wrong at the next.
+ *  - At the fit zoom itself one axis fills the view and the other does not: a box is 3 by 2 km, the view is 2:1,
+ *    so Rovaniemi's box leaves a 67 px strip of world map above and below it and Mitad del Mundo a 72 px strip
+ *    either side. Four Rovaniemi street names stood in those strips.
+ *  - On the globe (zoom 24-60) a box is a few pixels, so nothing is written there at all, which is right.
+ *
+ * Clamped to the view, so deeper than the fit zoom — where the box is larger than the view — this is exactly the
+ * old view test. If a corner cannot be projected (the globe's far side) the view is used, and the name's own
+ * `insideView` check still holds.
+ */
+function boxRect(ctx: ViewCtx, box: CityBox): LabelBox {
+  const view: LabelBox = { left: 0, top: 0, right: ctx.width, bottom: ctx.height };
+  const { west, east, south, north } = box.bounds;
+  const corners = [[north, west], [north, east], [south, west], [south, east]] as const;
+  const pts = corners.map(([lat, lon]) => ctx.project({ lat, lon }));
+  if (pts.some((p) => p === null)) return view;
+  const xs = pts.map((p) => p![0]), ys = pts.map((p) => p![1]);
+  return {
+    left: Math.max(view.left, Math.min(...xs)), right: Math.min(view.right, Math.max(...xs)),
+    top: Math.max(view.top, Math.min(...ys)), bottom: Math.min(view.bottom, Math.max(...ys)),
+  };
+}
+
+/**
  * Street and district names inside a city close-up box (spec §5). Placed last of everything on the map: the
  * `obstacles` Places.svelte hands in are every label the lesson has already put down — places, schools, the point,
  * the special-line names, overlay texts and the edge numbers — so a street name is left out rather than pushed
@@ -186,6 +231,7 @@ const isDistrict = (id: string) => id.startsWith('n');
  */
 export function placeStreetLabels(ctx: ViewCtx, box: CityBox, lang: LangCode, obstacles: readonly LabelBox[]): StyleLabel[] {
   const size = STREET_FONT * ctx.px;
+  const clip = boxRect(ctx, box);
   const items = streetsFor(box, ctx.zoom, ctx.bounds, lang).names.flatMap((n) => {
     const xy = ctx.project(n);
     if (!xy || !insideView(ctx, xy)) return [];
@@ -200,7 +246,7 @@ export function placeStreetLabels(ctx: ViewCtx, box: CityBox, lang: LangCode, ob
     };
     const step = size * 1.2;
     const options = [at(0, 0), at(0, -step), at(0, step)]
-      .filter((o) => o.box.left >= 0 && o.box.right <= ctx.width && o.box.top >= 0 && o.box.bottom <= ctx.height);
+      .filter((o) => o.box.left >= clip.left && o.box.right <= clip.right && o.box.top >= clip.top && o.box.bottom <= clip.bottom);
     if (options.length === 0) return [];
     // District names come first: their ids begin with `n` (an OSM node), a street name's with `r`
     // (see scripts/build-city-streets.ts and streets.ts). Then the streets, biggest first — the road a pupil can

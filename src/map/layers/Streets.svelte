@@ -57,20 +57,29 @@
 {/if}
 
 <style>
+  /*
+   * Every stroke here is `its own px x --stroke-scale x --street-weight`. The last factor is 1 on a drawn map
+   * (Atlas, Political), where these weights were drawn to be the map, and 0.9 over an aerial photo (base.css),
+   * where they are drawn *on* the thing the pupil came to look at. At full weight the near-white casings closed
+   * over the photo: at Katowice's fit zoom the layer paints 657 residential segments and at Tokyo's 1 899, each
+   * with a 3.4 px light casing under a 1.8 px core, and the roofs, yards and tracks underneath stopped showing
+   * between them. The factor is on the whole ladder, not on the small classes alone, so the hierarchy a pupil
+   * reads the map by — motorway widest, footway thinnest — is exactly the same picture, nine tenths the ink.
+   */
   .streets { pointer-events: none; }
   .green { fill: var(--street-green); stroke: none; }
   .water { fill: var(--street-water); stroke: none; }
-  .waterway { fill: none; stroke: var(--street-water); stroke-width: calc(1.6px * var(--stroke-scale)); stroke-linecap: round; vector-effect: non-scaling-stroke; }
-  .rail { fill: none; stroke: var(--street-rail); stroke-width: calc(1.4px * var(--stroke-scale)); stroke-dasharray: 7 4; vector-effect: non-scaling-stroke; }
+  .waterway { fill: none; stroke: var(--street-water); stroke-width: calc(1.6px * var(--stroke-scale) * var(--street-weight)); stroke-linecap: round; vector-effect: non-scaling-stroke; }
+  .rail { fill: none; stroke: var(--street-rail); stroke-width: calc(1.4px * var(--stroke-scale) * var(--street-weight)); stroke-dasharray: 7 4; vector-effect: non-scaling-stroke; }
   /* Not `.casing`: base.css gives that class — the special lines', the point guides', the marker rims' — its own
      weight over a picture, and those marks must stay the most prominent things on the map. */
   .road-casing { fill: none; stroke: var(--street-casing); stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
   .road { fill: none; stroke: var(--street-ink); stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
   /* Motorways widest, footways thinnest; the casing is 2 px wider than its road at every class. */
-  .road-casing.c0 { stroke-width: calc(8px * var(--stroke-scale)); } .road.c0 { stroke-width: calc(6px * var(--stroke-scale)); stroke: var(--street-major); }
-  .road-casing.c1 { stroke-width: calc(6.5px * var(--stroke-scale)); } .road.c1 { stroke-width: calc(4.5px * var(--stroke-scale)); stroke: var(--street-major); }
-  .road-casing.c2 { stroke-width: calc(5.5px * var(--stroke-scale)); } .road.c2 { stroke-width: calc(3.5px * var(--stroke-scale)); }
-  .road-casing.c3 { stroke-width: calc(4.5px * var(--stroke-scale)); } .road.c3 { stroke-width: calc(2.6px * var(--stroke-scale)); }
-  .road-casing.c4 { stroke-width: calc(3.4px * var(--stroke-scale)); } .road.c4 { stroke-width: calc(1.8px * var(--stroke-scale)); }
-  .road-casing.c5 { stroke-width: calc(2.4px * var(--stroke-scale)); } .road.c5 { stroke-width: calc(1.1px * var(--stroke-scale)); stroke-dasharray: 3 3; }
+  .road-casing.c0 { stroke-width: calc(8px * var(--stroke-scale) * var(--street-weight)); } .road.c0 { stroke-width: calc(6px * var(--stroke-scale) * var(--street-weight)); stroke: var(--street-major); }
+  .road-casing.c1 { stroke-width: calc(6.5px * var(--stroke-scale) * var(--street-weight)); } .road.c1 { stroke-width: calc(4.5px * var(--stroke-scale) * var(--street-weight)); stroke: var(--street-major); }
+  .road-casing.c2 { stroke-width: calc(5.5px * var(--stroke-scale) * var(--street-weight)); } .road.c2 { stroke-width: calc(3.5px * var(--stroke-scale) * var(--street-weight)); }
+  .road-casing.c3 { stroke-width: calc(4.5px * var(--stroke-scale) * var(--street-weight)); } .road.c3 { stroke-width: calc(2.6px * var(--stroke-scale) * var(--street-weight)); }
+  .road-casing.c4 { stroke-width: calc(3.4px * var(--stroke-scale) * var(--street-weight)); } .road.c4 { stroke-width: calc(1.8px * var(--stroke-scale) * var(--street-weight)); }
+  .road-casing.c5 { stroke-width: calc(2.4px * var(--stroke-scale) * var(--street-weight)); } .road.c5 { stroke-width: calc(1.1px * var(--stroke-scale) * var(--street-weight)); stroke-dasharray: 3 3; }
 </style>
