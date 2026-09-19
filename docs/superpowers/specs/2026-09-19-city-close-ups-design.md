@@ -35,6 +35,7 @@ Today the sharpest imagery is the Central Europe tile at about 1.9 km per pixel,
 | Budget | Raise the single-file limit from 5 MiB to **8 MiB**; about twelve places at full detail |
 | The twelve | The school and Katowice; Greenwich Observatory; Mitad del Mundo (Ecuador); the Arctic Circle marker at Rovaniemi; Warsaw; Kraków; Paris; Manhattan; Delhi; Sydney; Tokyo; Giza |
 | Where it appears | Free play, the lab, and topic 9's "find coordinates in a map app" step. Not in questions, rehearsal or worksheets |
+| Switch | A Settings toggle "Places up close", default on, hiding the feature without changing the file size |
 
 ## 3. The twelve boxes
 
@@ -81,7 +82,9 @@ Exact boxes are fixed in the build script and listed in the data manifest.
 - **The places list** (the existing schools and places disclosure) gains a "Places up close" group with the twelve, each centring the map and setting the zoom so the box fills the view.
 - **A short note** appears for the three teaching places, e.g. "The prime meridian is painted across this courtyard — you are standing on 0° longitude." EN/PL/UK.
 - **Topic 9's `find` step** gains one sentence pointing at the feature, since that is the step about reading coordinates from a phone map.
-- **No new toggle.** The close-ups are part of the map, not a mode.
+- **A settings switch** (owner request): Settings gains "Places up close", default **on**. Off hides the photos, the street layer and the twelve list entries, leaving the map exactly as it is today. Saved like the other settings, per pupil.
+  - It is a display switch, not a download switch: the data is in the file either way. If the 8 MiB first load is the concern, the lever is a second lean build without the close-ups, which this spec does not cover.
+  - When off, the map's text description and topic 9's extra sentence drop the close-up wording too, so nothing refers to something the pupil cannot see.
 - Accessibility: the list entries are ordinary buttons; the new layer is decorative for screen readers except the names, which follow the existing map-label rules; the map's text description gains one sentence when a city box is on screen.
 
 ## 7. Constraints
