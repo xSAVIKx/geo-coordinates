@@ -2,15 +2,19 @@
   import { t } from '../i18n/i18n.svelte';
   import { mapState } from './mapState.svelte';
   import { styleUnavailable } from './texture/fallback';
-  import { renderHealth } from './texture/health.svelte';
+  import { isLocalCopy, OFFLINE_FILE_URL } from './texture/dataBlock';
+  import { renderHealth, retryDownloads } from './texture/health.svelte';
   // Spec §4 fallback step 3: the chosen style cannot be drawn on this device, so the map shows Atlas and says so once.
   const unavailable = $derived(styleUnavailable(mapState.chosenMapStyle, renderHealth.state));
+  // A map file that could not be downloaded (hosted page only). A copy saved from the hosted page and opened from
+  // disk has no data inside, so retrying there does not help: it points to the offline file instead.
+  const localCopy = isLocalCopy();
 </script>
 
-<p class="style-note" role="status">{#if unavailable}<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7.5v5.5M12 16.2v.3" /></svg>{t('map.style.fallback')}{/if}</p>
+<p class="style-note" role="status">{#if unavailable}<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7.5v5.5M12 16.2v.3" /></svg>{t('map.style.fallback')}{:else if renderHealth.downloadFailed}<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7.5v5.5M12 16.2v.3" /></svg>{#if localCopy}<span>{t('map.download.localCopy')} <a href={OFFLINE_FILE_URL} rel="noopener">{t('map.download.offlineFile')}</a></span>{:else}<span>{t('map.download.failed')}</span><button type="button" class="btn quiet" onclick={retryDownloads}>{t('map.download.retry')}</button>{/if}{/if}</p>
 
 <style>
-  .style-note { margin: 0; display: flex; gap: var(--space-2); align-items: center; color: var(--text-muted); font-size: var(--step--1); }
+  .style-note { margin: 0; display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; color: var(--text-muted); font-size: var(--step--1); }
   /*
    * The live region has to be in the accessibility tree before it has anything to say: `display: none` would take it
    * out of the tree, and a live region that appears only once it is populated reads as a brand-new region, which most

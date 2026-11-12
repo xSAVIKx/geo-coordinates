@@ -16,17 +16,55 @@ export function decodeBase64(b64: string): Uint8Array<ArrayBuffer> {
 }
 
 /**
- * The bytes of the block with this element id, or null when the page has no such block.
- * Throws when the block names a file that cannot be downloaded.
+ * A data file that the page could not download: no network, a dropped connection, or an HTTP error such as the 404
+ * that an old tab gets after a new deploy has renamed the files. This is not a fault of the device. A caller must not
+ * move the render tier for it, and the next attempt may well succeed.
  */
-export async function blockBytes(id: string, doc: Document = document): Promise<Uint8Array<ArrayBuffer> | null> {
+export class DataFetchFailure extends Error {
+  /** `status` is the HTTP status, or 0 when no response came back at all. */
+  constructor(readonly src: string, readonly status: number, message: string) {
+    super(message);
+    this.name = 'DataFetchFailure';
+  }
+}
+
+export function isDataFetchFailure(e: unknown): e is DataFetchFailure {
+  return e instanceof DataFetchFailure;
+}
+
+/**
+ * Where a pupil gets the single offline file. A hosted page saved with Ctrl+S keeps its empty blocks, so the saved
+ * copy opened from disk can draw the texture styles only while it can still reach the site.
+ */
+export const OFFLINE_FILE_URL = 'https://github.com/xSAVIKx/geo-coordinates/blob/main/dist/geo-coordinates.html';
+
+/** Whether this page is a copy opened from disk (file://), not the hosted page. */
+export function isLocalCopy(loc: { protocol: string } | undefined = globalThis.location): boolean {
+  return loc?.protocol === 'file:';
+}
+
+/**
+ * The bytes of the block with this element id, or null when the page has no such block.
+ * Throws a `DataFetchFailure` when the block names a file that cannot be downloaded.
+ */
+export async function blockBytes(id: string, doc: Document = document, get: typeof fetch = fetch): Promise<Uint8Array<ArrayBuffer> | null> {
   const block = doc.getElementById(id);
   if (!block) return null;
   const text = block.textContent ?? '';
   if (text.trim()) return decodeBase64(text);
   const src = block.getAttribute('data-src');
   if (!src) return null;
-  const res = await fetch(new URL(src, doc.baseURI));
-  if (!res.ok) throw new Error(`${src}: HTTP ${res.status}`);
-  return new Uint8Array(await res.arrayBuffer());
+  let res: Response;
+  try {
+    res = await get(new URL(src, doc.baseURI));
+  } catch (e) {
+    throw new DataFetchFailure(src, 0, `${src}: ${(e as Error).message}`);
+  }
+  if (!res.ok) throw new DataFetchFailure(src, res.status, `${src}: HTTP ${res.status}`);
+  try {
+    return new Uint8Array(await res.arrayBuffer());
+  } catch (e) {
+    // The connection dropped part way through the body.
+    throw new DataFetchFailure(src, 0, `${src}: ${(e as Error).message}`);
+  }
 }

@@ -3,7 +3,7 @@ import { testFlag } from '../../app/testMode';
 import type { TextureStyle } from '../mapStyle';
 import { RenderFailure, type StyleTextures } from './renderer';
 import { countTextureDecode } from './testHooks';
-import { blockBytes } from './dataBlock';
+import { blockBytes, isDataFetchFailure } from './dataBlock';
 
 /*
  * The embedded map textures (scripts/textures-plugin.ts puts each WebP into the page as base64 in a
@@ -88,6 +88,8 @@ export function loadTexture(id: TextureId, maxSize: number): Promise<ImageBitmap
         return await createImageBitmap(blob, { imageOrientation: 'none', premultiplyAlpha: 'none', colorSpaceConversion: 'none', ...(size.width < t.width ? { resizeWidth: size.width, resizeHeight: size.height, resizeQuality: 'high' as const } : {}) });
       } catch (e) {
         if (e instanceof RenderFailure) throw e;
+        // A download that failed is the network's fault, not the device's: it must not cost the render tier.
+        if (isDataFetchFailure(e)) throw new RenderFailure('network', `texture ${id}: ${e.message}`);
         throw new RenderFailure('decode', `texture ${id}: ${(e as Error).message}`);
       }
     })();
