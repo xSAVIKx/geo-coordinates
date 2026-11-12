@@ -95,9 +95,7 @@
   // check is a WebGL one: the CPU path samples its own 2048 px copies whatever the GPU would have allowed.
   $effect(() => {
     const r = renderer, s = style;
-    void renderHealth.attempt;
-    // A new style, a new renderer or "Try again": an old download failure no longer applies.
-    renderHealth.downloadFailed = false;
+    void renderHealth.attempt; // "Try again" downloads again
     if (!r || !isTextureStyle(s)) return;
     const max = r.tier === 'webgl' ? renderHealth.state.maxTexture : 2048;
     if (r.tier === 'webgl' && r.maxTextureSize < max) { reportHealth({ type: 'fail', reason: 'texture-size' }); return; }
