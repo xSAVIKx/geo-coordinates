@@ -348,6 +348,7 @@
   "footer.label": "About this page",
   "footer.website": "{name} – website",
   "footer.github": "{name} on GitHub",
+  "footer.moreProjects": "More projects",
   "map.stage": "Map",
   "map.chooseView": "Choose view",
   "map.view.globe": "Globe",

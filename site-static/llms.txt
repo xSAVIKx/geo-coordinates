@@ -1,0 +1,33 @@
+# Coordinates on the globe
+
+> An interactive geography lesson about latitude and longitude for 6th graders, in English, Polish and Ukrainian. It has maps, a globe, a day and night lab, practice questions and printable sheets. The whole lesson is also one HTML file that works offline.
+
+The lesson is a single-page app. Each link below opens the same page at a different place (hash routes). Replace `en` with `pl` for Polish or `uk` for Ukrainian.
+
+## Lesson
+
+- [Home](https://xsavikx.github.io/geo-coordinates/#en/): the list of the ten topics, practice and tools
+- [The globe grid](https://xsavikx.github.io/geo-coordinates/#en/topic-1/explore): Meridians, parallels, the equator and hemispheres
+- [Where is it?](https://xsavikx.github.io/geo-coordinates/#en/topic-2/explore): North or south of a parallel, east or west of a meridian
+- [Reading coordinates](https://xsavikx.github.io/geo-coordinates/#en/topic-3/explore): Find the latitude and longitude of a point
+- [Finding a place](https://xsavikx.github.io/geo-coordinates/#en/topic-4/explore): Put a point on the map from its coordinates
+- [Degrees and minutes](https://xsavikx.github.io/geo-coordinates/#en/topic-5/explore): One degree has 60 minutes
+- [How many degrees apart?](https://xsavikx.github.io/geo-coordinates/#en/topic-6/explore): Differences in latitude and longitude
+- [Distance along a meridian](https://xsavikx.github.io/geo-coordinates/#en/topic-7/explore): One degree is about 111.2 km
+- [Longitude and time](https://xsavikx.github.io/geo-coordinates/#en/topic-8/explore): Day, night and local solar time
+- [Coordinates in your phone](https://xsavikx.github.io/geo-coordinates/#en/topic-9/explore): Decimal coordinates, map apps and the Mercator map
+- [Why we have seasons](https://xsavikx.github.io/geo-coordinates/#en/topic-10/explore): The Earth's orbit, its tilted axis, solstices and equinoxes
+
+## Tools
+
+- [Day and night lab](https://xsavikx.github.io/geo-coordinates/#en/lab): Move the Sun through the day and the year. Watch day and night travel around the Earth and see what time it is in different places.
+- [Test rehearsal](https://xsavikx.github.io/geo-coordinates/#en/rehearsal): 15 questions from all topics. You will see the answers at the end, just like after a real test.
+- [Cheat sheet](https://xsavikx.github.io/geo-coordinates/#en/cheatsheet): a printable summary of every rule
+- [Worksheet](https://xsavikx.github.io/geo-coordinates/#en/worksheet): a printable worksheet with an answer key
+
+## Optional
+
+- [Source code](https://github.com/xSAVIKx/geo-coordinates): the repository, with the offline file in `dist/geo-coordinates.html`
+- [Translation review](https://xsavikx.github.io/geo-coordinates/translation-review.html): every text of the lesson in the three languages, side by side
+- [Sitemap](https://xsavikx.github.io/geo-coordinates/sitemap.xml)
+- [More projects](https://xsavikx.github.io/): other projects by the same author
