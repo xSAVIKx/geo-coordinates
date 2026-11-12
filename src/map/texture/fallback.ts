@@ -5,7 +5,7 @@ import { isTextureStyle, type MapStyle, type TextureStyle } from '../mapStyle';
  * state machine, kept for the page session only (never saved). Planning ruling R3 fixes where each trigger goes.
  */
 export type RenderTier = 'webgl' | 'canvas' | 'atlas';
-export type FailReason = 'no-webgl' | 'shader' | 'texture-size' | 'decode' | 'oom' | 'context-lost' | 'render' | 'no-canvas';
+export type FailReason = 'no-webgl' | 'shader' | 'texture-size' | 'decode' | 'oom' | 'context-lost' | 'render' | 'no-canvas' | 'network';
 
 export interface RenderHealth {
   tier: RenderTier;
@@ -42,6 +42,9 @@ export function nextHealth(s: RenderHealth, e: HealthEvent): RenderHealth {
     case 'restore-timeout':
       return s.tier === 'webgl' && s.waitingForRestore ? down(s, 'context-lost') : s;
     case 'fail':
+      // A data file that could not be downloaded says nothing about this device. The tier stays, and the next
+      // selection of the style downloads again (TextureLayer.svelte shows a short note in the meantime).
+      if (e.reason === 'network') return s;
       if (e.reason === 'decode') return { ...s, tier: 'atlas', waitingForRestore: false, reasons: [...s.reasons, 'decode'] };
       if (e.reason === 'texture-size' && s.tier === 'webgl' && s.maxTexture === 4096) return { ...s, maxTexture: 2048, reasons: [...s.reasons, 'texture-size'] };
       return down(s, e.reason);

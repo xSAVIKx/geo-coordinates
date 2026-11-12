@@ -18,6 +18,15 @@ describe('fallback chain: WebGL → canvas → Atlas', () => {
   test('an image that cannot be decoded goes straight to Atlas (the canvas needs the same images)', () => {
     expect(run(fail('decode')).tier).toBe('atlas');
   });
+  test('a data file that could not be downloaded changes nothing: no tier, no reason, no Atlas note', () => {
+    expect(run(fail('network'))).toBe(INITIAL_HEALTH);
+    const canvas = run(fail('no-webgl'));
+    expect(nextHealth(canvas, fail('network'))).toBe(canvas);
+    const small = run(fail('texture-size'));
+    expect(nextHealth(small, fail('network'))).toBe(small);
+    expect(styleUnavailable('satellite', run(fail('network')))).toBe(false);
+    expect(effectiveStyle('physical', run(fail('network'), fail('network')))).toBe('physical');
+  });
   test('a lost context waits; restored it stays on WebGL; not restored in time it moves to canvas', () => {
     expect(run({ type: 'context-lost' })).toMatchObject({ tier: 'webgl', waitingForRestore: true });
     expect(run({ type: 'context-lost' }, { type: 'context-restored' })).toMatchObject({ tier: 'webgl', waitingForRestore: false });

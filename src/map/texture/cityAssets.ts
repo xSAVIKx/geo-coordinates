@@ -1,7 +1,7 @@
 import manifest from '../data/city/photos/manifest.json';
 import type { GeoBounds } from '../geometry';
 import type { CityBoxId } from '../cityBoxes';
-import { blockBytes } from './dataBlock';
+import { blockBytes, isDataFetchFailure } from './dataBlock';
 import { testFlag } from '../../app/testMode';
 import { RenderFailure } from './renderer';
 import { countTextureDecode } from './testHooks';
@@ -107,6 +107,8 @@ export function loadCityPhoto(id: CityBoxId): Promise<ImageBitmap> {
         return await createImageBitmap(blob, { imageOrientation: 'none', premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
       } catch (e) {
         if (e instanceof RenderFailure) throw e;
+        // A download that failed is the network's fault, not the device's: it must not cost the render tier.
+        if (isDataFetchFailure(e)) throw new RenderFailure('network', `city photo ${id}: ${e.message}`);
         throw new RenderFailure('decode', `city photo ${id}: ${(e as Error).message}`);
       }
     })();

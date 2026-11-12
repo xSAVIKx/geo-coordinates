@@ -2,7 +2,7 @@ import { feature, mesh } from 'topojson-client';
 import type { GeometryObject } from 'topojson-specification';
 import { CITY_STREET_ZOOM, type CityBox, type CityBoxId } from './cityBoxes';
 import { unpackStreetBytes, type StreetClass, type StreetRoad, type StreetTopology } from './cityStreets';
-import { blockBytes } from './texture/dataBlock';
+import { blockBytes, isDataFetchFailure } from './texture/dataBlock';
 import type { GeoBounds } from './geometry';
 import type { LangCode } from '../geo/types';
 import { asMultiPolygon, decodeArcs, levelOfDetail, lineParts, polygonParts, visibleParts, type Part } from './world';
@@ -169,6 +169,13 @@ type Road = GeometryObject & { properties: StreetRoad };
 
 const boxes = new Map<CityBoxId, (zoom: number) => BoxData>();
 const loading = new Map<CityBoxId, Promise<boolean>>();
+/**
+ * A box whose data file could not be downloaded: when the next attempt may start, and how many failed in a row.
+ * The wait doubles from 2 s up to a minute, so a dead network does not get a request on every frame.
+ */
+const retry = new Map<CityBoxId, { at: number; failures: number }>();
+const RETRY_FIRST_MS = 2000;
+const RETRY_MAX_MS = 60_000;
 const listeners = new Set<() => void>();
 
 /** A fresh empty result. Not one shared object: callers are handed a value they may keep and read at any time. */
@@ -303,13 +310,30 @@ function build(t: StreetTopology, names: NameCandidate[], places: NameCandidate[
  * Reads the box's data block, once. Resolves true when the box's streets are ready to draw, false when they cannot
  * be had at all — a block missing from the page, a browser with no DecompressionStream, a topology of the wrong
  * shape. A false is remembered, so a page that cannot unpack does not try again on every frame.
+ *
+ * A data file that could not be downloaded is the exception: that false is not remembered, so a later call
+ * downloads again, after a wait that grows with each failure in a row (`retry`). `now` is for tests.
  */
-export function loadStreets(id: CityBoxId): Promise<boolean> {
+export function loadStreets(id: CityBoxId, now: number = Date.now()): Promise<boolean> {
   const started = loading.get(id);
   if (started) return started;
+  const wait = retry.get(id);
+  if (wait && now < wait.at) return Promise.resolve(false);
   const run = (async () => {
     try {
-      const bytes = await blockBytes(`geo-city-${id}`);
+      let bytes: Uint8Array<ArrayBuffer> | null;
+      try {
+        bytes = await blockBytes(`geo-city-${id}`);
+      } catch (e) {
+        if (!isDataFetchFailure(e)) throw e;
+        const failures = (retry.get(id)?.failures ?? 0) + 1;
+        const delay = Math.min(RETRY_MAX_MS, RETRY_FIRST_MS * 2 ** (failures - 1));
+        retry.set(id, { at: now + delay, failures });
+        loading.delete(id);
+        console.warn(`city streets: the data file for ${id} could not be downloaded; trying again in ${delay / 1000} s:`, e);
+        return false;
+      }
+      retry.delete(id);
       if (!bytes) {
         console.warn(`city streets: data for ${id} is missing from the page (geo-city-${id})`);
         return false;
