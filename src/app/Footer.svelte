@@ -30,6 +30,8 @@
     <a href={AUTHOR.url} rel="author">{t('footer.website', { name: AUTHOR.name })}</a>
     <span class="sep" aria-hidden="true"> · </span>
     <a href={AUTHOR.github} rel="noopener">{t('footer.github', { name: AUTHOR.name })}</a>
+    <span class="sep" aria-hidden="true"> · </span>
+    <a href={AUTHOR.projects} rel="noopener">{t('footer.moreProjects')}</a>
   </p>
   <p class="schools">{t('footer.schools', { date: retrieved })}</p>
   <p class="close-ups">
