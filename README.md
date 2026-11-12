@@ -143,9 +143,12 @@ IGN, GSI and USGS NAIP) described above under Credits and in
 ## Publishing
 
 The built file is static. `dist/` is committed for offline use. GitHub Pages is served from a
-GitHub Actions workflow (`.github/workflows/pages.yml`) that builds the project and publishes
-`dist/geo-coordinates.html` as `index.html`, alongside `dist/translation-review.html` and the files in
-`site-static/`: the web app manifest and its icons, the social card (`og-image.png`) and a sitemap.
+GitHub Actions workflow (`.github/workflows/pages.yml`) that builds the project and runs `npm run site`
+(`scripts/build-site.ts`). That script publishes `dist/geo-coordinates.html` as `index.html`, with two changes:
+the app script moves to its own file, and the map textures, city photos and street data move into `data/`. The
+page downloads each data file only when it needs it. The offline file in `dist/` keeps all of them inside. Next to the page go
+`dist/translation-review.html` and the files in `site-static/`: the web app manifest and its icons, the social
+card (`og-image.png`) and a sitemap.
 
 The page head carries a search description, a canonical URL, Open Graph and Twitter card tags, theme colours and
 LearningResource structured data. The favicon and the Apple touch icon are inlined as data URIs at build time

@@ -63,10 +63,20 @@ function looksLikeStreets(value: unknown): value is StreetTopology {
  * `base64` is the text of a <script type="application/x-geo-city"> block; whitespace in it is ignored.
  */
 export async function unpackStreetTopology(base64: string): Promise<StreetTopology | null> {
-  if (!canUnpackStreets()) return null;
+  let bytes: Uint8Array<ArrayBuffer>;
   try {
     const binary = atob(base64.replace(/\s+/g, ''));
-    const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+    bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+  } catch {
+    return null;
+  }
+  return unpackStreetBytes(bytes);
+}
+
+/** One box's street topology from the bytes of its gzipped file, or null if it cannot be had. */
+export async function unpackStreetBytes(bytes: Uint8Array<ArrayBuffer>): Promise<StreetTopology | null> {
+  if (!canUnpackStreets()) return null;
+  try {
     const inflated = new Response(bytes).body?.pipeThrough(new DecompressionStream(STREET_ENCODING));
     if (!inflated) return null;
     const parsed: unknown = JSON.parse(await new Response(inflated).text());

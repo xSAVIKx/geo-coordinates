@@ -14,6 +14,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && node --experimental-strip-types scripts/size-check.ts && node --experimental-strip-types scripts/translation-review.ts",
+    "site": "node --experimental-strip-types scripts/build-site.ts site",
     "check": "svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
     "test": "vitest run",
     "e2e": "playwright test",

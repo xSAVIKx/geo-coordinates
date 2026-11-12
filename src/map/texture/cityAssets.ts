@@ -1,7 +1,7 @@
 import manifest from '../data/city/photos/manifest.json';
 import type { GeoBounds } from '../geometry';
 import type { CityBoxId } from '../cityBoxes';
-import { decodeBase64 } from './assets';
+import { blockBytes, isDataFetchFailure } from './dataBlock';
 import { testFlag } from '../../app/testMode';
 import { RenderFailure } from './renderer';
 import { countTextureDecode } from './testHooks';
@@ -99,13 +99,16 @@ export function loadCityPhoto(id: CityBoxId): Promise<ImageBitmap> {
       // for; what matters is what the page does next, and TextureLayer's answer is "give this box back and keep
       // the style" (tests/e2e/city-photo.spec.ts).
       if (testFlag('cityPhoto') === 'fail') throw new RenderFailure('decode', `city photo ${id}: decoding switched off for a test`);
-      const block = document.getElementById(`geo-photo-${id}`);
-      if (!block?.textContent) throw new RenderFailure('decode', `city photo ${id} is missing from the page`);
       try {
-        const blob = new Blob([decodeBase64(block.textContent)], { type: 'image/webp' });
+        const bytes = await blockBytes(`geo-photo-${id}`);
+        if (!bytes) throw new RenderFailure('decode', `city photo ${id} is missing from the page`);
+        const blob = new Blob([bytes], { type: 'image/webp' });
         countTextureDecode();
         return await createImageBitmap(blob, { imageOrientation: 'none', premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
       } catch (e) {
+        if (e instanceof RenderFailure) throw e;
+        // A download that failed is the network's fault, not the device's: it must not cost the render tier.
+        if (isDataFetchFailure(e)) throw new RenderFailure('network', `city photo ${id}: ${e.message}`);
         throw new RenderFailure('decode', `city photo ${id}: ${(e as Error).message}`);
       }
     })();

@@ -72,6 +72,8 @@
   function fail(e: unknown): void {
     console.warn(`map texture (${view}):`, e);
     unready();
+    // A file that could not be downloaded is not the device's fault: say so, and keep the tier for the next try.
+    if (e instanceof RenderFailure && e.reason === 'network') { renderHealth.downloadFailed = true; return; }
     reportHealth({ type: 'fail', reason: e instanceof RenderFailure ? e.reason : 'render' });
   }
 
@@ -93,6 +95,7 @@
   // check is a WebGL one: the CPU path samples its own 2048 px copies whatever the GPU would have allowed.
   $effect(() => {
     const r = renderer, s = style;
+    void renderHealth.attempt; // "Try again" downloads again
     if (!r || !isTextureStyle(s)) return;
     const max = r.tier === 'webgl' ? renderHealth.state.maxTexture : 2048;
     if (r.tier === 'webgl' && r.maxTextureSize < max) { reportHealth({ type: 'fail', reason: 'texture-size' }); return; }
@@ -103,6 +106,7 @@
     loadStyleTextures(s, max, withNight).then(
       (t) => {
         if (cancelled) return;
+        renderHealth.downloadFailed = false;
         try {
           r.setTextures(t); countTextureUpload(); loaded = s; loadedNight = t.night !== null; markReady(s);
           // This renderer now holds its own copy, so the *other* style's decoded images (and any left over from a
@@ -120,6 +124,7 @@
   // The box's photo, decoded on first entry and given back when the view leaves every box (ruling R13).
   $effect(() => {
     const r = renderer, box = cityBox;
+    void renderHealth.attempt;
     // The claim is made before the decode starts, never when it lands: the other view runs the same sweep, and
     // a photo claimed only on arrival could be closed in between and then uploaded closed, which throws and
     // costs the page a render tier. It is dropped when there is no box in view *or* no renderer to draw one
@@ -142,6 +147,7 @@
       if (cancelled) return;
       console.warn(`map texture (${view}): the close-up photo for ${box.id} could not be drawn; the world texture stands:`, e);
       cityLoaded = null;
+      if (e instanceof RenderFailure && e.reason === 'network') renderHealth.downloadFailed = true;
       try { r.setCityTexture(null); } catch (drop) { fail(drop); }
     };
     loadCityPhoto(box.id).then(

@@ -3,11 +3,13 @@ import { testFlag } from '../../app/testMode';
 import type { TextureStyle } from '../mapStyle';
 import { RenderFailure, type StyleTextures } from './renderer';
 import { countTextureDecode } from './testHooks';
+import { blockBytes, isDataFetchFailure } from './dataBlock';
 
 /*
  * The embedded map textures (scripts/textures-plugin.ts puts each WebP into the page as base64 in a
- * <script type="application/x-geo-texture" id="geo-texture-<id>">). Decoded on first use, then kept for the page
- * session (spec §3 "Lazy decoding"), at most `maxSize` pixels along the longer edge.
+ * <script type="application/x-geo-texture" id="geo-texture-<id>">; the hosted page links the file instead, see
+ * ./dataBlock.ts). Decoded on first use, then kept for the page session (spec §3 "Lazy decoding"), at most
+ * `maxSize` pixels along the longer edge.
  */
 export type TextureId = keyof typeof manifest.textures;
 
@@ -16,13 +18,7 @@ export const STYLE_TEXTURES: Record<TextureStyle, { day: TextureId; region: Text
   satellite: { day: 'satellite-day', region: 'satellite-region', night: 'satellite-night' },
 };
 
-/** The bytes of a base64 data block. `Uint8Array<ArrayBuffer>`, not the generic one: a Blob part cannot be shared memory. */
-export function decodeBase64(b64: string): Uint8Array<ArrayBuffer> {
-  const bin = atob(b64.replace(/\s+/g, ''));
-  const out = new Uint8Array(new ArrayBuffer(bin.length));
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
-}
+export { decodeBase64 } from './dataBlock';
 
 export function fitWithin(width: number, height: number, maxSize: number): { width: number; height: number } {
   const k = Math.min(1, maxSize / Math.max(width, height));
@@ -82,15 +78,18 @@ export function loadTexture(id: TextureId, maxSize: number): Promise<ImageBitmap
   if (!p) {
     p = (async () => {
       if (testFlag('gl') === 'decode-fail') throw new RenderFailure('decode', 'decoding switched off for a test');
-      const block = document.getElementById(`geo-texture-${id}`);
-      if (!block?.textContent) throw new RenderFailure('decode', `texture ${id} is missing from the page`);
       const t = manifest.textures[id];
       const size = fitWithin(t.width, t.height, maxSize);
       try {
-        const blob = new Blob([decodeBase64(block.textContent)], { type: t.mime });
+        const bytes = await blockBytes(`geo-texture-${id}`);
+        if (!bytes) throw new RenderFailure('decode', `texture ${id} is missing from the page`);
+        const blob = new Blob([bytes], { type: t.mime });
         countTextureDecode(); // a cache miss: this image is really being decoded (tests/e2e/perf-smoke.spec.ts)
         return await createImageBitmap(blob, { imageOrientation: 'none', premultiplyAlpha: 'none', colorSpaceConversion: 'none', ...(size.width < t.width ? { resizeWidth: size.width, resizeHeight: size.height, resizeQuality: 'high' as const } : {}) });
       } catch (e) {
+        if (e instanceof RenderFailure) throw e;
+        // A download that failed is the network's fault, not the device's: it must not cost the render tier.
+        if (isDataFetchFailure(e)) throw new RenderFailure('network', `texture ${id}: ${e.message}`);
         throw new RenderFailure('decode', `texture ${id}: ${(e as Error).message}`);
       }
     })();

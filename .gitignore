@@ -5,3 +5,4 @@ shots/
 .vite/
 .cache/
 __pycache__/
+site/
