@@ -5,7 +5,9 @@ import type { GeometryCollection, Topology } from 'topojson-specification';
 import { describe, expect, test } from 'vitest';
 import worldAtlas from 'world-atlas/countries-110m.json';
 import bordersJson from '../../src/map/data/world-borders-pol.json';
-import { borders } from '../../src/map/world';
+import { worldBorders } from '../../src/map/world';
+
+const borders = worldBorders();
 
 type Countries = Topology<{ countries: GeometryCollection }>;
 const topo = bordersJson as unknown as Countries;
