@@ -2,7 +2,7 @@ import { geoArea } from 'd3-geo';
 import { describe, expect, test } from 'vitest';
 import { makeFlatCtx, makeGlobeCtx } from '../../src/map/geometry';
 import { mesh } from 'topojson-client';
-import { LABELLED_RIVERS, REGION, REGION_MIN_ZOOM, bordersFor, detailFor, land, landFor, regionActive, riverLabelPoints, thinArc } from '../../src/map/world';
+import { LABELLED_RIVERS, REGION, REGION_MIN_ZOOM, bordersFor, detailFor, worldLand, landFor, regionActive, riverLabelPoints, thinArc } from '../../src/map/world';
 import regionJson from '../../src/map/data/central-europe.json';
 
 const katowice = { lat: 50.26, lon: 19.02 };
@@ -14,7 +14,7 @@ describe('regional level of detail', () => {
   });
   test('world 110m only below zoom 4 or away from Central Europe', () => {
     const world = makeFlatCtx(960, 480, { lat: 0, lon: 0 }, 1, 1);
-    expect(landFor(world.zoom, world.bounds)).toEqual({ world: land, region: null });
+    expect(landFor(world.zoom, world.bounds)).toEqual({ world: worldLand(), region: null });
     const europe = makeFlatCtx(960, 480, { lat: 52, lon: 15 }, 3.5, 1);
     expect(landFor(europe.zoom, europe.bounds).region).toBeNull();
     const spain = makeFlatCtx(960, 480, { lat: 40, lon: -15 }, 12, 1);
@@ -24,7 +24,7 @@ describe('regional level of detail', () => {
   test('detail from zoom 4 over the region, on flat maps and the globe', () => {
     const poland = makeFlatCtx(960, 480, { lat: 52, lon: 19 }, 9, 1);
     const layers = landFor(poland.zoom, poland.bounds);
-    expect(layers.world).toBe(land);
+    expect(layers.world).toBe(worldLand());
     expect(layers.region!.land.coordinates.length).toBeGreaterThan(0);
     expect(layers.region!.coast.coordinates.length).toBeGreaterThan(0);
     expect(layers.region!.lakes.coordinates.length).toBeGreaterThan(5);

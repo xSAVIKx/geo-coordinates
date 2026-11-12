@@ -5,7 +5,9 @@ import pl from '../../src/i18n/pl.json';
 import uk from '../../src/i18n/uk.json';
 import { WORLD_BOUNDS } from '../../src/map/geometry';
 import { PHYSICAL_NAMES, physicalWaterFor, riverRankFor } from '../../src/map/physical';
-import { land } from '../../src/map/world';
+import { worldLand } from '../../src/map/world';
+
+const land = worldLand();
 
 describe('physical names', () => {
   test('25 names, each translated, seas on water and the rest on land', () => {

@@ -10,8 +10,14 @@ const topo = topoJson as unknown as Topology<{ countries: GeometryCollection; la
 // point of view, Ukraine's internationally recognised borders (scripts/build-world-borders.ts).
 const bordersTopo = bordersJson as unknown as Topology<{ countries: GeometryCollection }>;
 
-export const land = feature(topo, topo.objects.land);
-export const borders = mesh(bordersTopo, bordersTopo.objects.countries, (a, b) => a !== b);
+// The world land and borders are decoded on first use, not when the module loads: the home page imports this
+// module but draws no map, and decoding both took about 400 ms of start-up script in a CPU profile at a 4x CPU throttle.
+const decodeLand = () => feature(topo, topo.objects.land);
+const decodeBorders = () => mesh(bordersTopo, bordersTopo.objects.countries, (a, b) => a !== b);
+let landCache: ReturnType<typeof decodeLand> | undefined;
+let bordersCache: ReturnType<typeof decodeBorders> | undefined;
+export function worldLand(): ReturnType<typeof decodeLand> { return (landCache ??= decodeLand()); }
+export function worldBorders(): ReturnType<typeof decodeBorders> { return (bordersCache ??= decodeBorders()); }
 export const sphere = { type: 'Sphere' } as const;
 
 // ---------------------------------------------------------------------------------------------
@@ -199,16 +205,16 @@ export function regionActive(zoom: number, view: GeoBounds): boolean {
 }
 
 export interface LandLayers {
-  world: typeof land;
+  world: ReturnType<typeof worldLand>;
   /** Present when the regional data is active: `mask` hides the world land under the region box. */
   region: { mask: GeoJSON.Polygon; land: GeoJSON.MultiPolygon; lakes: GeoJSON.MultiPolygon; coast: GeoJSON.MultiLineString } | null;
 }
 
 export function landFor(zoom: number, view: GeoBounds): LandLayers {
-  if (!regionActive(zoom, view)) return { world: land, region: null };
+  if (!regionActive(zoom, view)) return { world: worldLand(), region: null };
   const region = regionData(zoom);
   return {
-    world: land,
+    world: worldLand(),
     region: {
       mask: regionMask,
       land: { type: 'MultiPolygon', coordinates: visibleParts(region.land, view) },
@@ -224,8 +230,8 @@ export interface BorderLayers {
 }
 
 export function bordersFor(zoom: number, view: GeoBounds): BorderLayers {
-  if (!regionActive(zoom, view)) return { world: borders, region: null };
-  return { world: borders, region: { type: 'MultiLineString', coordinates: visibleParts(regionData(zoom).borders, view) } };
+  if (!regionActive(zoom, view)) return { world: worldBorders(), region: null };
+  return { world: worldBorders(), region: { type: 'MultiLineString', coordinates: visibleParts(regionData(zoom).borders, view) } };
 }
 
 export interface DetailLayers {

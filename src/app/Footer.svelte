@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { i18n, t } from '../i18n/i18n.svelte';
   import { AUTHOR, CLOSE_UP_SOURCES, IMAGERY, MAP_DATA, OSM, SCHOOL_DATA } from './credits';
   const year = new Date().getFullYear();
@@ -15,10 +16,26 @@
     const [before = '', after = ''] = t(key, { source: MARK }).split(MARK);
     return [before, after];
   };
-  const retrieved = $derived(new Intl.DateTimeFormat(i18n.lang, { dateStyle: 'long', timeZone: 'UTC' }).format(new Date(`${SCHOOL_DATA.retrieved}T00:00:00Z`)));
+  /*
+   * The first long date the page formats makes the browser load its date data, which takes a long task at start-up
+   * (about 240 ms of the 700 ms that mounting the app took in a CPU profile at a 4x CPU throttle). The footer is far below
+   * the first screen, so the date line is filled in only when the footer comes near the viewport. The line is
+   * the last thing on the page, so nothing above it moves when it fills in.
+   */
+  let footer: HTMLElement;
+  let near = $state(false);
+  onMount(() => {
+    if (typeof IntersectionObserver === 'undefined') { near = true; return; }
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) { near = true; io.disconnect(); }
+    }, { rootMargin: '100% 0px' });
+    io.observe(footer);
+    return () => io.disconnect();
+  });
+  const retrieved = $derived(near ? new Intl.DateTimeFormat(i18n.lang, { dateStyle: 'long', timeZone: 'UTC' }).format(new Date(`${SCHOOL_DATA.retrieved}T00:00:00Z`)) : '');
 </script>
 
-<footer class="no-print" aria-label={t('footer.label')}>
+<footer class="no-print" bind:this={footer} aria-label={t('footer.label')}>
   <p>
     © {year} {t('footer.madeBy', { name: AUTHOR.name })}
     <span class="sep" aria-hidden="true"> · </span>
@@ -31,7 +48,7 @@
     <span class="sep" aria-hidden="true"> · </span>
     <a href={AUTHOR.github} rel="noopener">{t('footer.github', { name: AUTHOR.name })}</a>
   </p>
-  <p class="schools">{t('footer.schools', { date: retrieved })}</p>
+  <p class="schools">{#if near}{t('footer.schools', { date: retrieved })}{/if}</p>
   <p class="close-ups">
     {around('footer.closeUpPhotos')[0]}{#each CLOSE_UP_SOURCES as s, i (s.key)}{#if i}<span aria-hidden="true">{', '}</span>{/if}<a href={s.url} rel="noopener">{s.name}</a>{/each}{around('footer.closeUpPhotos')[1]}
     <span class="sep" aria-hidden="true"> · </span>
