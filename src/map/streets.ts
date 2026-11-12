@@ -1,7 +1,8 @@
 import { feature, mesh } from 'topojson-client';
 import type { GeometryObject } from 'topojson-specification';
 import { CITY_STREET_ZOOM, type CityBox, type CityBoxId } from './cityBoxes';
-import { unpackStreetTopology, type StreetClass, type StreetRoad, type StreetTopology } from './cityStreets';
+import { unpackStreetBytes, type StreetClass, type StreetRoad, type StreetTopology } from './cityStreets';
+import { blockBytes } from './texture/dataBlock';
 import type { GeoBounds } from './geometry';
 import type { LangCode } from '../geo/types';
 import { asMultiPolygon, decodeArcs, levelOfDetail, lineParts, polygonParts, visibleParts, type Part } from './world';
@@ -18,7 +19,7 @@ import { asMultiPolygon, decodeArcs, levelOfDetail, lineParts, polygonParts, vis
  * The blocks are the *gzipped* TopoJSON in base64 (Task 2's controller ruling: the raw text would have put the page
  * past the 8 MiB cap), so a box cannot be read synchronously — DecompressionStream is a stream. `loadStreets`
  * therefore returns a promise, `streetsFor` draws nothing until that promise has resolved, and `onStreetsLoaded`
- * lets the two layers that draw this redraw when it does. Nothing here throws on bad data: `unpackStreetTopology`
+ * lets the two layers that draw this redraw when it does. Nothing here throws on bad data: `unpackStreetBytes`
  * already returns null for a missing DecompressionStream, a truncated block or a topology of the wrong shape, and a
  * box with no data simply draws no streets while the rest of the map carries on ("a failure in the street layer
  * disables that layer only"). The failure is never persisted: the next page session tries again.
@@ -308,12 +309,12 @@ export function loadStreets(id: CityBoxId): Promise<boolean> {
   if (started) return started;
   const run = (async () => {
     try {
-      const block = document.getElementById(`geo-city-${id}`);
-      if (!block?.textContent) {
+      const bytes = await blockBytes(`geo-city-${id}`);
+      if (!bytes) {
         console.warn(`city streets: data for ${id} is missing from the page (geo-city-${id})`);
         return false;
       }
-      const topo = await unpackStreetTopology(block.textContent);
+      const topo = await unpackStreetBytes(bytes);
       if (!topo) {
         console.warn(`city streets: the data block for ${id} could not be unpacked (geo-city-${id})`);
         return false;

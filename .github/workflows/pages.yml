@@ -42,13 +42,13 @@ jobs:
       - name: Build
         run: npm run build
 
+      # The hosted page is dist/geo-coordinates.html with its app script in a separate file, and its map textures,
+      # city photos and street data in separate files that the page downloads only when it needs them (see
+      # scripts/build-site.ts). The site also
+      # gets dist/translation-review.html and everything in site-static/: icons, the web app manifest, the social
+      # card and the sitemap.
       - name: Assemble Pages site
-        run: |
-          mkdir -p site
-          cp dist/geo-coordinates.html site/index.html
-          cp dist/translation-review.html site/translation-review.html
-          # Icons, the web app manifest, the social card and the sitemap (see scripts/brand-assets.ts).
-          cp site-static/* site/
+        run: npm run site
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5

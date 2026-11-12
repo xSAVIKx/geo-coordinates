@@ -84,7 +84,9 @@ describe('icons', () => {
   });
 
   it('is published by the Pages workflow', () => {
-    expect(readFileSync('.github/workflows/pages.yml', 'utf8')).toContain('cp site-static/* site/');
+    expect(readFileSync('.github/workflows/pages.yml', 'utf8')).toContain('npm run site');
+    expect(JSON.parse(readFileSync('package.json', 'utf8')).scripts.site).toBe('node --experimental-strip-types scripts/build-site.ts site');
+    expect(readFileSync('scripts/build-site.ts', 'utf8')).toContain("readdirSync('site-static')");
   });
 });
 
