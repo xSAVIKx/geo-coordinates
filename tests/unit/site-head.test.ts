@@ -41,7 +41,7 @@ describe('page head', () => {
   });
 
   it('has theme colours for light and dark', () => {
-    expect(meta('name', 'theme-color')).toEqual(['#f5f3ec', '#0e131a']);
+    expect(meta('name', 'theme-color')).toEqual(['#f8fafc', '#14161a']);
   });
 
   it('has valid LearningResource structured data in all three languages', () => {
