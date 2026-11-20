@@ -31,7 +31,7 @@
     <span class="sep" aria-hidden="true"> · </span>
     <a href={AUTHOR.github} rel="noopener">{t('footer.github', { name: AUTHOR.name })}</a>
     <span class="sep" aria-hidden="true"> · </span>
-    <a href={AUTHOR.projects} rel="noopener">{t('footer.moreProjects')}</a>
+    <a class="ys-back-link" href={AUTHOR.projects} rel="noopener">{t('footer.moreProjects')}</a>
   </p>
   <p class="schools">{t('footer.schools', { date: retrieved })}</p>
   <p class="close-ups">
@@ -51,6 +51,8 @@
   footer p.close-ups { flex: 1 0 100%; padding-top: var(--space-1); }
   footer p.small { font-size: var(--step--2); }
   footer a { color: inherit; display: inline-flex; align-items: center; min-height: var(--tap); text-decoration-color: color-mix(in srgb, currentColor 45%, transparent); }
+  /* The back link to the hub (shared identity 1.2.0): a touch target of at least 44 px by 44 px. */
+  footer a.ys-back-link { justify-content: center; min-width: var(--tap); }
   footer a:hover { color: var(--text); text-decoration-color: currentColor; }
   @media (min-width: 900px) {
     footer p.links { display: inline-flex; align-items: center; gap: var(--space-2); }
